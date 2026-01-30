@@ -26,3 +26,6 @@ Repository = "https://github.com/micheldeleeuw/lion-tools"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["lion_tools*"]
+
+[tool.setuptools.package-data]
+lion_tools = ["templates/*.*"]
