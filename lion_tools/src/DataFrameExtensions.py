@@ -2,6 +2,8 @@ import pathlib
 from IPython.display import HTML as display_HTML
 from datetime import datetime
 import decimal
+import pyspark.sql.functions as F
+
 
 class DataFrameExtensions():
 
@@ -13,15 +15,30 @@ class DataFrameExtensions():
 
         DataFrame.d = DataFrameExtensions.d
         DataFrame.display = DataFrameExtensions.display
+        DataFrame.sort = DataFrameExtensions.sort
 
 
     def __init__(self):
         print('Use extend_dataframe() to extend DataFrame functionality.')
 
+    
+    @staticmethod
+    def sort(df, *args):
+        cols = df.columns
+        _args = [a if isinstance(a, str) else ("-" if a<0 else "") + cols[abs(a) - 1] for a in args]
+
+        order_by = []
+        for col_expr in _args:
+            if col_expr[0:1] == '-':
+                order_by.append(F.expr(f'{col_expr[1:]}').desc() )
+            else:
+                order_by.append(F.expr(f'{col_expr}') )
+        return df.orderBy(*order_by)
+
 
     @staticmethod
     def d(df, *args, **kwargs):
-        DataFrameExtensions.display(*args, **kwargs)
+        DataFrameExtensions.display(df, *args, **kwargs)
 
 
     @staticmethod
@@ -56,6 +73,16 @@ class DataFrameExtensions():
         if 'file_path' in kwargs:
             if not isinstance(kwargs['file_path'], str):
                 raise Exception("file_path must be a string")
+            
+        if 'sort' in kwargs:
+            if not isinstance(kwargs['sort'], list):
+                kwargs['sort'] = [kwargs['sort']]
+
+            assert all([
+                isinstance(i, (str, int))
+                for i in kwargs['sort']
+            ]), "sort values must be strings or integers"
+            
 
         return kwargs
         
@@ -118,6 +145,9 @@ class DataFrameExtensions():
             i for i, (col, dtype) in enumerate(dtypes)
             if dtype in ['int', 'bigint', 'double', 'float', 'decimal'] or dtype.startswith('decimal(')
         ]
+        if 'sort' in params:
+            df = DataFrameExtensions.sort(df, *params['sort'])
+
         df_collected, df_statistics = DataFrameExtensions.collect_data_and_stats(df.limit(params['n']))
         col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns)}, className: 'dt-right' }}'''
         col_defs_number_format = ''
