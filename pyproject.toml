@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lion-tools"
+version = "0.1.0"
+description = "Tools for data analysis and visualization"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "PolyForm Noncommercial License 1.0.0."}
+authors = [
+    {name = "Michel de Leeuw"}
+]
+dependencies = [
+    "ipynbname==2025.8.0.0",
+    "nbformat==5.10.4",
+    "pyspark==4.1.1",
+    "requests==2.32.5",
+]
+
+[project.urls]
+Homepage = "https://github.com/micheldeleeuw/lion-tools"
+Repository = "https://github.com/micheldeleeuw/lion-tools"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lion_tools*"]
