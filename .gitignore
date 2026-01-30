@@ -210,5 +210,4 @@ __marimo__/
 .DS_Store
 
 # User
-datasets/*parquet
-
+datasets/*.parquet
