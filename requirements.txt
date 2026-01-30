@@ -1,0 +1,4 @@
+ipynbname==2025.8.0.0
+nbformat==5.10.4
+pyspark==4.1.1
+requests==2.32.5
