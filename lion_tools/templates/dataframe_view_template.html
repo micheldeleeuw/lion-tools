@@ -158,14 +158,15 @@ $(document).ready(function() {
     var table = $('#mainTable').DataTable({
         paging: true,
         searching: true,
-        ordering: true,
         info: true,
+        {ordering},
         pageLength: 25,
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
         scrollX: true,
         columnDefs: [
             {col_defs_alignment_right},
-            {col_defs_number_format}
+            {col_defs_number_format},
+            {col_defs_rownum}
         ]
     });
     

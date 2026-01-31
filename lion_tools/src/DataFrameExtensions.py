@@ -3,6 +3,8 @@ from IPython.display import HTML as display_HTML
 from datetime import datetime
 import decimal
 import pyspark.sql.functions as F
+from pyspark.sql.window import Window as W
+from pyspark.sql.classic.column import Column
 
 
 class DataFrameExtensions():
@@ -15,7 +17,7 @@ class DataFrameExtensions():
 
         # Extend DataFrame with new methods
         DataFrame.eDisplay = DataFrameExtensions.display
-        DataFrame.eSort = DataFrameExtensions.sort
+        DataFrame.eSort = DataFrameExtensions.sort_transform_expressions
 
         # Single letter methods
         DataFrame.d = DataFrameExtensions.display
@@ -26,21 +28,48 @@ class DataFrameExtensions():
 
     
     @staticmethod
-    def sort(df, *args):
+    def sort_transform_expressions(df, *col_exprs):
         cols = df.columns
-        _args = [a if isinstance(a, str) else ("-" if a<0 else "") + f"`{cols[abs(a) - 1]}`" for a in args]
+        col_exprs = list(col_exprs)
 
-        print(_args)
+        for i in range(len(col_exprs)):
+            col_expr = col_exprs[i]
 
-        order_by = []
+            if isinstance(col_expr, Column):
+                # real column leave it alone, user obviously knows what they are doing
+                continue
 
-        for col_expr in _args:
-            if col_expr[0:1] == '-':
-                order_by.append(F.expr(f'{col_expr[1:]}').desc() )
+            if isinstance(col_expr, int) and col_expr < 0:
+                col_expr = abs(col_expr)
+                descending = True
+            elif isinstance(col_expr, str) and col_expr[0] == '-':
+                col_expr = col_expr[1:]
+                descending = True
             else:
-                order_by.append(F.expr(f'{col_expr}') )
-        return df.orderBy(*order_by)
+                descending = False
 
+            # recode integer column indices to column names
+            if isinstance(col_expr, int):
+                col_expr = cols[col_expr - 1]
+
+            # we distinguish real column names versus column expressions
+            # to be able to avoid `` around real column names
+            if col_expr in cols:
+                col_expr = F.col(col_expr)
+            else:
+                col_expr = F.expr(col_expr)
+
+            if descending:
+                col_expr = col_expr.desc()
+                
+            # put the modified expression back
+            col_exprs[i] = col_expr
+
+        return col_exprs
+
+    @staticmethod    
+    def sort(df, *col_exprs):
+        return df.orderBy(DataFrameExtensions.sort_transform_expressions(df, *col_exprs))
 
     @staticmethod
     def display_validate_parameters(df, *args, **kwargs):
@@ -146,16 +175,27 @@ class DataFrameExtensions():
             i for i, (col, dtype) in enumerate(dtypes)
             if dtype in ['int', 'bigint', 'double', 'float', 'decimal'] or dtype.startswith('decimal(')
         ]
-        if 'sort' in params:
-            df = DataFrameExtensions.sort(df, *params['sort'])
 
-        df_collected, df_statistics = DataFrameExtensions.collect_data_and_stats(df.limit(params['n']))
+        # If sorting is requested, we do this the real way, with a rownum
+        if 'sort' in params:
+            sort_by = DataFrameExtensions.sort_transform_expressions(df, *params['sort'])
+            df = df.withColumn('_rownum', F.row_number().over(W.orderBy(*sort_by)))
+            df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
+            ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
+        else:
+            df = df.limit(params['n']).withColumn('_rownum', F.monotonically_increasing_id())
+            ordering = "ordering: true"
+            
+        df_collected, df_statistics = DataFrameExtensions.collect_data_and_stats(df)
+        cols_defs_rownum = f"{{ targets: [{len(cols)}], visible: false,  searchable: false}}"
         col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns)}, className: 'dt-right' }}'''
         col_defs_number_format = ''
-        for col in nummeric_columns:
+        for i, col in enumerate(nummeric_columns):
             col_name = cols[col]
             decimals = df_statistics[col_name]['decimals']
-            col_defs_number_format += f'''{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }},\n            '''
+            if i>0:
+                col_defs_number_format += ',\n            '
+            col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
             # (number_format, thousands_sep, decimals, prefix, suffix)
 
         # Load template using relative path from this file's location
@@ -168,6 +208,8 @@ class DataFrameExtensions():
         html_content = html_content.replace('{columns}', str(list([col + '---(' + dtype + ')' for col, dtype in dtypes])))
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
+        html_content = html_content.replace('{col_defs_rownum}', cols_defs_rownum)
+        html_content = html_content.replace('{ordering}', ordering)
 
         if 'file_path' in params:
             # save to file
