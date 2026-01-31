@@ -29,3 +29,8 @@ include = ["lion_tools*"]
 
 [tool.setuptools.package-data]
 lion_tools = ["templates/*.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

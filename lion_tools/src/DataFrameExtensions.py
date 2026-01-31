@@ -13,9 +13,12 @@ class DataFrameExtensions():
         global DataFrame
         from pyspark.sql import DataFrame
 
-        DataFrame.d = DataFrameExtensions.d
-        DataFrame.display = DataFrameExtensions.display
-        DataFrame.sort = DataFrameExtensions.sort
+        # Extend DataFrame with new methods
+        DataFrame.eDisplay = DataFrameExtensions.display
+        DataFrame.eSort = DataFrameExtensions.sort
+
+        # Single letter methods
+        DataFrame.d = DataFrameExtensions.display
 
 
     def __init__(self):
@@ -25,9 +28,12 @@ class DataFrameExtensions():
     @staticmethod
     def sort(df, *args):
         cols = df.columns
-        _args = [a if isinstance(a, str) else ("-" if a<0 else "") + cols[abs(a) - 1] for a in args]
+        _args = [a if isinstance(a, str) else ("-" if a<0 else "") + f"`{cols[abs(a) - 1]}`" for a in args]
+
+        print(_args)
 
         order_by = []
+
         for col_expr in _args:
             if col_expr[0:1] == '-':
                 order_by.append(F.expr(f'{col_expr[1:]}').desc() )
@@ -37,17 +43,12 @@ class DataFrameExtensions():
 
 
     @staticmethod
-    def d(df, *args, **kwargs):
-        DataFrameExtensions.display(df, *args, **kwargs)
-
-
-    @staticmethod
     def display_validate_parameters(df, *args, **kwargs):
         if not ('pyspark.sql' in str(type(df)) and 'DataFrame' in str(type(df))):
             raise Exception("This method can only be used on a pyspark DataFrame")
         
         for key in kwargs:
-            assert key in ['n', 'passthrough', 'file_path'], "Unknown parameter: {}".format(key)
+            assert key in ['n', 'passthrough', 'file_path', 'sort'], "Unknown parameter: {}".format(key)
                 
         # this is nasty but allows for positional arguments which is rely helpful for the user
         for val in args:
