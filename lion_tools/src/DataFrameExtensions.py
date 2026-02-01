@@ -235,7 +235,7 @@ class DataFrameExtensions():
                 f.write(html_content)
 
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
-        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 150)) + 'px'
+        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 155)) + 'px'
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
                     width='100%' 
