@@ -1,5 +1,6 @@
 import pathlib
 from IPython.display import HTML as display_HTML
+from IPython.display import display
 from datetime import datetime
 import decimal
 import pyspark.sql.functions as F
@@ -245,7 +246,7 @@ class DataFrameExtensions():
             </iframe>
         """
         
-        result = display_HTML(iframe_html)
+        result = display(display_HTML(iframe_html))
         
         if params['passthrough']:
             return df
