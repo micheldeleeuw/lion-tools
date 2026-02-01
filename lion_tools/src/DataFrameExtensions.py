@@ -239,8 +239,10 @@ class DataFrameExtensions():
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
                     width='100%' 
-                    # height='{max_height}px' 
+                    height='{max_height}px' 
+                    margin='0'
                     frameborder='0'
+                    sandbox='allow-scripts allow-same-origin'
                     style='border: 1px solid #ddd;'>
             </iframe>
         """
@@ -250,6 +252,6 @@ class DataFrameExtensions():
         if params['passthrough']:
             return df
         else:
-            return result
+            return
 
 
