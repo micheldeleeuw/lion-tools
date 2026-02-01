@@ -171,7 +171,6 @@ class DataFrameExtensions():
 
         return df_collected, stats
 
-
     @staticmethod
     def display(df, *args, **kwargs):
         params = DataFrameExtensions.display_validate_parameters(df, *args, **kwargs)
@@ -190,7 +189,7 @@ class DataFrameExtensions():
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         else:
-            df = df.limit(params['n']).withColumn('_rownum', F.monotonically_increasing_id())
+            df = df.limit(params['n']).withColumn('_rownum', F.lit(0))
             ordering = "ordering: true"
             
         df_collected, df_statistics = DataFrameExtensions.collect_data_and_stats(df)
@@ -236,7 +235,7 @@ class DataFrameExtensions():
                 f.write(html_content)
 
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
-        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 175)) + 'px'
+        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 155)) + 'px'
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
                     width='100%' 
