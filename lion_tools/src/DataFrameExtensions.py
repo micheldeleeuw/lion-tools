@@ -115,8 +115,8 @@ class DataFrameExtensions():
 
         if 'page_length' in kwargs:
             assert (
-                isinstance(kwargs['page_length'], int) and kwargs['page_length'] > 0 and kwargs['page_length'] <= 50
-            ), "page_length must be a positive integer between 1 and 50"
+                isinstance(kwargs['page_length'], int) and kwargs['page_length'] > 0 and kwargs['page_length'] <= 1000000
+            ), "page_length must be a positive integer between 1 and 100.000"
         else:
             kwargs['page_length'] = 15
 
@@ -235,11 +235,11 @@ class DataFrameExtensions():
                 f.write(html_content)
 
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
-        max_height = str(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 250) + 'px'
+        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 27 + 175)) + 'px'
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
                     width='100%' 
-                    height='{max_height}px' 
+                    # height='{max_height}px' 
                     frameborder='0'
                     style='border: 1px solid #ddd;'>
             </iframe>
@@ -251,4 +251,5 @@ class DataFrameExtensions():
             return df
         else:
             return result
+
 
