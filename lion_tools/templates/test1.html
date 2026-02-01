@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="created" content="2026-02-01T14:19:39" />
+<title>DataTable View</title>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
+<style>
+    body { 
+        font-family: Arial, sans-serif; 
+        margin: 15px;
+        background: #f0f0f0;
+    }
+    #mainTable {
+        width: 100%;
+        background: white;
+    }
+    #mainTable td, th {
+        padding: 5px 4px;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .dataTables_wrapper {
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+    }
+    #columnBtn {
+        padding: 4px 12px;
+        background: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        margin-right: 10px;
+    }
+    #columnBtn:hover {
+        background: #357abd;
+    }
+    #columnList {
+        display: none;
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 1000;
+        min-width: 200px;
+        top: 100%;
+        margin-top: 5px;
+        right: 0;
+    }
+    #columnList.show {
+        display: block;
+    }
+    .column-items-container {
+        max-height: 350px;
+        overflow-y: auto;
+        padding: 10px;
+        padding-bottom: 0;
+    }
+    .column-item {
+        padding: 5px 12px;
+        font-size: 12px;
+        cursor: pointer;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 15px;
+        align-items: center;
+        user-select: none;
+        border-radius: 3px;
+        transition: background 0.15s;
+    }
+    .column-name {
+        text-align: left;
+    }
+    .column-type {
+        text-align: right;
+        color: #888;
+        font-size: 11px;
+    }
+    .column-item.selected .column-type {
+        color: #ddd;
+    }
+    .column-item:hover {
+        background: #f5f5f5;
+    }
+    .column-item.selected {
+        background: #4a90e2;
+        color: white;
+    }
+    .column-item.selected:hover {
+        background: #357abd;
+    }
+    .buttons-container {
+        padding: 10px;
+        border-top: 1px solid #e0e0e0;
+        background: white;
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    .button-row {
+        display: flex;
+        flex-direction: row;
+        gap: 5px;
+    }
+    .select-btn {
+        flex: 1;
+        padding: 6px 8px;
+        background: #888;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        text-align: center;
+    }
+    .select-btn:hover {
+        background: #666;
+    }
+    .copy-btn {
+        flex: 1;
+        padding: 6px 8px;
+        background: #50e3c2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: normal;
+        text-align: center;
+    }
+    .copy-btn:hover {
+        background: #3ac2a0;
+    }
+    .copy-btn:active {
+        background: #2fa889;
+    }
+    .dataTables_filter {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+    /* Make DataTables controls text smaller */
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate,
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter label {
+        font-size: 12px;
+    }
+    /* Make the length menu dropdown smaller */
+    .dataTables_wrapper .dataTables_length select {
+        font-size: 11px;
+        padding: 2px 4px;
+    }
+</style>
+</head>
+<body>
+
+<div style="max-width: 600px;">
+    
+            <table id="mainTable" class="display" style="width:100%">
+                <thead><tr><th>id</th><th>name</th><th>_rownum</th></tr></thead>
+                <tbody>
+                    <tr><td>1</td><td>Alice]\n in hell{}</td><td></td></tr>
+<tr><td>2</td><td>Bob</td><td></td></tr>
+
+                </tbody>
+            </table>
+        
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function() {
+    var table = $('#mainTable').DataTable({
+        paging: true,
+        searching: true,
+        info: true,
+        ordering: true,
+        pageLength: 15,
+        lengthMenu: [[5, 15, 50, -1], [5, 15, 50, 'All']],
+        scrollX: true,
+        columnDefs: [
+            { targets: [0], className: 'dt-right' },
+            { targets: [0], render: $.fn.dataTable.render.number( ',', '.', 0, '', '&nbsp;&nbsp;' ) },
+            { targets: [2], visible: false,  searchable: false}
+        ]
+    });
+    
+    // Add button to the left of search bar
+    var columnBtn = $('<button id="columnBtn">Columns</button>');
+    var columnList = $('<div id="columnList"></div>');
+    
+    // Add select/deselect all buttons
+    var selectButtonsDiv = $('<div class="select-buttons"></div>');
+    var selectAllBtn = $('<button class="select-btn">Select All</button>');
+    var deselectAllBtn = $('<button class="select-btn">Deselect All</button>');
+    selectButtonsDiv.append(selectAllBtn);
+    selectButtonsDiv.append(deselectAllBtn);
+    
+    var columnItemsContainer = $('<div class="column-items-container"></div>');
+    
+    // Populate the list with fixed options
+    var options = ['id---(bigint)', 'name---(string)'];
+    options.forEach(function(option) {
+        // Parse the column name and type (format: "Column Name---(type)")
+        var match = option.match(/^(.+?)---\((.+?)\)$/);
+        var columnName = match ? match[1].trim() : option;
+        var columnType = match ? match[2] : '';
+        
+        var item = $('<div class="column-item" data-column="' + option + '" data-column-name="' + columnName + '">' +
+            '<span class="column-name">' + columnName + '</span>' +
+            '<span class="column-type">' + columnType + '</span>' +
+            '</div>');
+        columnItemsContainer.append(item);
+    });
+    
+    // Add copy buttons container
+    var buttonsContainer = $('<div class="buttons-container"></div>');
+    
+    // First row: select/deselect buttons
+    var selectButtonsRow = $('<div class="button-row"></div>');
+    var selectAllBtn = $('<button class="select-btn">Select All</button>');
+    var deselectAllBtn = $('<button class="select-btn">Deselect All</button>');
+    selectButtonsRow.append(selectAllBtn);
+    selectButtonsRow.append(deselectAllBtn);
+    
+    // Second row: copy buttons
+    var copyButtonsRow = $('<div class="button-row"></div>');
+    var copyBtn1 = $('<button class="copy-btn" data-format="simple">Copy 1</button>');
+    var copyBtn2 = $('<button class="copy-btn" data-format="quoted">Copy 2</button>');
+    var copyBtn3 = $('<button class="copy-btn" data-format="quoted-newline">Copy 3</button>');
+    copyButtonsRow.append(copyBtn1);
+    copyButtonsRow.append(copyBtn2);
+    copyButtonsRow.append(copyBtn3);
+    
+    buttonsContainer.append(selectButtonsRow);
+    buttonsContainer.append(copyButtonsRow);
+    
+    columnList.append(columnItemsContainer);
+    columnList.append(buttonsContainer);
+    
+    $('.dataTables_filter label').before(columnBtn);
+    $('.dataTables_filter').append(columnList);
+    
+    // Toggle column list on button click
+    columnBtn.on('click', function(e) {
+        e.stopPropagation();
+        columnList.toggleClass('show');
+    });
+    
+    // Handle column item clicks to toggle selection
+    columnList.on('click', '.column-item', function(e) {
+        e.stopPropagation();
+        $(this).toggleClass('selected');
+    });
+    
+    // Handle select all button
+    selectAllBtn.on('click', function(e) {
+        e.stopPropagation();
+        $('.column-item').addClass('selected');
+    });
+    
+    // Handle deselect all button
+    deselectAllBtn.on('click', function(e) {
+        e.stopPropagation();
+        $('.column-item').removeClass('selected');
+    });
+    
+    // Copy selected columns to clipboard with different formats
+    function copyToClipboard(format, button) {
+        var selectedColumns = [];
+        $('#columnList .column-item.selected').each(function() {
+            selectedColumns.push($(this).data('column-name'));
+        });
+        
+        if (selectedColumns.length > 0) {
+            var columnString;
+            
+            if (format === 'simple') {
+                // col1, col2, col3
+                columnString = selectedColumns.join(', ');
+            } else if (format === 'quoted') {
+                // "col1", "col2", "col3"
+                columnString = selectedColumns.map(function(col) {
+                    return '"' + col + '"';
+                }).join(', ');
+            } else if (format === 'quoted-newline') {
+                // "col1",\n"col2",\n"col3",
+                columnString = selectedColumns.map(function(col) {
+                    return '"' + col + '"';
+                }).join(',\n') + ',';
+            }
+            
+            // Create a temporary textarea to copy from
+            var textarea = $('<textarea>');
+            textarea.val(columnString);
+            textarea.css({
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '2em',
+                height: '2em',
+                padding: 0,
+                border: 'none',
+                outline: 'none',
+                boxShadow: 'none',
+                background: 'transparent'
+            });
+            $('body').append(textarea);
+            textarea[0].select();
+            
+            try {
+                var successful = document.execCommand('copy');
+                if (successful) {
+                    var originalHtml = button.html();
+                    button.html('✓ Copied!');
+                    setTimeout(function() {
+                        button.html(originalHtml);
+                    }, 1500);
+                } else {
+                    alert('Copy failed. Text: ' + columnString);
+                }
+            } catch (err) {
+                alert('Copy failed. Text: ' + columnString);
+            }
+            
+            textarea.remove();
+        } else {
+            alert('No columns selected');
+        }
+    }
+    
+    // Handle clicks on all copy buttons
+    columnList.on('click', '.copy-btn', function(e) {
+        e.stopPropagation();
+        var format = $(this).data('format');
+        copyToClipboard(format, $(this));
+    });
+    
+    // Close column list when clicking outside
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#columnBtn, #columnList').length) {
+            columnList.removeClass('show');
+        }
+    });
+});
+</script>
+
+</body>
+</html>
