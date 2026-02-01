@@ -4,7 +4,7 @@ from datetime import datetime
 import decimal
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window as W
-from pyspark.sql.classic.column import Column
+from pyspark.sql.column import Column
 
 
 class DataFrameExtensions():
