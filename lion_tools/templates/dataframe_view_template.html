@@ -16,7 +16,7 @@
         background: white;
     }
     #mainTable td, th {
-        padding: 8px 6px;
+        padding: 6px 6px;
         font-size: 12px;
         white-space: nowrap;
     }
@@ -26,7 +26,7 @@
         border-radius: 8px;
     }
     #columnBtn {
-        padding: 6px 12px;
+        padding: 4px 12px;
         background: #4a90e2;
         color: white;
         border: none;
@@ -61,8 +61,8 @@
         padding-bottom: 0;
     }
     .column-item {
-        padding: 6px 12px;
-        font-size: 13px;
+        padding: 5px 12px;
+        font-size: 12px;
         cursor: pointer;
         display: grid;
         grid-template-columns: 1fr auto;
@@ -145,11 +145,20 @@
         align-items: center;
         position: relative;
     }
+    /* Make DataTables controls text smaller */
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate,
+    .dataTables_wrapper .dataTables_length,
+    .dataTables_wrapper .dataTables_filter label {
+        font-size: 12px;
+    }
 </style>
 </head>
 <body>
 
-{main_table}
+<div style="max-width: {max_width};">
+    {main_table}
+</div>
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
@@ -160,8 +169,8 @@ $(document).ready(function() {
         searching: true,
         info: true,
         {ordering},
-        pageLength: 25,
-        lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+        pageLength: {page_length},
+        lengthMenu: {length_menu},
         scrollX: true,
         columnDefs: [
             {col_defs_alignment_right},

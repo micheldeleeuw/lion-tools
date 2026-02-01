@@ -77,7 +77,7 @@ class DataFrameExtensions():
             raise Exception("This method can only be used on a pyspark DataFrame")
         
         for key in kwargs:
-            assert key in ['n', 'passthrough', 'file_path', 'sort'], "Unknown parameter: {}".format(key)
+            assert key in ['n', 'passthrough', 'file_path', 'sort', 'page_length'], "Unknown parameter: {}".format(key)
                 
         # this is nasty but allows for positional arguments which is rely helpful for the user
         for val in args:
@@ -112,7 +112,13 @@ class DataFrameExtensions():
                 isinstance(i, (str, int))
                 for i in kwargs['sort']
             ]), "sort values must be strings or integers"
-            
+
+        if 'page_length' in kwargs:
+            assert (
+                isinstance(kwargs['page_length'], int) and kwargs['page_length'] > 0 and kwargs['page_length'] <= 50
+            ), "page_length must be a positive integer between 1 and 50"
+        else:
+            kwargs['page_length'] = 15
 
         return kwargs
         
@@ -197,6 +203,15 @@ class DataFrameExtensions():
                 col_defs_number_format += ',\n            '
             col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
             # (number_format, thousands_sep, decimals, prefix, suffix)
+        
+        if df_statistics['__total__']['width'] * 8 + 50 < 600:
+            max_width = '600px'
+        else:
+            max_width = str(df_statistics['__total__']['width'] * 8 + 50) + 'px'  # rough estimate of width in pixels
+
+        _options = sorted([5, 50, params['page_length']])
+        _options = list(dict.fromkeys(_options))
+        length_menu = str([[*_options, -1], [*_options, "All"]])
 
         # Load template using relative path from this file's location
         with open(pathlib.Path(__file__).parent.parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
@@ -210,6 +225,9 @@ class DataFrameExtensions():
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
         html_content = html_content.replace('{col_defs_rownum}', cols_defs_rownum)
         html_content = html_content.replace('{ordering}', ordering)
+        html_content = html_content.replace('{max_width}', max_width)
+        html_content = html_content.replace('{page_length}', str(params['page_length']))
+        html_content = html_content.replace('{length_menu}', length_menu)
 
         if 'file_path' in params:
             # save to file
@@ -217,10 +235,11 @@ class DataFrameExtensions():
                 f.write(html_content)
 
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
+        max_height = str(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 250) + 'px'
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
                     width='100%' 
-                    height='600' 
+                    height='{max_height}px' 
                     frameborder='0'
                     style='border: 1px solid #ddd;'>
             </iframe>
