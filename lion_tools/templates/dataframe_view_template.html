@@ -200,10 +200,8 @@ $(document).ready(function() {
     // Populate the list with fixed options
     var options = {columns};
     options.forEach(function(option) {
-        // Parse the column name and type (format: "Column Name---(type)")
-        var match = option.match(/^(.+?)---\((.+?)\)$/);
-        var columnName = match ? match[1].trim() : option;
-        var columnType = match ? match[2] : '';
+        var columnName = option.split('---')[0];
+        var columnType = option.split('---')[1].slice(1, -1);
         
         var item = $('<div class="column-item" data-column="' + option + '" data-column-name="' + columnName + '">' +
             '<span class="column-name">' + columnName + '</span>' +

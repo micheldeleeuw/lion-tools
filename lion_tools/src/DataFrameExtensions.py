@@ -206,9 +206,12 @@ class DataFrameExtensions():
             
         df_collected, df_statistics = DataFrameExtensions.collect_data_and_stats(df)
         columns_popup = str(list([
-            col + '---(' + dtype + ')' if len(dtype) <= 10 else col + '---(' + dtype[:10] + '...)'
+            html.escape(
+                col + '---(' + dtype + ')' if len(dtype) <= 25 else col + '---(' + dtype[0:22] + '...)'
+            )
             for col, dtype in dtypes
         ]))
+
         cols_defs_rownum = f"{{ targets: [{len(cols)}], visible: false,  searchable: false}}"
         col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns + [len(cols)])}, className: 'dt-right' }}'''
         col_defs_number_format = ''
