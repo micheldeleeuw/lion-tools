@@ -26,8 +26,7 @@ class DataFrameExtensions():
 
     def __init__(self):
         print('Use extend_dataframe() to extend DataFrame functionality.')
-
-    
+  
     @staticmethod
     def sort_transform_expressions(df, *col_exprs):
         cols = df.columns
@@ -83,11 +82,13 @@ class DataFrameExtensions():
                 'n', 'passthrough', 'file_path', 'sort', 'page_length', 'p'
             ], "Unknown parameter: {}".format(key)
                 
-        # this is nasty but allows for positional arguments which is rely helpful for the user
+        # this is nasty but allows for positional arguments which is really helpful for the user
         for val in args:
             if isinstance(val, int) and 'n' not in kwargs:
+                print("Positional argument for n detected.")
                 kwargs['n'] = val
             elif isinstance(val, bool) and 'passthrough' not in kwargs:
+                print("Positional argument for passthrough detected.")
                 kwargs['passthrough'] = val
             else:
                 raise Exception("Unknown positional argument: {}".format(val))
