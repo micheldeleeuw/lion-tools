@@ -78,7 +78,10 @@ class DataFrameExtensions():
             raise Exception("This method can only be used on a pyspark DataFrame")
         
         for key in kwargs:
-            assert key in ['n', 'passthrough', 'file_path', 'sort', 'page_length'], "Unknown parameter: {}".format(key)
+            # note p is an alias for page_length
+            assert key in [
+                'n', 'passthrough', 'file_path', 'sort', 'page_length', 'p'
+            ], "Unknown parameter: {}".format(key)
                 
         # this is nasty but allows for positional arguments which is rely helpful for the user
         for val in args:
@@ -113,6 +116,10 @@ class DataFrameExtensions():
                 isinstance(i, (str, int))
                 for i in kwargs['sort']
             ]), "sort values must be strings or integers"
+
+        if 'p' in kwargs and 'page_length' not in kwargs:
+            kwargs['page_length'] = kwargs['p']
+            del kwargs['p']
 
         if 'page_length' in kwargs:
             assert (
