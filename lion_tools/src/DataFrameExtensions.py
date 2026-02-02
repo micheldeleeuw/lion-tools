@@ -6,6 +6,7 @@ import decimal
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window as W
 from pyspark.sql.column import Column
+import html
 
 
 class DataFrameExtensions():
@@ -134,13 +135,13 @@ class DataFrameExtensions():
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = df_collected[0].asDict().keys()
         
-        html_header = ''.join([f'<th>{col}</th>' for col in cols])
+        html_header = ''.join([f'<th>{html.escape(str(col))}</th>' for col in cols])
         html_body = ''
         for row in df_collected:
             html_body += '<tr>'
             for col in cols:
                 value = row[col]
-                value = '' if not value else value
+                value = '' if not value else html.escape(str(value))
                 # value = 'null&nbsp;&nbsp;' if not value else value
                 html_body += f'<td>{value}</td>'
             html_body += '</tr>\n'
@@ -163,7 +164,7 @@ class DataFrameExtensions():
         dtypes = df.dtypes
         df_collected = df.collect()
 
-        stats = {col: {'type': dtype, 'length': 1, 'decimals': 0} for col, dtype in dtypes}
+        stats = {col: {'type': dtype, 'length': 1, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
         for row in df_collected:
             for col in cols:
                 value = row[col]
@@ -173,7 +174,12 @@ class DataFrameExtensions():
                     if (isinstance(value, float) or isinstance(value, decimal.Decimal)) and str(value).split('.')[-1] != '0':
                         stats[col]['decimals'] = max(stats[col]['decimals'], len(str(value).split('.')[-1]))
 
-        stats['__total__'] = {'rows': len(df_collected), 'columns': len(cols), 'width': sum([stats[col]['length'] for col in cols])}
+        stats['__total__'] = {
+            'rows': len(df_collected), 
+            'columns': len(cols), 
+            'width': sum([stats[col]['length'] for col in cols]),
+            'width_with_header': sum([max(stats[col]['length'], stats[col]['header_length']) for col in cols]),
+        }
 
         return df_collected, stats
 
@@ -199,8 +205,12 @@ class DataFrameExtensions():
             ordering = "ordering: true"
             
         df_collected, df_statistics = DataFrameExtensions.collect_data_and_stats(df)
+        columns_popup = str(list([
+            col + '---(' + dtype + ')' if len(dtype) <= 10 else col + '---(' + dtype[:10] + '...)'
+            for col, dtype in dtypes
+        ]))
         cols_defs_rownum = f"{{ targets: [{len(cols)}], visible: false,  searchable: false}}"
-        col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns)}, className: 'dt-right' }}'''
+        col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns + [len(cols)])}, className: 'dt-right' }}'''
         col_defs_number_format = ''
         for i, col in enumerate(nummeric_columns):
             col_name = cols[col]
@@ -209,11 +219,12 @@ class DataFrameExtensions():
                 col_defs_number_format += ',\n            '
             col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
             # (number_format, thousands_sep, decimals, prefix, suffix)
+        col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format
         
-        if df_statistics['__total__']['width'] * 8 + 50 < 600:
+        if df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
             max_width = '600px'
         else:
-            max_width = str(df_statistics['__total__']['width'] * 8 + 50) + 'px'  # rough estimate of width in pixels
+            max_width = str(df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
 
         _options = sorted([5, 50, params['page_length']])
         _options = list(dict.fromkeys(_options))
@@ -226,7 +237,7 @@ class DataFrameExtensions():
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
         html_content = html_content.replace('{main_table}', DataFrameExtensions.data_to_html_table(df_collected))
-        html_content = html_content.replace('{columns}', str(list([col + '---(' + dtype + ')' for col, dtype in dtypes])))
+        html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
         html_content = html_content.replace('{col_defs_rownum}', cols_defs_rownum)
