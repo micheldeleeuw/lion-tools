@@ -84,12 +84,10 @@ class DataFrameExtensions():
                 
         # this is nasty but allows for positional arguments which is really helpful for the user
         for val in args:
-            if isinstance(val, int) and 'n' not in kwargs:
-                print("Positional argument for n detected.")
-                kwargs['n'] = val
-            elif isinstance(val, bool) and 'passthrough' not in kwargs:
-                print("Positional argument for passthrough detected.")
+            if isinstance(val, bool) and 'passthrough' not in kwargs:
                 kwargs['passthrough'] = val
+            elif isinstance(val, int) and 'n' not in kwargs:
+                kwargs['n'] = val
             else:
                 raise Exception("Unknown positional argument: {}".format(val))
 
