@@ -207,7 +207,9 @@ class DataFrameExtensions():
         df_collected, df_statistics = DataFrameExtensions.collect_data_and_stats(df)
         columns_popup = str(list([
             html.escape(
-                col + '---(' + dtype + ')' if len(dtype) <= 25 else col + '---(' + dtype[0:22] + '...)'
+                col + '---(' + dtype + ')'
+                if len(dtype) <= 25
+                else col + '---(' + dtype[0:22] + '...)'
             )
             for col, dtype in dtypes
         ]))
