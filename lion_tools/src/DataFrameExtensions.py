@@ -7,7 +7,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.window import Window as W
 from pyspark.sql.column import Column
 import html
-
+import tempfile
 
 class DataFrameExtensions():
 
@@ -20,9 +20,11 @@ class DataFrameExtensions():
         # Extend DataFrame with new methods
         DataFrame.eDisplay = DataFrameExtensions.display
         DataFrame.eSort = DataFrameExtensions.sort_transform_expressions
+        DataFrame.eDisplayInCockpit = DataFrameExtensions.display_in_cockpit
 
         # Single letter methods
         DataFrame.d = DataFrameExtensions.display
+        DataFrame.dc = DataFrameExtensions.display_in_cockpit
 
 
     def __init__(self):
@@ -76,12 +78,21 @@ class DataFrameExtensions():
     def display_validate_parameters(df, *args, **kwargs):
         if not ('pyspark.sql' in str(type(df)) and 'DataFrame' in str(type(df))):
             raise Exception("This method can only be used on a pyspark DataFrame")
+
+        valid_keys = [
+            'n',
+            'passthrough',
+            'file_path',
+            'sort',
+            'p',
+            'page_length',
+            'display',
+            'async',
+        ]
         
         for key in kwargs:
             # note p is an alias for page_length
-            assert key in [
-                'n', 'passthrough', 'file_path', 'sort', 'page_length', 'p'
-            ], "Unknown parameter: {}".format(key)
+            assert key in valid_keys, "Unknown parameter: {}".format(key)
                 
         # this is nasty but allows for positional arguments which is really helpful for the user
         for val in args:
@@ -91,6 +102,11 @@ class DataFrameExtensions():
                 kwargs['n'] = val
             else:
                 raise Exception("Unknown positional argument: {}".format(val))
+
+        if 'display' not in kwargs:
+            kwargs['display'] = True
+        else:
+            assert isinstance(kwargs['display'], bool), "display must be a boolean value"
 
         if 'n' in kwargs:
             if not isinstance(kwargs['n'], int) or kwargs['n'] < 1 or kwargs['n'] > 100000:
@@ -127,6 +143,18 @@ class DataFrameExtensions():
             ), "page_length must be a positive integer between 1 and 100.000"
         else:
             kwargs['page_length'] = 15
+
+        if 'display' in kwargs:
+            if not isinstance(kwargs['display'], bool):
+                raise Exception("display must be a boolean value")
+        else:
+            kwargs['display'] = True
+
+        if 'async' in kwargs:
+            if not isinstance(kwargs['async'], bool):
+                raise Exception("async must be a boolean value")
+        else:
+            kwargs['async'] = True
 
         return kwargs
         
@@ -256,8 +284,8 @@ class DataFrameExtensions():
             with open(params['file_path'], 'w', encoding='utf-8') as f:
                 f.write(html_content)
 
-        # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 165)) + 'px'
+        # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
                     width='100%' 
@@ -267,13 +295,35 @@ class DataFrameExtensions():
                     sandbox='allow-scripts allow-same-origin'
                     style='border: 1px solid #ddd;'>
             </iframe>
-        """
+        """            
+
+        if kwargs['display']:
+            display(display_HTML(iframe_html))
         
-        result = display(display_HTML(iframe_html))
-        
-        if params['passthrough']:
+        elif params['passthrough']:
             return df
         else:
             return
 
+
+    @staticmethod
+    def display_in_cockpit(df, *args, **kwargs):
+        params = DataFrameExtensions.display_validate_parameters(df, *args, **kwargs)
+
+        if 'file_path' in kwargs:
+            raise Exception("file_path parameter is not supported in display_in_cockpit, use display instead.")
+        
+        kwargs['display'] = False
+
+        tempdir = tempfile.gettempdir()
+
+        if 'async' in kwargs and not kwargs['async']:
+            # synchronous display, evaluation happens in the session and only the
+            # html result is sent to the cockpit
+            kwargs['file_path'] = 'to implement'
+            DataFrameExtensions.display(df, *args, **kwargs)
+        else:
+            # asynchronous display, evaluation happens in the cockpit, only queue
+            # the display by saving the parameters
+            pass
 
