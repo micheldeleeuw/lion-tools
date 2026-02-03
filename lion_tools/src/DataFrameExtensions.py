@@ -159,10 +159,9 @@ class DataFrameExtensions():
         return kwargs
         
     @staticmethod
-    def data_to_html_table(df_collected):
+    def data_to_html_table(df_collected, cols):
         # note we don't use tabulate here as we need to build the table body with additional functionality
-        cols = df_collected[0].asDict().keys()
-        
+
         html_header = ''.join([f'<th>{html.escape(str(col))}</th>' for col in cols])
         html_body = ''
         for row in df_collected:
@@ -269,7 +268,7 @@ class DataFrameExtensions():
 
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', DataFrameExtensions.data_to_html_table(df_collected))
+        html_content = html_content.replace('{main_table}', DataFrameExtensions.data_to_html_table(df_collected, df.columns))
         html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
