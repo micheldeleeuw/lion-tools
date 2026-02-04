@@ -8,6 +8,7 @@ from pyspark.sql.window import Window as W
 from pyspark.sql.column import Column
 import html
 import tempfile
+import time
 
 class DataFrameExtensions():
 
@@ -22,7 +23,7 @@ class DataFrameExtensions():
         DataFrame.eSort = DataFrameExtensions.sort_transform_expressions
         DataFrame.eDisplayInCockpit = DataFrameExtensions.display_in_cockpit
 
-        # Single letter methods
+        # Short aliases
         DataFrame.d = DataFrameExtensions.display
         DataFrame.dc = DataFrameExtensions.display_in_cockpit
 
@@ -112,7 +113,7 @@ class DataFrameExtensions():
             if not isinstance(kwargs['n'], int) or kwargs['n'] < 1 or kwargs['n'] > 100000:
                 raise Exception("n must be an integer between 1 and 100.000")
         else:
-            kwargs['n'] = 10000 # max 10k rows is standard
+            kwargs['n'] = 1001 # max 1.001 rows is standard
 
         if 'passthrough' in kwargs:
             if not isinstance(kwargs['passthrough'], bool):
@@ -296,7 +297,8 @@ class DataFrameExtensions():
             </iframe>
         """            
 
-        if kwargs['display']:
+        print(kwargs)
+        if params['display']:
             display(display_HTML(iframe_html))
         
         elif params['passthrough']:
@@ -304,18 +306,33 @@ class DataFrameExtensions():
         else:
             return
 
+    @staticmethod
+    def cleanup_old_files(path, max_age_seconds):
+        cutoff = time.time() - max_age_seconds
+
+        for file in pathlib.Path(path).rglob('*'):
+            print("Checking file:", file)
+            if file.is_file() and file.stat().st_mtime < cutoff:
+                print("Deleting old file:", file)
+                file.unlink()
+
 
     @staticmethod
     def display_in_cockpit(df, *args, **kwargs):
-        params = DataFrameExtensions.display_validate_parameters(df, *args, **kwargs)
-
         if 'file_path' in kwargs:
             raise Exception("file_path parameter is not supported in display_in_cockpit, use display instead.")
+
+        if 'display' not in kwargs:
+            kwargs['display'] = False
+
+        params = DataFrameExtensions.display_validate_parameters(df, *args, **kwargs)
+
+        cockpit_dir = pathlib.Path(tempfile.gettempdir(), "lion_tools", "cockpit")
+        cockpit_dir.mkdir(parents=True, exist_ok=True)
         
-        kwargs['display'] = False
-
-        tempdir = tempfile.gettempdir()
-
+        # cleanup files older than 24 hours
+        DataFrameExtensions.cleanup_old_files(cockpit_dir, max_age_seconds=3600*24)  
+        
         if 'async' in kwargs and not kwargs['async']:
             # synchronous display, evaluation happens in the session and only the
             # html result is sent to the cockpit
@@ -325,4 +342,6 @@ class DataFrameExtensions():
             # asynchronous display, evaluation happens in the cockpit, only queue
             # the display by saving the parameters
             pass
+
+    
 
