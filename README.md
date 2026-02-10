@@ -12,3 +12,4 @@ Commercial use is not permitted.
 - display, default n depending on record width
 - display, null values as _null_ with fading font color
 - display, show schema button
+- display, show explain button
