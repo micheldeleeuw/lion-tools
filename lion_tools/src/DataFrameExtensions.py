@@ -15,11 +15,11 @@ class DataFrameExtensions():
         # Extend DataFrame with new methods
         DataFrame.eDisplay = DataFrameExtensions.display
         DataFrame.eSort = DataFrameExtensions.sort
-        DataFrame.eDisplayCockpit = DataFrameExtensions.display_cockpit
+        DataFrame.eCockpit = DataFrameExtensions.cockpit
 
         # Short aliases
         DataFrame.eD = DataFrameExtensions.display
-        DataFrame.eDc = DataFrameExtensions.display_cockpit
+        DataFrame.eC = DataFrameExtensions.cockpit
 
     def __init__(self):
         print('Use extend_dataframe() to extend DataFrame functionality.')
@@ -90,8 +90,8 @@ class DataFrameExtensions():
 
     @staticmethod
     def display(df, *args, **kwargs):
-        DataFrameDisplay.display(df, *args, **kwargs)
+        return DataFrameDisplay.display(df, *args, **kwargs)
 
     @staticmethod
-    def display_cockpit(_local_df, *args, **kwargs):
-        Cockpit.display_cockpit(_local_df, *args, **kwargs)
+    def cockpit(_local_df, *args, **kwargs):
+        return Cockpit.to_cockpit(_local_df, *args, **kwargs)

@@ -25,9 +25,13 @@ class DataFrameDisplay():
             'p',
             'page_length',
             'display',
-            'async',
+            'lazy',
+            'allow_additional_parameters'
         ]
         
+        if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
+            valid_keys = list(set(valid_keys + list(kwargs.keys())))
+
         for key in kwargs:
             # note p is an alias for page_length
             assert key in valid_keys, "Unknown parameter: {}".format(key)
@@ -66,7 +70,7 @@ class DataFrameDisplay():
 
         if 'file_path' in kwargs:
             if not isinstance(kwargs['file_path'], str):
-                raise Exception("file_path must be a string")
+                raise Exception(f"file_path must be a string, not {type(kwargs['file_path'])}")
             
         if 'sort' in kwargs:
             if not isinstance(kwargs['sort'], list):
@@ -94,11 +98,11 @@ class DataFrameDisplay():
         else:
             kwargs['display'] = True
 
-        if 'async' in kwargs:
-            if not isinstance(kwargs['async'], bool):
-                raise Exception("async must be a boolean value")
+        if 'lazy' in kwargs:
+            if not isinstance(kwargs['lazy'], bool):
+                raise Exception("lazy must be a boolean value")
         else:
-            kwargs['async'] = True
+            kwargs['lazy'] = True
 
         return kwargs
         
@@ -240,7 +244,6 @@ class DataFrameDisplay():
             </iframe>
         """            
 
-        print(kwargs)
         if params['display']:
             display(display_HTML(iframe_html))
         

@@ -16,7 +16,7 @@ def cleanup_old_files():
     cutoff = time.time() - LION_TOOLS_PATH_CLEANUP_AGE_SECONDS
 
     for file in LION_TOOLS_PATH.rglob('*'):
-        print("Checking file:", file)
+        # print("Checking file:", file)
         if file.is_file() and file.stat().st_mtime < cutoff:
             print("Deleting old file:", file)
             file.unlink()
