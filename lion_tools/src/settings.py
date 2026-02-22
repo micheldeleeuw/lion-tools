@@ -10,7 +10,7 @@ LION_TOOLS_COCKPIT_PATH = LION_TOOLS_PATH.joinpath("cockpit")
 LION_TOOLS_PATH_CLEANUP_AGE_SECONDS = 60 * 60 * 24  # 24 hours
 
 LION_TOOLS_PATH.mkdir(exist_ok=True)
-# LION_TOOLS_COCKPIT_PATH.mkdir(exist_ok=True)
+LION_TOOLS_COCKPIT_PATH.mkdir(exist_ok=True)
 
 def cleanup_old_files():
     cutoff = time.time() - LION_TOOLS_PATH_CLEANUP_AGE_SECONDS

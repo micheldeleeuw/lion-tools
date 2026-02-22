@@ -8,9 +8,11 @@ import json
 import os
 import time
 import pathlib
+import base64
+import html as html_lib
 from pyspark.sql import SparkSession
 from IPython.display import HTML as display_HTML
-from IPython.display import display
+from IPython.display import display, IFrame
 import ipywidgets as widgets
 
 
@@ -33,10 +35,15 @@ class Cockpit():
        You can interact with the dataframe, view its schema, and see the code that generated it.
     """
 
-
-    @staticmethod
-    def create_html_for_json(json_file):
+    @classmethod
+    def create_html_for_json(cls):
         from .DataFrameDisplay import DataFrameDisplay
+
+        overview = cls.get_overview()
+        if len(overview['new_json']) == 0:
+            return
+        else:
+            json_file = overview['new_json'][0]
 
         with open(LION_TOOLS_COCKPIT_PATH.joinpath(json_file + '.json'), 'r', encoding='utf-8') as f:
             params = json.load(f)
@@ -70,6 +77,8 @@ class Cockpit():
 
         cls.tabs = [
             {
+                "id": "1999_overview",
+                "type": "start",
                 "name": "Lion Tools Cockpit",
                 "content": widgets.Label("Use the Lion Tools method .eC() to show dataframes here."),
                 "file": None,
@@ -78,7 +87,7 @@ class Cockpit():
 
         cls.tabs_panel = widgets.Tab(
             children=[tab.get('content') for tab in cls.tabs],
-            layout=widgets.Layout(width='99,9%', flex='1 1 auto', overflow='auto', margin="10px")
+            layout=widgets.Layout(width='99.9%', flex='1 1 auto', overflow='auto', margin="10px")
         )
         for i, tab in enumerate(cls.tabs):
             cls.tabs_panel.set_title(i, tab.get('name'))
@@ -91,46 +100,79 @@ class Cockpit():
                 display='flex',
                 flex_flow='column',
                 background='#f0f0f0',
-                margin='10px;'
+                margin='10px;',
             )
         )
 
-        display(cls.main_panel)
+        display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
 
 
     @classmethod
     def sync_htmls_to_tabs(cls):
-        htmls = cls.get_overview()['html']
+        overview = cls.get_overview()
+        htmls = sorted(overview['html'])
+        lastest_id_in_tabs = max([tab.get('id') for tab in cls.tabs])
+        new_htmls = [html for html in htmls if html > lastest_id_in_tabs][-cls.max_tabs:] 
+        
+        for html in new_htmls:
+            html_file = LION_TOOLS_COCKPIT_PATH.joinpath(html + '.html')
+            with open(html_file, 'r', encoding='utf-8') as f:
+                html_content = f.read()
+            json_file = LION_TOOLS_COCKPIT_PATH.joinpath(html + '.json')
+            with open(json_file, 'r', encoding='utf-8') as f:
+                params = json.load(f)
 
+            encoded_html = base64.b64encode(
+                html_content.encode("utf-8")
+            ).decode("utf-8")
+
+            page_length = int(params.get('page_length', 20))
+            max_height = str(int(page_length * 25 + 165)) + 'px'
+            iframe_html = f"""
+                <iframe
+                    src="data:text/html;base64,{encoded_html}"
+                    width="100%"
+                    height="{max_height}"
+                    frameborder="0"
+                    sandbox='allow-scripts allow-same-origin'
+                    style="border: 1px solid #ddd;">
+                </iframe>
+            """            
+            new_tab = {
+                "id": html,
+                "type": "html",
+                "name": params.get('name', 'no name'),
+                "content": widgets.HTML(value=iframe_html),
+            }
+            cls.tabs.insert(0, new_tab)  # move newly added tab to the left-most position
+            cls.tabs = cls.tabs[:cls.max_tabs]  # keep only the latest max_tabs tabs
+            cls.tabs_panel.children = tuple(tab.get('content') for tab in cls.tabs)
+            for i, tab in enumerate(cls.tabs):
+                cls.tabs_panel.set_title(i, tab.get('name'))
+            # move the focus to the newly added tab
+            cls.tabs_panel.selected_index = 0
 
 
     @classmethod
-    def run(cls, timeout=60):
+    def run(cls, timeout=60, tabs=7):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
         It will continuously check for new display requests and update the cockpit accordingly.
         """
 
+        cls.max_tabs = tabs
         cls.initialize()
 
         start_time = time.time()
         while True:
-            
-
-            # update tabs with new html files
+            mean_time = time.time()
             cls.sync_htmls_to_tabs()
-
-
-            # create html for new_json files
-            overview = cls.get_overview()
-            if len(overview['new_json']) > 0:
-                json_file = overview['new_json'][0]
-                cls.create_html_for_json(json_file)
-            
+            cls.create_html_for_json()
             if time.time() - start_time > timeout * 60:
+                print('Timeout reached, stopping the Cockpit.')
                 break
-
-            time.sleep(0.5)
+            if time.time() - mean_time < 0.2:
+                time.sleep(0.5)
 
 
     @staticmethod
@@ -141,10 +183,13 @@ class Cockpit():
         json = [f.replace('.json', '') for f in files if f.endswith('.json')]
         json_with_html = [f for f in json if f in html]
         new_json = [f for f in json if f not in json_with_html]
-        temp_views = [
-            view.name.replace('_view', '') for view in spark.catalog.listTables("global_temp")
-            if view.name.startswith("_lion_tools_tmp_")
-        ]
+        if spark is not None:
+            temp_views = [
+                view.name.replace('_view', '') for view in spark.catalog.listTables("global_temp")
+                if view.name.startswith("_lion_tools_tmp_")
+            ]
+        else:
+            temp_views = []
         orphan_temp_views = [view for view in temp_views if view not in json]
         return {
             "files": files,
@@ -157,24 +202,20 @@ class Cockpit():
 
     @staticmethod
     def print_status():
-        status = Cockpit.get_status()
+        status = Cockpit.get_overview()
         print("Cockpit status:")
 
         print(f"Json with HTML file: {len(status['json_with_html'])}")
         for f in status['json_with_html']:
             print(f"  - {f}")
 
-        print(f"\nJSON with temp views: {len(status['json_with_temp_view'])}")
-        for f in status['json_with_temp_view']:
-            print(f"  - {f}")
-
-        print(f"\nJSON with no HTML or temp view: {len(status['new_json_files'])}")
-        for f in status['new_json_files']:
+        print(f"\nJSON with no HTML yet: {len(status['new_json'])}")
+        for f in status['new_json']:
             print(f"  - {f}")
 
         print(f"\nOrphan temp views: {len(status['orphan_temp_views'])}")
         for view in status['orphan_temp_views']:
-            print(f"  - {view.name}")
+            print(f"  - {view}")
 
     @staticmethod
     def is_lazy_supported():
@@ -225,7 +266,7 @@ class Cockpit():
             DataFrameDisplay.display(_local_df, **kwargs)
 
         # create the file that informs the Cockpit
-        with open(params['json_file'], 'a', encoding='utf-8') as f:
+        with open(params['json_file'], 'w', encoding='utf-8') as f:
             f.write(json.dumps(params))
         
         if 'passthrough' in params and params['passthrough']:
