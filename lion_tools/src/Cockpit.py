@@ -10,7 +10,7 @@ import time
 import pathlib
 import base64
 from pyspark.sql import SparkSession
-from IPython.display import display as ipython_display
+from IPython.display import display as ipython_display, HTML
 import ipywidgets as widgets
 
 class Cockpit():
@@ -64,7 +64,6 @@ class Cockpit():
             with open(params['html_file'], 'w', encoding='utf-8') as f:
                 f.write(result_html)
 
-
     @classmethod
     def initialize(cls):
         # we can do some initialization work here if needed, for now we just clean up old files and temp views
@@ -75,7 +74,7 @@ class Cockpit():
             "id": "1999_overview",
             "type": "start",
             "name": "Lion Tools Cockpit",
-            "content": widgets.Label("Use the Lion Tools method .eC() to show dataframes here."),
+            "content": widgets.Label("Use the Lion Tools dataframe extension .eC() to show dataframes here."),
             "file": None,
         }
         
@@ -83,22 +82,42 @@ class Cockpit():
 
         cls.tabs_panel = widgets.Tab(
             children=[],
-            # children=[tab.get('content') for tab in cls.tabs],
-            layout=widgets.Layout(width='99.9%', flex='1 1 auto', overflow='auto', margin="1px")
+            layout=widgets.Layout(
+                width='99.9%', 
+                flex='1 1 auto', 
+                overflow='auto', 
+                margin="0px",
+                padding="0px",
+            )
+        )
+
+        # INJECT CUSTOM CSS TO REMOVE TAB PADDING
+        css_injection = widgets.HTML(
+            value="""
+            <style>
+                /* Target JupyterLab, classic Notebook, and Databricks tab wrappers */
+                .jupyter-widgets.widget-tab > .widget-tab-contents,
+                .lm-TabPanel-tabContents,
+                .p-TabPanel-tabContents {
+                    padding: 0px !important;
+                    margin: 0px !important;
+                }
+            </style>
+            """
         )
 
         cls.main_panel = widgets.VBox(
-            [cls.tabs_panel],
+            [css_injection, cls.tabs_panel],
             layout=widgets.Layout(
                 width='100%',
                 height='600px',
                 display='flex',
                 flex_flow='column',
                 background='#f0f0f0',
-                margin='1px;',
+                margin='0px',
+                padding='0px',
             )
         )
-
         cls.update_tabs_panel()
 
         if on_databricks():
@@ -118,7 +137,6 @@ class Cockpit():
     def clear(cls):
         cleanup_old_files(clean_all=True)
         cleanup_temp_views(clean_all=True)
-
 
     @classmethod
     def update_tabs_panel(cls):
@@ -156,7 +174,7 @@ class Cockpit():
                     height="{max_height}"
                     frameborder="0"
                     sandbox='allow-scripts allow-same-origin'
-                    style="border: 1px solid #ddd;">
+                    style="border: 1px solid #ddd; margin: 0px; padding: 0px;">
                 </iframe>
             """            
             new_tab = {
