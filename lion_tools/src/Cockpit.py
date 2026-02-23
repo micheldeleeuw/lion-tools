@@ -104,12 +104,12 @@ class Cockpit():
         if on_databricks():
             # use the default display method in Databricks, as it can handle the interactivity
             # and sandboxing better than iframes in that environment
-            print(globals())
-            _display = globals().get('display', None)
-            if _display:
-                _display(cls.main_panel)
-            else:
+            try:
+                _display = eval('display')
+            except:
                 raise Exception("Could not find the display function to render the cockpit in Databricks.")
+            else:
+                _display(cls.main_panel)
         else:
             # use the IPython display method in other environments
             ipython_display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
