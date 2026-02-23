@@ -99,8 +99,8 @@ class Cockpit():
                 .jupyter-widgets.widget-tab > .widget-tab-contents,
                 .lm-TabPanel-tabContents,
                 .p-TabPanel-tabContents {
-                    padding: 0px !important;
-                    margin: 0px !important;
+                    padding: 0px 0px 0px 0px;
+                    margin: 0px;
                 }
             </style>
             """
