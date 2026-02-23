@@ -154,7 +154,7 @@ class DataFrameDisplay():
             'rows': len(df_collected), 
             'columns': len(cols), 
             'width': sum([stats[col]['length'] for col in cols]),
-            'avg_width': sum([stats[col]['total'] for col in cols]) / len(cols) if len(cols) > 0 else 0,
+            'avg_width': sum([stats[col]['total'] for col in cols]) / len(df_collected) if len(df_collected) > 0 else 0,
             'width_with_header': sum([max(stats[col]['length'], stats[col]['header_length']) for col in cols]),
         }
 
