@@ -1,7 +1,6 @@
 from pprint import pprint
 from .settings import LION_TOOLS_PATH, LION_TOOLS_COCKPIT_PATH
-from .settings import cleanup_old_files
-from .settings import cleanup_temp_views
+from .settings import cleanup_old_files, cleanup_temp_views, on_databricks
 from .DataFrameDisplay import DataFrameDisplay
 from datetime import datetime
 import json
@@ -10,8 +9,7 @@ import time
 import pathlib
 import base64
 from pyspark.sql import SparkSession
-# from IPython.display import HTML as display_HTML
-from IPython.display import display
+from IPython.display import display as ipython_display
 import ipywidgets as widgets
 
 
@@ -103,7 +101,11 @@ class Cockpit():
         )
 
         cls.update_tabs_panel()
-        display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
+
+        if on_databricks():
+            display(cls.main_panel)
+        else:
+            ipython_display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
 
     @classmethod
     def clear(cls):
@@ -232,8 +234,7 @@ class Cockpit():
         """
         Currently only Databricks is supported for lazy mode.
         """
-        # Check Databricks-specific environment variable
-        if "DATABRICKS_RUNTIME_VERSION" in os.environ:
+        if on_databricks():
             return True
         else:
             return False

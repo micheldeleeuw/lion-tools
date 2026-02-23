@@ -1,3 +1,4 @@
+import os
 import pathlib
 import tempfile
 import time
@@ -47,3 +48,7 @@ def cleanup_temp_views(keep_last=10, clean_all=False):
         except Exception:
             pass  # Silently ignore errors
     
+def on_databricks():
+    if os.getenv("DATABRICKS_RUNTIME_VERSION") is not None:
+        return True
+    return False
