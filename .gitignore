@@ -214,3 +214,5 @@ __marimo__/
 datasets/*.parquet
 # temporary output files
 output/ 
+# sql warehouse directory
+*/spark-warehouse/
