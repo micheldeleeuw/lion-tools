@@ -74,22 +74,21 @@ class Cockpit():
         cleanup_old_files()
         cleanup_temp_views()
 
-        cls.tabs = [
-            {
-                "id": "1999_overview",
-                "type": "start",
-                "name": "Lion Tools Cockpit",
-                "content": widgets.Label("Use the Lion Tools method .eC() to show dataframes here."),
-                "file": None,
-            },
-        ]
+        cls.init_tab = {
+            "id": "1999_overview",
+            "type": "start",
+            "name": "Lion Tools Cockpit",
+            "content": widgets.Label("Use the Lion Tools method .eC() to show dataframes here."),
+            "file": None,
+        }
+        
+        cls.tabs = [cls.init_tab]
 
         cls.tabs_panel = widgets.Tab(
-            children=[tab.get('content') for tab in cls.tabs],
-            layout=widgets.Layout(width='99.9%', flex='1 1 auto', overflow='auto', margin="10px")
+            children=[],
+            # children=[tab.get('content') for tab in cls.tabs],
+            layout=widgets.Layout(width='99.9%', flex='1 1 auto', overflow='auto', margin="1px")
         )
-        for i, tab in enumerate(cls.tabs):
-            cls.tabs_panel.set_title(i, tab.get('name'))
 
         cls.main_panel = widgets.VBox(
             [cls.tabs_panel],
@@ -99,12 +98,26 @@ class Cockpit():
                 display='flex',
                 flex_flow='column',
                 background='#f0f0f0',
-                margin='10px;',
+                margin='1px;',
             )
         )
 
+        cls.update_tabs_panel()
         display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
 
+    @classmethod
+    def clear(cls):
+        cleanup_old_files(clean_all=True)
+        cleanup_temp_views(clean_all=True)
+
+
+    @classmethod
+    def update_tabs_panel(cls):
+        cls.tabs_panel.children = tuple(tab.get('content') for tab in cls.tabs)
+        for i, tab in enumerate(cls.tabs):
+            cls.tabs_panel.set_title(i, tab.get('name'))
+        # move the focus to the newly added tab
+        cls.tabs_panel.selected_index = 0
 
     @classmethod
     def sync_htmls_to_tabs(cls):
@@ -144,13 +157,12 @@ class Cockpit():
                 "content": widgets.HTML(value=iframe_html),
             }
             cls.tabs.insert(0, new_tab)  # move newly added tab to the left-most position
+            # if the initial tab is still there and we have more than 1 tab, remove the initial tab
+            if len(cls.tabs) > 1 and cls.init_tab in cls.tabs:
+                cls.tabs.remove(cls.init_tab)
             cls.tabs = cls.tabs[:cls.max_tabs]  # keep only the latest max_tabs tabs
-            cls.tabs_panel.children = tuple(tab.get('content') for tab in cls.tabs)
-            for i, tab in enumerate(cls.tabs):
-                cls.tabs_panel.set_title(i, tab.get('name'))
-            # move the focus to the newly added tab
-            cls.tabs_panel.selected_index = 0
 
+            cls.update_tabs_panel()
 
     @classmethod
     def run(cls, timeout=60, tabs=5):
@@ -172,7 +184,6 @@ class Cockpit():
                 break
             if time.time() - mean_time < 0.2:
                 time.sleep(0.5)
-
 
     @staticmethod
     def get_overview():
