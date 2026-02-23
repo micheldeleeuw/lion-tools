@@ -13,7 +13,6 @@ from pyspark.sql import SparkSession
 from IPython.display import display as ipython_display
 import ipywidgets as widgets
 
-
 class Cockpit():
     """
     The Lion Tools cockpit is a simple web application that displays the results 
@@ -105,7 +104,11 @@ class Cockpit():
         if on_databricks():
             # use the default display method in Databricks, as it can handle the interactivity
             # and sandboxing better than iframes in that environment
-            display(cls.main_panel)
+            _display = globals().get('display', None)
+            if _display:
+                _display(cls.main_panel)
+            else:
+                raise Exception("Could not find the display function to render the cockpit in Databricks.")
         else:
             # use the IPython display method in other environments
             ipython_display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
