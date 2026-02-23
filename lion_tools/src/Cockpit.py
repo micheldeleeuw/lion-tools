@@ -221,20 +221,7 @@ class Cockpit():
 
     @staticmethod
     def print_status():
-        status = Cockpit.get_overview()
-        print("Cockpit status:")
-
-        print(f"Json with HTML file: {len(status['json_with_html'])}")
-        for f in status['json_with_html']:
-            print(f"  - {f}")
-
-        print(f"\nJSON with no HTML yet: {len(status['new_json'])}")
-        for f in status['new_json']:
-            print(f"  - {f}")
-
-        print(f"\nOrphan temp views: {len(status['orphan_temp_views'])}")
-        for view in status['orphan_temp_views']:
-            print(f"  - {view}")
+        pprint(Cockpit.get_overview())
 
     @staticmethod
     def is_lazy_supported():
