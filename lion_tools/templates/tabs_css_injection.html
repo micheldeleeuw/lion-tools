@@ -1,0 +1,35 @@
+<style>
+    /* 1. Remove padding from tab content areas */
+    .jupyter-widgets.widget-tab > .widget-tab-contents,
+    .lm-TabPanel-tabContents,
+    .p-TabPanel-tabContents {
+        padding: 0px !important;
+        margin: 0px !important;
+        background-color: #f0f0f0 !important; /* Matches main panel */
+    }
+
+    /* 2. Style inactive tab headers */
+    .widget-tab .nav-tabs > li > a,
+    .lm-TabBar-tab,
+    .p-TabBar-tab {
+        background-color: #f2f4f7 !important;
+        color: #3f4a5a !important;
+        border: 1px solid #d3dae4 !important;
+        margin-right: 2px !important;
+    }
+
+    /* 3. Style active tab header */
+    .widget-tab .nav-tabs > li.active > a,
+    .lm-TabBar-tab.lm-mod-current,
+    .p-TabBar-tab.p-mod-current {
+        background-color: #5f7ea8 !important;
+        color: #ffffff !important;
+        border-color: #5f7ea8 !important;
+        border-bottom-color: #f0f0f0 !important;
+    }
+    
+    /* 4. Optional: Hover effect for better UX */
+    .lm-TabBar-tab:hover, .p-TabBar-tab:hover {
+        background-color: #e7ebf1 !important;
+    }
+</style>

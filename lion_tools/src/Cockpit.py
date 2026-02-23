@@ -91,46 +91,9 @@ class Cockpit():
             )
         )
 
-        # INJECT CUSTOM CSS TO REMOVE TAB PADDING
-        css_injection = widgets.HTML(
-            value="""
-                <style>
-                    /* 1. Remove padding from tab content areas */
-                    .jupyter-widgets.widget-tab > .widget-tab-contents,
-                    .lm-TabPanel-tabContents,
-                    .p-TabPanel-tabContents {
-                        padding: 0px !important;
-                        margin: 0px !important;
-                        background-color: #f0f0f0 !important; /* Matches main panel */
-                    }
-
-                    /* 2. Style inactive tab headers */
-                    .widget-tab .nav-tabs > li > a,
-                    .lm-TabBar-tab,
-                    .p-TabBar-tab {
-                        background-color: #eef3fb !important;
-                        color: #2f3b52 !important;
-                        border: 1px solid #c9d4e5 !important;
-                        margin-right: 2px !important;
-                    }
-
-                    /* 3. Style active tab header */
-                    .widget-tab .nav-tabs > li.active > a,
-                    .lm-TabBar-tab.lm-mod-current,
-                    .p-TabBar-tab.p-mod-current {
-                        background-color: #2f6fed !important;
-                        color: #ffffff !important;
-                        border-color: #2f6fed !important;
-                        border-bottom-color: #f0f0f0 !important;
-                    }
-                    
-                    /* 4. Optional: Hover effect for better UX */
-                    .lm-TabBar-tab:hover, .p-TabBar-tab:hover {
-                        background-color: #dce7fa !important;
-                    }
-                </style>
-        """
-        )
+        # INJECT CUSTOM CSS TO REMOVE TAB PADDING and set the colors of the tabs
+        with open(pathlib.Path(__file__).parent.parent / "templates" / "tabs_css_injection.html", 'r', encoding='utf-8') as f:
+            css_injection = widgets.HTML(value=f.read())
 
         cls.main_panel = widgets.VBox(
             [css_injection, cls.tabs_panel],
