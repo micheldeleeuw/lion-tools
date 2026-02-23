@@ -1,8 +1,6 @@
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
 import inspect
-from .DataFrameDisplay import DataFrameDisplay
-from .Cockpit import Cockpit
 
 class DataFrameExtensions():
 
@@ -90,8 +88,10 @@ class DataFrameExtensions():
 
     @staticmethod
     def display(df, *args, **kwargs):
+        from .DataFrameDisplay import DataFrameDisplay
         return DataFrameDisplay.display(df, *args, **kwargs)
 
     @staticmethod
     def cockpit(_local_df, *args, **kwargs):
+        from .Cockpit import Cockpit
         return Cockpit.to_cockpit(_local_df, *args, **kwargs)

@@ -6,7 +6,7 @@ from pyspark.sql.window import Window as W
 from datetime import datetime
 from IPython.display import HTML as display_HTML
 from IPython.display import display
-
+from .DataFrameExtensions import DataFrameExtensions
 
 
 class DataFrameDisplay():
@@ -171,7 +171,7 @@ class DataFrameDisplay():
 
         # If sorting is requested, we do this the real way, with a rownum
         if 'sort' in params:
-            sort_by = DataFrameDisplay.sort_transform_expressions(df, *params['sort'])
+            sort_by = DataFrameExtensions.sort_transform_expressions(df, *params['sort'])
             df = df.withColumn('_rownum', F.row_number().over(W.orderBy(*sort_by)))
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"

@@ -2,6 +2,7 @@ from pprint import pprint
 from .settings import LION_TOOLS_PATH, LION_TOOLS_COCKPIT_PATH
 from .settings import cleanup_old_files, cleanup_temp_views, on_databricks
 from .DataFrameDisplay import DataFrameDisplay
+from .DataFrameExtensions import DataFrameExtensions
 from datetime import datetime
 import json
 import os
@@ -34,7 +35,6 @@ class Cockpit():
 
     @classmethod
     def create_html_for_json(cls):
-        from .DataFrameDisplay import DataFrameDisplay
 
         overview = cls.get_overview()
         if len(overview['new_json']) == 0:
@@ -103,8 +103,11 @@ class Cockpit():
         cls.update_tabs_panel()
 
         if on_databricks():
+            # use the default display method in Databricks, as it can handle the interactivity
+            # and sandboxing better than iframes in that environment
             display(cls.main_panel)
         else:
+            # use the IPython display method in other environments
             ipython_display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
 
     @classmethod
@@ -243,7 +246,6 @@ class Cockpit():
     def to_cockpit(_local_df, *args, **kwargs):
         # Dataframe is name _local_df to be able to find the name of the dataframe
         # by going up the stack and looking for a variable with the same value.
-        from .DataFrameExtensions import DataFrameExtensions
 
         # clean old stuff up before doing anything, to avoid filling up
         # the temp directory and global temp view namespace
