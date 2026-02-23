@@ -9,10 +9,9 @@ import os
 import time
 import pathlib
 import base64
-import html as html_lib
 from pyspark.sql import SparkSession
-from IPython.display import HTML as display_HTML
-from IPython.display import display, IFrame
+# from IPython.display import HTML as display_HTML
+from IPython.display import display
 import ipywidgets as widgets
 
 
@@ -154,7 +153,7 @@ class Cockpit():
 
 
     @classmethod
-    def run(cls, timeout=60, tabs=7):
+    def run(cls, timeout=60, tabs=5):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
         It will continuously check for new display requests and update the cockpit accordingly.
