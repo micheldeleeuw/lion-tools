@@ -1,6 +1,7 @@
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
 import inspect
+import json
 
 class DataFrameExtensions():
 
@@ -11,17 +12,44 @@ class DataFrameExtensions():
         from pyspark.sql import DataFrame
 
         # Extend DataFrame with new methods
-        DataFrame.eDisplay = DataFrameExtensions.display
-        DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eCockpit = DataFrameExtensions.cockpit
+        DataFrame.eDisplay = DataFrameExtensions.display
+        DataFrame.eName = DataFrameExtensions.name
+        DataFrame.eSort = DataFrameExtensions.sort
+        DataFrame.eSources = DataFrameExtensions.sources
 
-        # Short aliases
+        # Short aliases, pls don't extend these
         DataFrame.eD = DataFrameExtensions.display
         DataFrame.eC = DataFrameExtensions.cockpit
 
     def __init__(self):
         print('Use extend_dataframe() to extend DataFrame functionality.')
   
+    @staticmethod
+    def sources(df) -> list:
+        """
+        Investigate a dataframe and return all tables that source it.
+        """
+
+        def _loop_plan(value):
+            if isinstance(value, list):
+                for list_value in value:
+                    _loop_plan(list_value)
+            elif isinstance(value, dict):
+                if "table" in value.keys() and "database" in value.keys():
+                    if "catalog" in value.keys():
+                        identified_sources.append(value["catalog"] + "." + value["database"] + "." + value["table"])
+                    else:
+                        identified_sources.append(value["database"] + "." + value["table"])
+
+                for value_key, value_value in value.items():
+                    _loop_plan(value_value)
+
+        identified_sources = []
+        _loop_plan(json.loads(df._jdf.queryExecution().analyzed().prettyJson()))
+
+        return identified_sources
+
     @staticmethod
     def sort_transform_expressions(df, *col_exprs):
         cols = df.columns
@@ -67,8 +95,8 @@ class DataFrameExtensions():
         return df.orderBy(DataFrameExtensions.sort_transform_expressions(df, *col_exprs))
 
     @staticmethod
-    def dataframe_name(_local_df):
-        # we go up max 5 levels to find a dataframe name
+    def name(_local_df):
+        # we go up max 5 levels to find a variable that holds the dataframe
 
         for locals in (
             inspect.currentframe().f_back.f_back.f_back.f_back.f_back.f_locals,

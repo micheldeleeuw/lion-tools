@@ -252,7 +252,13 @@ class Cockpit():
         params = DataFrameDisplay.display_validate_parameters(_local_df, *args, **kwargs)
 
         if 'name' not in params:
-            params['name'] = DataFrameExtensions.dataframe_name(_local_df)
+            params['name'] = DataFrameExtensions.name(_local_df)
+
+            if params['name'] == 'unnamed':
+                sources = DataFrameExtensions.sources(_local_df)
+                if len(sources) > 0:
+                    params['name'] = sources[0].split('.')[-1]
+
         params['id'] = "_lion_tools_tmp_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         params['temp_view_name'] = params['id'] + '_view'
         params['html_file'] = str(LION_TOOLS_COCKPIT_PATH.joinpath(params['id'] + '.html'))
