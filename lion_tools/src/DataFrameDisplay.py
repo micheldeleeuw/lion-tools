@@ -144,8 +144,9 @@ class DataFrameDisplay():
             for col in cols:
                 value = row[col]
                 if value is not None:
-                    # print(col, type(value), str(value))
-                    stats[col]['length'] = max(stats[col]['length'], len(str(value)))
+                    length = len(str(value))
+                    stats[col]['length'] = max(stats[col]['length'], length)
+                    stats[col]['total'] = stats[col]['length'] + length
                     if (isinstance(value, float) or isinstance(value, decimal.Decimal)) and str(value).split('.')[-1] != '0':
                         stats[col]['decimals'] = max(stats[col]['decimals'], len(str(value).split('.')[-1]))
 
@@ -153,6 +154,7 @@ class DataFrameDisplay():
             'rows': len(df_collected), 
             'columns': len(cols), 
             'width': sum([stats[col]['length'] for col in cols]),
+            'avg_width': sum([stats[col]['total'] for col in cols]) / len(cols) if len(cols) > 0 else 0,
             'width_with_header': sum([max(stats[col]['length'], stats[col]['header_length']) for col in cols]),
         }
 
@@ -176,10 +178,12 @@ class DataFrameDisplay():
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         else:
+            # pick random rows and add a dummy rownum for the datatable
             df = df.limit(params['n']).withColumn('_rownum', F.lit(0))
             ordering = "ordering: true"
             
         df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df)
+        print(df_statistics['__total__']['avg_width'])
         columns_popup = str(list([
             html.escape(
                 col + '---(' + dtype + ')'
@@ -198,7 +202,6 @@ class DataFrameDisplay():
             if i>0:
                 col_defs_number_format += ',\n            '
             col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
-            # (number_format, thousands_sep, decimals, prefix, suffix)
         col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format
         
         if df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
