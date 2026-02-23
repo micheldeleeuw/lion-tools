@@ -49,6 +49,7 @@ class Cockpit():
         params['allow_additional_parameters'] = True
         try:
             df = SparkSession.getActiveSession().table(f"global_temp.{params['temp_view_name']}")
+            cls.set_message_bar(f"Creating HTML for {params.get('name', 'no name')}...")
             DataFrameDisplay.display(df, **params)
         except Exception as e:
             with open(pathlib.Path(__file__).parent.parent / "templates" / "dataframe_error_template.html", 'r', encoding='utf-8') as f:
@@ -63,6 +64,9 @@ class Cockpit():
 
             with open(params['html_file'], 'w', encoding='utf-8') as f:
                 f.write(result_html)
+        finally:
+            cls.set_message_bar("")
+
 
     @classmethod
     def initialize(cls):
@@ -95,8 +99,10 @@ class Cockpit():
         with open(pathlib.Path(__file__).parent.parent / "templates" / "tabs_css_injection.html", 'r', encoding='utf-8') as f:
             css_injection = widgets.HTML(value=f.read())
 
+        cls.set_message_bar("Cockpit is running. New dataframe views will appear as tabs.")
+
         cls.main_panel = widgets.VBox(
-            [css_injection, cls.tabs_panel],
+            [css_injection, cls.message_bar, cls.tabs_panel],
             layout=widgets.Layout(
                 width='100%',
                 height='600px',
@@ -121,6 +127,12 @@ class Cockpit():
         else:
             # use the IPython display method in other environments
             ipython_display(cls.main_panel, sandbox='allow-scripts allow-same-origin')
+
+    @classmethod
+    def set_message_bar(cls, message):
+        with open(pathlib.Path(__file__).parent.parent / "templates" / "message_bar_template.html", 'r', encoding='utf-8') as f:
+            cls.message_bar = widgets.HTML(value=f.read().replace("{message}", message))
+
 
     @classmethod
     def clear(cls):
