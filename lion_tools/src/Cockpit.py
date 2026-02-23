@@ -256,8 +256,11 @@ class Cockpit():
 
             if params['name'] == 'unnamed':
                 sources = DataFrameExtensions.sources(_local_df)
-                if len(sources) > 0:
-                    params['name'] = sources[0].split('.')[-1]
+                if len(sources) == 1:
+                    params['name'] = sources[0].split('.')[-1] 
+                elif len(sources) > 1:
+                    params['name'] = sources[0].split('.')[-1] + f' (+{len(sources)-1})'
+
 
         params['id'] = "_lion_tools_tmp_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         params['temp_view_name'] = params['id'] + '_view'
