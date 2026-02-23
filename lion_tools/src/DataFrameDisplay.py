@@ -139,14 +139,14 @@ class DataFrameDisplay():
         dtypes = df.dtypes
         df_collected = df.collect()
 
-        stats = {col: {'type': dtype, 'length': 1, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
+        stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
         for row in df_collected:
             for col in cols:
                 value = row[col]
                 if value is not None:
                     length = len(str(value))
                     stats[col]['length'] = max(stats[col]['length'], length)
-                    stats[col]['total'] = stats[col]['length'] + length
+                    stats[col]['total'] = stats[col]['total'] + length
                     if (isinstance(value, float) or isinstance(value, decimal.Decimal)) and str(value).split('.')[-1] != '0':
                         stats[col]['decimals'] = max(stats[col]['decimals'], len(str(value).split('.')[-1]))
 
