@@ -154,7 +154,7 @@ class Cockpit:
         cleanup_temp_views(clean_all=True)
 
     @classmethod
-    def update_message_bar(cls, message):
+    def update_message_bar(cls, message=None):
         message = message or ""
         with open(
             pathlib.Path(__file__).parent.parent
