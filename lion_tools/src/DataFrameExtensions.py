@@ -73,6 +73,8 @@ class DataFrameExtensions():
 
             # recode integer column indices to column names
             if isinstance(col_expr, int):
+                if col_expr < 1 or col_expr > len(cols):
+                    raise ValueError(f"Column index {col_expr} is out of bounds, dataframe has {len(cols)} columns.")
                 col_expr = cols[col_expr - 1]
 
             # we distinguish real column names versus column expressions

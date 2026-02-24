@@ -3,7 +3,7 @@ import pathlib
 import tempfile
 import time
 
-from .start_spark import start_spark
+from .get_or_create_spark import get_or_create_spark
 
 LION_TOOLS_PATH = pathlib.Path(tempfile.gettempdir(), "lion_tools")
 LION_TOOLS_COCKPIT_PATH = LION_TOOLS_PATH.joinpath("cockpit")
@@ -27,7 +27,7 @@ def cleanup_temp_views(keep_last=10, clean_all=False):
     Delete global temp views starting with _lion_tools_tmp_ except for the last N created.
     """
     # Get all global temp views
-    spark = start_spark()
+    spark = get_or_create_spark()
     all_views = spark.catalog.listTables("global_temp")
     
     # Filter for lion_tools temp views and sort by name (which includes timestamp)

@@ -9,10 +9,9 @@ import os
 import time
 import pathlib
 import base64
-from pyspark.sql import SparkSession
 from IPython.display import display as ipython_display, HTML
 import ipywidgets as widgets
-
+from .get_or_create_spark import get_or_create_spark
 
 class Cockpit:
     """
@@ -51,7 +50,7 @@ class Cockpit:
         params["file_path"] = params["html_file"]
         params["allow_additional_parameters"] = True
         try:
-            df = SparkSession.getActiveSession().table(
+            df = get_or_create_spark().table(
                 f"global_temp.{params['temp_view_name']}"
             )
             cls.update_message_bar(f"Loading {params.get('name', 'no name')}...")
@@ -74,6 +73,9 @@ class Cockpit:
 
             with open(params["html_file"], "w", encoding="utf-8") as f:
                 f.write(result_html)
+
+            if cls.raise_errors:
+                raise
         finally:
             cls.update_message_bar()
 
@@ -175,7 +177,7 @@ class Cockpit:
     @classmethod
     def sync_htmls_to_tabs(cls):
         overview = cls.get_overview()
-        htmls = sorted(overview["html"])
+        htmls = overview["html"]
         lastest_id_in_tabs = max([tab.get("id") for tab in cls.tabs])
         new_htmls = [html for html in htmls if html > lastest_id_in_tabs][
             -cls.max_tabs :
@@ -220,9 +222,10 @@ class Cockpit:
             cls.tabs = cls.tabs[: cls.max_tabs]  # keep only the latest max_tabs tabs
 
             cls.update_tabs_panel()
+            # print(cls.tabs)
 
     @classmethod
-    def run(cls, timeout=60, tabs=5, clear=False):
+    def run(cls, timeout=60, tabs=5, clear=False, raise_errors=False):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
         It will continuously check for new display requests and update the cockpit accordingly.
@@ -231,6 +234,7 @@ class Cockpit:
             cls.clear()
 
         cls.max_tabs = tabs
+        cls.raise_errors = raise_errors
         cls.initialize()
 
         start_time = time.time()
@@ -246,20 +250,19 @@ class Cockpit:
 
     @staticmethod
     def get_overview():
-        spark = SparkSession.getActiveSession()
+        spark = get_or_create_spark()
         files = os.listdir(LION_TOOLS_COCKPIT_PATH)
+        # ensure that displays are processed in the correct order
+        files.sort()
         html = [f.replace(".html", "") for f in files if f.endswith(".html")]
         json = [f.replace(".json", "") for f in files if f.endswith(".json")]
         json_with_html = [f for f in json if f in html]
         new_json = [f for f in json if f not in json_with_html]
-        if spark is not None:
-            temp_views = [
-                view.name.replace("_view", "")
-                for view in spark.catalog.listTables("global_temp")
-                if view.name.startswith("_lion_tools_tmp_")
-            ]
-        else:
-            temp_views = []
+        temp_views = [
+            view.name.replace("_view", "")
+            for view in spark.catalog.listTables("global_temp")
+            if view.name.startswith("_lion_tools_tmp_")
+        ]
         orphan_temp_views = [view for view in temp_views if view not in json]
         return {
             "files": files,

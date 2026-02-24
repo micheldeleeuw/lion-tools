@@ -1,4 +1,4 @@
-def start_spark():
+def get_or_create_spark():
     from pyspark.sql import SparkSession
     
     spark = SparkSession.getActiveSession()

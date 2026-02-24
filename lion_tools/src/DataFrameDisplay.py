@@ -156,8 +156,16 @@ class DataFrameDisplay():
             'width': sum([stats[col]['length'] for col in cols]),
             'avg_width': sum([stats[col]['total'] for col in cols]) / len(df_collected) if len(df_collected) > 0 else 0,
             'width_with_header': sum([max(stats[col]['length'], stats[col]['header_length']) for col in cols]),
+            'size_limit': False,
         }
 
+        # if the total (byte) size of the data is large we limited the number of rows to avoid browser performance issues
+        if stats['__total__']['avg_width'] * stats['__total__']['rows'] > 500000 and len(df_collected) > 1:
+            new_n = int(500000 / stats['__total__']['avg_width'])
+            df_collected = df_collected[:new_n]
+            stats['__total__']['size_limit'] = True
+            stats['__total__']['rows'] = new_n
+        
         return df_collected, stats
 
     @staticmethod
@@ -183,7 +191,6 @@ class DataFrameDisplay():
             ordering = "ordering: true"
             
         df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df)
-        print(df_statistics['__total__']['avg_width'])
         columns_popup = str(list([
             html.escape(
                 col + '---(' + dtype + ')'
