@@ -23,6 +23,27 @@
                 "panel": "new"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "Run test_group",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/test_group.py",
+                "-v",
+                "-s"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
         }
     ]
 }

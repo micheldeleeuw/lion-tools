@@ -4,7 +4,7 @@ import pytest
 import logging
 from pyspark.sql import SparkSession
 
-# 🔴 MUST be set before importing pyspark
+# MUST be set before importing pyspark
 os.environ["PYSPARK_PYTHON"] = sys.executable
 os.environ["PYSPARK_DRIVER_PYTHON"] = sys.executable
 os.environ["SPARK_LOCAL_IP"] = "127.0.0.1"

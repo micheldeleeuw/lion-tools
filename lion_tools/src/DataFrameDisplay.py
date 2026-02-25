@@ -180,11 +180,18 @@ class DataFrameDisplay():
         ]
 
         # If sorting is requested, we do this the real way, with a rownum
+        # if not requested but rownum is already present we use that
+        # otherswise we just pick the first n rows and add a dummy rownum for the datatable
         if 'sort' in params:
             sort_by = DataFrameExtensions.sort_transform_expressions(df, *params['sort'])
             df = df.withColumn('_rownum', F.row_number().over(W.orderBy(*sort_by)))
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
+        elif '_rownum' in cols:
+            # rownum to last position
+            df = df.selectExpr('* except(_rownum)', '_rownum')
+            df = df.filter(F.col('_rownum') < params['n'] + 1).orderBy('_rownum')            
+            ordering = f"order: [[{len(cols)-1}, 'asc']], ordering: true"
         else:
             # pick random rows and add a dummy rownum for the datatable
             df = df.limit(params['n']).withColumn('_rownum', F.lit(0))

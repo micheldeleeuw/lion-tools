@@ -1,12 +1,13 @@
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
+from pyspark.sql import DataFrame
 import inspect
 import json
 
 class DataFrameExtensions():
 
     @staticmethod
-    def extend_dataframe():
+    def extend_dataframe() -> None:
 
         global DataFrame
         from pyspark.sql import DataFrame
@@ -14,6 +15,7 @@ class DataFrameExtensions():
         # Extend DataFrame with new methods
         DataFrame.eCockpit = DataFrameExtensions.cockpit
         DataFrame.eDisplay = DataFrameExtensions.display
+        DataFrame.eGroup = DataFrameExtensions.group
         DataFrame.eName = DataFrameExtensions.name
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
@@ -26,7 +28,7 @@ class DataFrameExtensions():
         print('Use extend_dataframe() to extend DataFrame functionality.')
   
     @staticmethod
-    def sources(df) -> list:
+    def sources(df: DataFrame) -> list:
         """
         Investigate a dataframe and return all tables that source it.
         """
@@ -51,9 +53,10 @@ class DataFrameExtensions():
         return identified_sources
 
     @staticmethod
-    def sort_transform_expressions(df, *col_exprs):
+    def transform_column_expressions(df: DataFrame, *col_exprs, **kwargs) -> list:
         cols = df.columns
         col_exprs = list(col_exprs)
+        include_sort = kwargs.get("include_sort", True)
 
         for i in range(len(col_exprs)):
             col_expr = col_exprs[i]
@@ -84,7 +87,7 @@ class DataFrameExtensions():
             else:
                 col_expr = F.expr(col_expr)
 
-            if descending:
+            if descending and include_sort:
                 col_expr = col_expr.desc()
                 
             # put the modified expression back
@@ -93,11 +96,11 @@ class DataFrameExtensions():
         return col_exprs
 
     @staticmethod    
-    def sort(df, *col_exprs):
-        return df.orderBy(DataFrameExtensions.sort_transform_expressions(df, *col_exprs))
+    def sort(df: DataFrame, *col_exprs) -> DataFrame:
+        return df.orderBy(DataFrameExtensions.transform_column_expressions(df, *col_exprs))
 
     @staticmethod
-    def name(_local_df):
+    def name(_local_df: DataFrame) -> str:
         # we go up max 5 levels to find a variable that holds the dataframe
 
         for locals in (
@@ -117,11 +120,16 @@ class DataFrameExtensions():
         return 'unnamed' 
 
     @staticmethod
-    def display(df, *args, **kwargs):
+    def display(df: DataFrame, *args, **kwargs) -> None | DataFrame:
         from .DataFrameDisplay import DataFrameDisplay
         return DataFrameDisplay.display(df, *args, **kwargs)
 
     @staticmethod
-    def cockpit(_local_df, *args, **kwargs):
+    def group(df: DataFrame, *args, **kwargs):
+        from .DataFrameGroup import DataFrameGroup
+        return DataFrameGroup(df, *args, **kwargs)
+
+    @staticmethod
+    def cockpit(_local_df: DataFrame, *args, **kwargs) -> None | DataFrame:
         from .Cockpit import Cockpit
         return Cockpit.to_cockpit(_local_df, *args, **kwargs)
