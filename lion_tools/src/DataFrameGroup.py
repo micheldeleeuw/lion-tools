@@ -67,9 +67,12 @@ class DataFrameGroup():
             self.result = (
                 self.result
                 .withColumn("_rownum", F.row_number().over(W.Window.orderBy(
-                    F.expr('if(_totals_type <= 4, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
+                    F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
                 ))
-                .withColumns({col._jc.toString(): F.expr(f"if(_totals_type != 3, `{col._jc.toString()}`, null)") for col in self.totals_by})
+                .withColumns({
+                    col._jc.toString(): F.expr(f"if(_totals_type not in (3, 4), `{col._jc.toString()}`, null)")
+                    for col in self.totals_by
+                })
                 .withColumn("_rownum", F.expr("_rownum + (_totals_type / 10)"))
                 .orderBy('_rownum')
             )
@@ -89,18 +92,6 @@ class DataFrameGroup():
                 .withColumn("_totals_type", F.lit(2))
             )
 
-        if self.sections:
-            result = (
-                result
-                .unionByName(
-                    self.df
-                    .select(*self.totals_by)
-                    .distinct()
-                    .withColumn("_totals_type", F.lit(3)),
-                    allowMissingColumns=True,
-                )
-            )
-
         if self.sub_totals:
             result = (
                 result
@@ -108,6 +99,19 @@ class DataFrameGroup():
                     self.df
                     .groupBy(*self.totals_by)
                     .agg(*self.aggs)
+                    .withColumn("_totals_type", F.lit(3)),
+                    allowMissingColumns=True,
+                )
+            )
+
+        if self.sections or self.sub_totals:
+            # for both sections and sub_totals we want to add an extra row that later will be nulled
+            result = (
+                result
+                .unionByName(
+                    self.df
+                    .select(*self.totals_by)
+                    .distinct()
                     .withColumn("_totals_type", F.lit(4)),
                     allowMissingColumns=True,
                 )
@@ -120,7 +124,7 @@ class DataFrameGroup():
                     self.df
                     .groupBy()
                     .agg(*self.aggs)
-                    .withColumn("_totals_type", F.lit(5)),
+                    .withColumn("_totals_type", F.lit(9)),
                     allowMissingColumns=True,
                 )
             )

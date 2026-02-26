@@ -22,8 +22,8 @@ def test_group(spark):
         # .eP(lambda df: df.show(5))
         .filter('substr(`Major Genre`, 1, 1) in ("A")')
         .eGroup('Major Genre', 'Creative Type', add_rownum=True)
-        # .totals('Major Genre', grand_total=True)
-        .totals('Major Genre', sections=True, grand_total=True)
+        .totals('Major Genre')
+        # .totals('Major Genre', sections=True, grand_total=True)
         # .__dict__
         .agg('avg(`IMDB Rating`)', 'sum(`IMDB Votes`)', 'sum(`Worldwide Gross`)')
         # .show(n=1000)
