@@ -264,7 +264,8 @@ class DataFrameDisplay():
         if params['display']:
             display(display_HTML(iframe_html))
         
-        elif params['passthrough']:
+        if params['passthrough']:
+            print('sending it')
             return df
         else:
             return

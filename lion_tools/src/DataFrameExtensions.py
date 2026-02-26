@@ -1,3 +1,5 @@
+from typing import Callable
+
 import pyspark.sql.functions as F
 from pyspark.sql.column import Column
 from pyspark.sql import DataFrame
@@ -17,12 +19,15 @@ class DataFrameExtensions():
         DataFrame.eDisplay = DataFrameExtensions.display
         DataFrame.eGroup = DataFrameExtensions.group
         DataFrame.eName = DataFrameExtensions.name
+        DataFrame.ePassthrough = DataFrameExtensions.passthrough
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
 
         # Short aliases, pls don't extend these
         DataFrame.eD = DataFrameExtensions.display
         DataFrame.eC = DataFrameExtensions.cockpit
+        DataFrame.eP = DataFrameExtensions.passthrough
+
 
     def __init__(self):
         print('Use extend_dataframe() to extend DataFrame functionality.')
@@ -133,3 +138,9 @@ class DataFrameExtensions():
     def cockpit(_local_df: DataFrame, *args, **kwargs) -> None | DataFrame:
         from .Cockpit import Cockpit
         return Cockpit.to_cockpit(_local_df, *args, **kwargs)
+    
+
+    @staticmethod
+    def passthrough(df: DataFrame, f: Callable[[DataFrame], None]) -> DataFrame:
+        f(df)
+        return df

@@ -9,8 +9,8 @@ class DataFrameGroup():
 
     def __init__(self, df: DataFrame, *by: list[str], **kwargs):
         self.df = df
-        self.sort_by = DataFrameExtensions.transform_column_expressions(df, *by)
         self.by = DataFrameExtensions.transform_column_expressions(df, *by, include_sort=False)
+        self.sort_by = [(i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1) for i, col in enumerate(by)]
         self.by_strings = [col._jc.toString() for col in self.by]
         self.columns = df.columns
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
@@ -69,16 +69,17 @@ class DataFrameGroup():
             result = self.add_totals(result)
 
         if self.add_rownum or self.totals_by != [] or self.totals_grand_total:
+            sort_by = DataFrameExtensions.transform_column_expressions(result, *self.sort_by)
             result = (
                 result
                 .withColumn("_rownum", F.row_number().over(W.Window.orderBy(
-                    F.expr('if(_totals_type in (1, 2), 0, 1)'), *self.totals_by, '_totals_type', *self.sort_by)
+                    F.expr('if(_totals_type in (1, 2), 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
                 ))
                 .withColumn("_rownum", F.expr("_rownum + (_totals_type / 10)"))
                 .orderBy('_rownum')
             )
         else:
-            result = result.orderBy(*self.sort_by)
+            result = DataFrameExtensions.sort(result, *self.sort_by)
 
         return result.drop("_totals_type", "_rownum" if not self.add_rownum else '_none')
 
