@@ -74,7 +74,7 @@ class DataFrameGroup():
                 .orderBy('_rownum')
             )
         else:
-            self.result = DataFrameExtensions.sort(self.result, *self.sort_by) 
+            self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
         self.result = self.result.drop("_totals_type", "_rownum" if not self.add_rownum else '_none')
 
