@@ -1,4 +1,5 @@
 import os
+from pprint import pprint
 import pytest
 import pyspark.sql.functions as F
 
@@ -16,16 +17,35 @@ def test_group(spark):
     # with pytest.raises(AssertionError):
     #     movies.eGroup('Major Genre').totals('x').sum().show()
     
+    (
+        movies
+        # .eP(lambda df: df.show(5))
+        .filter('substr(`Major Genre`, 1, 1) in ("A")')
+        .eGroup('Major Genre', 'Creative Type', add_rownum=True)
+        # .totals('Major Genre', grand_total=True)
+        .totals('Major Genre', sections=True, grand_total=True)
+        # .__dict__
+        .agg('avg(`IMDB Rating`)', 'sum(`IMDB Votes`)', 'sum(`Worldwide Gross`)')
+        # .show(n=1000)
+        .eC()
+    )
+
+    # movies.eGroup().agg(F.avg('IMDB Rating').alias('IMDB_Rating')).show(10)
     # (
     #     movies
-    #     # .eP(lambda df: df.show(5))
-    #     .eGroup('Major Genre', 'Creative Type', add_rownum=True)
-    #     .totals('Major Genre', grand_total=True)
-    #     .agg('avg(`IMDB Rating`)', 'sum(`IMDB Votes`)', 'sum(`Worldwide Gross`)')
-    #     .show(n=1000)
+    #     .select('Director', 'Distributor', 'IMDB Rating', 'IMDB Votes', 'MPAA Rating', 'Major Genre')
+    #     .eGroup('Director', 'Distributor')
+    #     .avg()
+    #     # .filter('Director is not null and Distributor is not null')
+    #     .filter('substr(Director, 1, 1) in ("A")')
+    #     .eGroup('*', add_rownum=True)
+    #     .totals('Director', grand_total=True)
+    #     .agg(F.avg('IMDB Rating').alias('IMDB Rating'))
+    #     .withColumn('rownum', F.col('_rownum'))
+    #     # .show(10000)
+    #     .eC()
     # )
 
-    movies.groupBy().agg(F.avg('IMDB Rating').alias('IMDB_Rating')).show(10)
-    # movies.groupBy('*').agg(F.avg('IMDB Rating').alias('IMDB_Rating')).show(10)
-
+    # from lion_tools import Cockpit
+    # Cockpit.print_status()
 

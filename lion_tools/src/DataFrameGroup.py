@@ -20,15 +20,10 @@ class DataFrameGroup():
             or dtype[1].find("decimal") > -1
         ]
         self.totals_by = []
-        self.totals_grand_total = False
-        self.totals_keep_rownum = False
+        self.sections = False
+        self.sub_totals = False
+        self.grand_total = False
         self.add_rownum = kwargs.get("add_rownum", False)
-
-
-    # def _normalize_aggregate_column_names(self):
-    #     self.result = self.result.eNormalizeColumnNames(
-    #         columns=[col for col in self.result.columns if col not in self.by]
-    #     )
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -47,7 +42,11 @@ class DataFrameGroup():
     def agg(self, *aggs: str, **kwargs) -> DataFrame:
         self.alias = kwargs.get("alias", False)
         self.normalize_column_names = kwargs.get("normalize_column_names", False)
-        self.aggs = [F.count("*").alias("count")] if len(aggs) == 0 else aggs
+
+        assert not (self.by_strings == ['*'] and not(self.sections or self.sub_totals or self.grand_total) and len(aggs) > 0
+            ), "When grouping by all columns, no aggregation functions can be provided unless totals are requested."
+            
+        self.aggs = [F.count("*").alias("count")] if len(aggs) == 0 and (len(self.by) > 0 or self.sub_totals or self.grand_total) else aggs
 
         # Force alias when more than one single aggregation function is requested
         if len([
@@ -57,58 +56,76 @@ class DataFrameGroup():
             self.alias = True
 
         self._rebuild_aggregates()
+        self._get_aggregates()
+        self._sort_result()
 
-        result = (
-            self.df
-            .groupBy(*self.by)
-            .agg(*self.aggs)
-            .withColumn("_totals_type", F.lit(1))
-        )
+        return self.result
 
-        if self.totals_by != [] or self.totals_grand_total:
-            result = self.add_totals(result)
-
-        if self.add_rownum or self.totals_by != [] or self.totals_grand_total:
-            sort_by = DataFrameExtensions.transform_column_expressions(result, *self.sort_by)
-            result = (
-                result
+    def _sort_result(self) -> DataFrame:
+        if self.add_rownum or self.sections or self.sub_totals or self.grand_total:
+            sort_by = DataFrameExtensions.transform_column_expressions(self.result, *self.sort_by)
+            self.result = (
+                self.result
                 .withColumn("_rownum", F.row_number().over(W.Window.orderBy(
-                    F.expr('if(_totals_type in (1, 2), 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
+                    F.expr('if(_totals_type <= 4, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
                 ))
+                .withColumns({col._jc.toString(): F.expr(f"if(_totals_type != 3, `{col._jc.toString()}`, null)") for col in self.totals_by})
                 .withColumn("_rownum", F.expr("_rownum + (_totals_type / 10)"))
                 .orderBy('_rownum')
             )
         else:
-            result = DataFrameExtensions.sort(result, *self.sort_by)
+            self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
-        return result.drop("_totals_type", "_rownum" if not self.add_rownum else '_none')
+        self.result = self.result.drop("_totals_type", "_rownum" if not self.add_rownum else '_none')
 
-    def add_totals(self, result: DataFrame) -> DataFrame:
-        if self.totals_by != []:
+    def _get_aggregates(self) -> DataFrame:
+        if self.by_strings == ['*']:
+            result = self.df.withColumn("_totals_type", F.lit(1))
+        else:
+            result = (
+                self.df
+                .groupBy(*self.by)
+                .agg(*self.aggs)
+                .withColumn("_totals_type", F.lit(2))
+            )
+
+        if self.sections:
+            result = (
+                result
+                .unionByName(
+                    self.df
+                    .select(*self.totals_by)
+                    .distinct()
+                    .withColumn("_totals_type", F.lit(3)),
+                    allowMissingColumns=True,
+                )
+            )
+
+        if self.sub_totals:
             result = (
                 result
                 .unionByName(
                     self.df
                     .groupBy(*self.totals_by)
                     .agg(*self.aggs)
-                    .withColumn("_totals_type", F.lit(2)),
+                    .withColumn("_totals_type", F.lit(4)),
                     allowMissingColumns=True,
                 )
             )
 
-        if self.totals_grand_total:
+        if self.grand_total:
             result = (
                 result
                 .unionByName(
                     self.df
                     .groupBy()
                     .agg(*self.aggs)
-                    .withColumn("_totals_type", F.lit(3)),
+                    .withColumn("_totals_type", F.lit(5)),
                     allowMissingColumns=True,
                 )
             )
 
-        return result
+        self.result = result
         
     def _rebuild_aggregates(self) -> None:
         """
@@ -174,18 +191,37 @@ class DataFrameGroup():
         aggs = [agg if isinstance(agg, Column) else F.expr(agg) for agg in aggs]
         self.aggs = aggs
 
-    def totals(self, by: str | list[str] = None, grand_total: bool = None) -> 'DataFrameGroup':
+    def totals(
+            self,
+            *by: str | list[str], 
+            sections: bool = None,
+            sub_totals: bool = None,
+            grand_total: bool = None,
+        ) -> DataFrameGroup:
+    
         by = by or []
         by = [by] if isinstance(by, str) else by
         by = DataFrameExtensions.transform_column_expressions(self.df, *by, include_sort=False)
-        assert all(col._jc.toString() in self.by_strings for col in by), ("All by variables must be part of the grouping variables."
-            f" Available grouping variables: {self.by_strings}. ")
 
-        grand_total = True if not by else grand_total
-        grand_total = grand_total or False
+        assert not (sections and sub_totals), "Sections and sub_totals cannot be used together."
+        assert not (by == [] and (sections or sub_totals)
+            ), "Sections and sub_totals are not supported without by variables."
+        assert not (by == [] and grand_total is False
+            ), "Grand total is only option when no by variables are provided."
+        assert self.by_strings == ['*'] or all(
+            col._jc.toString() in self.by_strings for col in by
+        ), (f"All by variables must be part of the grouping variables. Available grouping variables: {self.by_strings}.")
+
+        if by == []:
+            grand_total = True
+        else:
+            sub_totals = True if not (sections or sub_totals) else sub_totals
+            grand_total = True if sub_totals and grand_total is None else grand_total
 
         self.totals_by = by
-        self.totals_grand_total = grand_total
+        self.sections = sections or False
+        self.sub_totals = sub_totals or False
+        self.grand_total = grand_total or False
 
         return self
 

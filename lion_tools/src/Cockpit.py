@@ -271,6 +271,7 @@ class Cockpit:
             "new_json": new_json,
             "html": html,
             "orphan_temp_views": orphan_temp_views,
+            "cockpit_path": str(LION_TOOLS_COCKPIT_PATH),
         }
 
     @staticmethod

@@ -173,7 +173,9 @@ class DataFrameDisplay():
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
 
         cols = df.columns
-        dtypes = df.dtypes
+        has_rownum = '_rownum' in cols
+        cols = [col for col in cols if col != '_rownum']
+        dtypes = [dtype for dtype in df.dtypes if dtype[0] != '_rownum']
         nummeric_columns = [
             i for i, (col, dtype) in enumerate(dtypes)
             if dtype in ['int', 'bigint', 'double', 'float', 'decimal'] or dtype.startswith('decimal(')
@@ -187,11 +189,11 @@ class DataFrameDisplay():
             df = df.withColumn('_rownum', F.row_number().over(W.orderBy(*sort_by)))
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
-        elif '_rownum' in cols:
+        elif has_rownum:
             # rownum to last position
             df = df.selectExpr('* except(_rownum)', '_rownum')
             df = df.filter(F.col('_rownum') < params['n'] + 1).orderBy('_rownum')            
-            ordering = f"order: [[{len(cols)-1}, 'asc']], ordering: true"
+            ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         else:
             # pick random rows and add a dummy rownum for the datatable
             df = df.limit(params['n']).withColumn('_rownum', F.lit(0))
