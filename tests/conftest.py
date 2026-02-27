@@ -17,6 +17,15 @@ from lion_tools import extend_dataframe
 extend_dataframe()
 
 @pytest.fixture(scope="session")
+def movies(spark):
+    path = os.path.join(os.path.dirname(__file__), "..", "datasets", "movies.parquet")
+    return spark.read.parquet(path)
+
+@pytest.fixture(scope="session")
+def alice_bob(spark):
+    return spark.createDataFrame([(1, "Alice"), (2, "Bob")], ["id", "name"])
+
+@pytest.fixture(scope="session")
 def spark() -> SparkSession:
     # Silence Python-side Spark logging
     logging.getLogger("py4j").setLevel(logging.ERROR)

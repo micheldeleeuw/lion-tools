@@ -7,6 +7,7 @@ from datetime import datetime
 from IPython.display import HTML as display_HTML
 from IPython.display import display
 from .DataFrameExtensions import DataFrameExtensions
+from .DataFrameTap import DataFrameTap
 
 
 class DataFrameDisplay():
@@ -267,7 +268,6 @@ class DataFrameDisplay():
             display(display_HTML(iframe_html))
         
         if params['passthrough']:
-            print('sending it')
             return df
-        else:
-            return
+        elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
+            return DataFrameTap.tap_end()

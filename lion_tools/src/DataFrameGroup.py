@@ -69,17 +69,29 @@ class DataFrameGroup():
                 .withColumn("_rownum", F.row_number().over(W.Window.orderBy(
                     F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
                 ))
+            )
+
+            self.result = (
+                self.result
                 .withColumns({
-                    col._jc.toString(): F.expr(f"if(_totals_type not in (3, 4), `{col._jc.toString()}`, null)")
+                    col._jc.toString(): F.expr(f"if(_totals_type not in (3), `{col._jc.toString()}`, null)")
                     for col in self.totals_by
                 })
+                .withColumns({
+                    col: F.expr(f"if(_totals_type not in (4), `{col}`, null)")
+                    for col in self.result.columns
+                    if col not in ('_rownum', '_totals_type')
+                })
                 .withColumn("_rownum", F.expr("_rownum + (_totals_type / 10)"))
+                .withColumn("", F.expr("case when _totals_type in (3, 9) then '+' else null end"))
                 .orderBy('_rownum')
             )
+
+            
         else:
             self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
-        self.result = self.result.drop("_totals_type", "_rownum" if not self.add_rownum else '_none')
+        self.result = self.result.drop("_totals_type")
 
     def _get_aggregates(self) -> DataFrame:
         if self.by_strings == ['*']:
@@ -99,13 +111,12 @@ class DataFrameGroup():
                     self.df
                     .groupBy(*self.totals_by)
                     .agg(*self.aggs)
-                    .withColumn("_totals_type", F.lit(3)),
+                    .withColumn("_totals_type", F.expr("explode(array(3, 4))")),
                     allowMissingColumns=True,
                 )
             )
 
-        if self.sections or self.sub_totals:
-            # for both sections and sub_totals we want to add an extra row that later will be nulled
+        if self.sections:
             result = (
                 result
                 .unionByName(

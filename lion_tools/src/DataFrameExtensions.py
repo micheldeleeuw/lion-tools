@@ -6,7 +6,8 @@ from pyspark.sql import DataFrame
 import inspect
 import json
 
-class DataFrameExtensions():
+
+class DataFrameExtensions:
 
     @staticmethod
     def extend_dataframe() -> None:
@@ -19,19 +20,18 @@ class DataFrameExtensions():
         DataFrame.eDisplay = DataFrameExtensions.display
         DataFrame.eGroup = DataFrameExtensions.group
         DataFrame.eName = DataFrameExtensions.name
-        DataFrame.ePassthrough = DataFrameExtensions.passthrough
+        DataFrame.eTap = DataFrameExtensions.tap
+        DataFrame.eTapEnd = DataFrameExtensions.tap_end
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
 
         # Short aliases, pls don't extend these
         DataFrame.eD = DataFrameExtensions.display
         DataFrame.eC = DataFrameExtensions.cockpit
-        DataFrame.eP = DataFrameExtensions.passthrough
-
 
     def __init__(self):
-        print('Use extend_dataframe() to extend DataFrame functionality.')
-  
+        print("Use extend_dataframe() to extend DataFrame functionality.")
+
     @staticmethod
     def sources(df: DataFrame) -> list:
         """
@@ -45,9 +45,17 @@ class DataFrameExtensions():
             elif isinstance(value, dict):
                 if "table" in value.keys() and "database" in value.keys():
                     if "catalog" in value.keys():
-                        identified_sources.append(value["catalog"] + "." + value["database"] + "." + value["table"])
+                        identified_sources.append(
+                            value["catalog"]
+                            + "."
+                            + value["database"]
+                            + "."
+                            + value["table"]
+                        )
                     else:
-                        identified_sources.append(value["database"] + "." + value["table"])
+                        identified_sources.append(
+                            value["database"] + "." + value["table"]
+                        )
 
                 for value_key, value_value in value.items():
                     _loop_plan(value_value)
@@ -73,7 +81,7 @@ class DataFrameExtensions():
             if isinstance(col_expr, int) and col_expr < 0:
                 col_expr = abs(col_expr)
                 descending = True
-            elif isinstance(col_expr, str) and col_expr[0] == '-':
+            elif isinstance(col_expr, str) and col_expr[0] == "-":
                 col_expr = col_expr[1:]
                 descending = True
             else:
@@ -82,7 +90,9 @@ class DataFrameExtensions():
             # recode integer column indices to column names
             if isinstance(col_expr, int):
                 if col_expr < 1 or col_expr > len(cols):
-                    raise ValueError(f"Column index {col_expr} is out of bounds, dataframe has {len(cols)} columns.")
+                    raise ValueError(
+                        f"Column index {col_expr} is out of bounds, dataframe has {len(cols)} columns."
+                    )
                 col_expr = cols[col_expr - 1]
 
             # we distinguish real column names versus column expressions
@@ -94,15 +104,17 @@ class DataFrameExtensions():
 
             if descending and include_sort:
                 col_expr = col_expr.desc()
-                
+
             # put the modified expression back
             col_exprs[i] = col_expr
 
         return col_exprs
 
-    @staticmethod    
+    @staticmethod
     def sort(df: DataFrame, *col_exprs) -> DataFrame:
-        return df.orderBy(DataFrameExtensions.transform_column_expressions(df, *col_exprs))
+        return df.orderBy(
+            DataFrameExtensions.transform_column_expressions(df, *col_exprs)
+        )
 
     @staticmethod
     def name(_local_df: DataFrame) -> str:
@@ -119,28 +131,35 @@ class DataFrameExtensions():
             # note that we have use _local_df as the name of the parameter to avoid
             # confusion with the actual dataframe name
             for name, value in locals.items():
-                if value is _local_df and name != '_local_df':
+                if value is _local_df and name != "_local_df":
                     return name
 
-        return 'unnamed' 
+        return "unnamed"
 
     @staticmethod
     def display(df: DataFrame, *args, **kwargs) -> None | DataFrame:
         from .DataFrameDisplay import DataFrameDisplay
+
         return DataFrameDisplay.display(df, *args, **kwargs)
 
     @staticmethod
     def group(df: DataFrame, *args, **kwargs):
         from .DataFrameGroup import DataFrameGroup
+
         return DataFrameGroup(df, *args, **kwargs)
 
     @staticmethod
     def cockpit(_local_df: DataFrame, *args, **kwargs) -> None | DataFrame:
         from .Cockpit import Cockpit
+
         return Cockpit.to_cockpit(_local_df, *args, **kwargs)
-    
 
     @staticmethod
-    def passthrough(df: DataFrame, f: Callable[[DataFrame], None]) -> DataFrame:
-        f(df)
-        return df
+    def tap(df: DataFrame, f: Callable[[DataFrame], None] = None, end_on_display: bool = True) -> DataFrame:
+        from .DataFrameTap import DataFrameTap
+        return DataFrameTap.tap(df, f, end_on_display)
+    
+    @staticmethod
+    def tap_end(df: DataFrame) -> DataFrame:
+        from .DataFrameTap import DataFrameTap
+        return DataFrameTap.tap_end()

@@ -3,6 +3,7 @@ from .settings import LION_TOOLS_PATH, LION_TOOLS_COCKPIT_PATH
 from .settings import cleanup_old_files, cleanup_temp_views, on_databricks
 from .DataFrameDisplay import DataFrameDisplay
 from .DataFrameExtensions import DataFrameExtensions
+from .DataFrameTap import DataFrameTap
 from datetime import datetime
 import json
 import os
@@ -348,3 +349,6 @@ class Cockpit:
 
         if "passthrough" in params and params["passthrough"]:
             return _local_df
+        elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
+            return DataFrameTap.tap_end()
+

@@ -1,12 +1,8 @@
-import os
-from pprint import pprint
 import pytest
+from pprint import pprint
 import pyspark.sql.functions as F
 
-def test_group(spark):
-    path = os.path.join(os.path.dirname(__file__), "..", "datasets", "movies.parquet")
-    movies = spark.read.parquet(path)
-
+def test_group(spark, movies):
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix').agg().show(10)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').count().show(10)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').agg('sum').show(1)
@@ -24,9 +20,7 @@ def test_group(spark):
         .eGroup('Major Genre', 'Creative Type', add_rownum=True)
         .totals('Major Genre')
         # .totals('Major Genre', sections=True, grand_total=True)
-        # .__dict__
         .agg('avg(`IMDB Rating`)', 'sum(`IMDB Votes`)', 'sum(`Worldwide Gross`)')
-        # .show(n=1000)
         .eC()
     )
 
