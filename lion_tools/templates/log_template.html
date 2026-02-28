@@ -1,0 +1,39 @@
+<style>
+    /* container that looks like a log window */
+    #log-window {
+        width: 100%;
+        margin: 0 auto;
+    }
+
+    /* rotate the pre so its visual bottom becomes the top.
+        The scrollbar will be on the "top" of the rotated box which corresponds
+        to the bottom of the normal content. */
+    pre {
+        height: 200px;               /* adjust as needed */
+        overflow: auto;              /* enable scrolling */
+        background: #404040;
+        color: #fff;
+        padding: 12px;
+        border-radius: 6px;
+        line-height: 1.2;
+        margin: 0;
+
+        transform: rotate(180deg);   /* flip the whole box */
+        -webkit-transform: rotate(180deg);
+        /* optional: keep word breaks as in normal pre */
+        white-space: pre; 
+    }
+
+    /* rotate the inner content back so the text reads normally */
+    pre > code {
+        display: block;
+        transform: rotate(180deg);
+        -webkit-transform: rotate(180deg);
+        font-family: 'Courier New', Courier, monospace;
+        white-space: pre; 
+    }
+</style>
+
+<div id="log-window">
+    <pre><code id="code-block">{log}</code></pre>
+</div>

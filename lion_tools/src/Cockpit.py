@@ -108,6 +108,7 @@ class Cockpit:
                 padding="0px",
             ),
         )
+        cls.update_tabs_panel()
 
         # INJECT CUSTOM CSS TO REMOVE TAB PADDING and set the colors of the tabs
         with open(
@@ -122,8 +123,21 @@ class Cockpit:
         cls.message_bar = widgets.HTML()
         cls.update_message_bar()
 
+        cls.log_panel = widgets.HTML(
+            value='',
+            layout=widgets.Layout(
+                    flex='1 1 auto',
+                    border='1px solid gray',
+                    padding='5px',
+                    overflow_x='auto',  # horizontal scrollbar when needed
+                    overflow_y='auto'   # (optional) vertical scrollbar
+                )
+        )
+
+        cls.update_log_panel()
+
         cls.main_panel = widgets.VBox(
-            [css_injection, cls.message_bar, cls.tabs_panel],
+            [css_injection, cls.message_bar, cls.tabs_panel, cls.log_panel],
             layout=widgets.Layout(
                 width="100%",
                 height="600px",
@@ -134,7 +148,6 @@ class Cockpit:
                 padding="0px",
             ),
         )
-        cls.update_tabs_panel()
 
         if on_databricks():
             # use the default display method in Databricks, as it can handle the interactivity
@@ -178,9 +191,15 @@ class Cockpit:
     @classmethod
     def update_log_panel(cls):
         log_content = "<br>".join(cls.log_lines[-100:])  # show only the latest 100 lines
-        # cls.log_panel.value = f"<pre style='font-size: 12px;'>{log_content}</pre>"
-        for line in cls.log_lines[-100:]:
-            print(line)
+        with open(
+            pathlib.Path(__file__).parent.parent
+            / "templates"
+            / "log_template.html",
+            "r",
+            encoding="utf-8",
+        ) as f:
+            template = f.read()
+        cls.log_panel.value = template.replace("{log}", log_content)
 
     @classmethod
     def sync_htmls_to_tabs(cls):
