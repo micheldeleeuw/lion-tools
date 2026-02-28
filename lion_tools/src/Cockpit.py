@@ -90,8 +90,8 @@ class Cockpit:
             "id": "1999_overview",
             "type": "start",
             "name": "Lion Tools Cockpit",
-            "content": widgets.Label(
-                "Use the Lion Tools dataframe extension .eC() to show dataframes here."
+            "content": widgets.HTML(
+                "<div style='padding: 10px;'>Use the Lion Tools dataframe extension .eC() to show dataframes here.</div>"
             ),
             "file": None,
         }
@@ -176,6 +176,13 @@ class Cockpit:
         cls.tabs_panel.selected_index = 0
 
     @classmethod
+    def update_log_panel(cls):
+        log_content = "<br>".join(cls.log_lines[-100:])  # show only the latest 100 lines
+        # cls.log_panel.value = f"<pre style='font-size: 12px;'>{log_content}</pre>"
+        for line in cls.log_lines[-100:]:
+            print(line)
+
+    @classmethod
     def sync_htmls_to_tabs(cls):
         overview = cls.get_overview()
         htmls = overview["html"]
@@ -226,7 +233,50 @@ class Cockpit:
             # print(cls.tabs)
 
     @classmethod
-    def run(cls, timeout=60, tabs=5, clear=False, raise_errors=False):
+    def find_new_logs(cls):
+        log_files = cls.get_overview()["log"]
+        for log_file in log_files:
+            if log_file not in cls.monitored_logs:
+                f = open(LION_TOOLS_COCKPIT_PATH.joinpath(log_file), "r", encoding="utf-8")
+                if not cls.log_backfill:
+                    # move the pointer to the end of the file, so we only read new lines
+                    f.seek(0, os.SEEK_END)
+                
+                cls.monitored_logs[log_file] = {
+                    "log_file": log_file,
+                    "path": LION_TOOLS_COCKPIT_PATH.joinpath(log_file),
+                    "file": f,
+                    "position": f.tell()
+                }
+
+    @classmethod
+    def process_logs(cls):
+        for log in cls.monitored_logs.values():
+            update_needed = False
+
+            # Read new lines from the log
+            while True:
+                line = log['file'].readline()
+                if line:
+                    update_needed = True
+                    cls.log_lines.append(line.strip())
+                else:
+                    break
+
+            # Check if the log has been reset (truncated or rewritten)
+            if os.path.getsize(log['path']) < log['position']:
+                update_needed = True
+                log['file'].seek(0)
+                log['position'] = log['file'].tell()
+                cls.log_lines.append(f'log file {log["log_file"]} was rewritten or truncated.')
+            
+            # we're done
+            log['position'] = log['file'].tell()
+            if update_needed:
+                cls.update_log_panel()
+
+    @classmethod
+    def run(cls, timeout=60, tabs=5, clear=False, raise_errors=False, log_backfill=False):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
         It will continuously check for new display requests and update the cockpit accordingly.
@@ -236,12 +286,26 @@ class Cockpit:
 
         cls.max_tabs = tabs
         cls.raise_errors = raise_errors
+        cls.monitored_logs = {}
+        cls.log_backfill = log_backfill
+        cls.log_lines = []
         cls.initialize()
 
         start_time = time.time()
         while True:
             mean_time = time.time()
+            # Reading and processing log files is fast and we want it close to the action
+            # in the generating session, so we do it first
+            # 1. Find new log files
+            cls.find_new_logs()
+
+            # 2. Get new lines from the monitored log files
+            cls.process_logs()
+
+            # 3. Add new html files to the tabs (both lazy and non-lazy mode)
             cls.sync_htmls_to_tabs()
+
+            # 4. Create html files for new json files (only lazy mode)
             cls.create_html_for_json()
             if time.time() - start_time > timeout * 60:
                 print("Timeout reached, stopping the Cockpit.")
@@ -354,3 +418,51 @@ class Cockpit:
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap.tap_end()
 
+    @classmethod
+    def follow_many(cls, sleep: float, api_sleep: float, max_run_time_seconds: float, new_log_sleep: float):
+        """
+        Monitor multiple log files at once.
+        Yields (path, line) whenever a new line appears in any file.
+        """
+
+        assert sleep > 0
+        assert api_sleep > 0
+        assert max_run_time_seconds > 0
+        assert new_log_sleep > 0
+
+        start_time = datetime.datetime.now()
+        last_api_check_time = datetime.datetime.now()
+        last_new_log_check_time = datetime.datetime.now()
+
+        try:
+            while True:
+                # 1. check if we need to quit
+                if (datetime.datetime.now() - start_time).total_seconds() > max_run_time_seconds:
+                    break
+
+                # 2. for each log monitort check for new lines. When found return line by line
+                for path, f in cls.files.items():
+                    while True:
+                        line = f.readline()
+                        if line:
+                            yield path, line.strip()
+                        else:
+                            break
+
+                    # File truncated or rewritten
+                    if os.path.getsize(path) < cls.positions[path]:
+                        f.seek(0)
+                        yield path, '###nue### {"code": "LFR", "message": "Log file reinitialised."}'
+
+                    cls.positions[path] = f.tell()
+
+                # 3. check if new logs need to be monitored
+                if (datetime.datetime.now() - last_new_log_check_time).total_seconds() > new_log_sleep:
+                    last_new_log_check_time = datetime.datetime.now()
+                    cls.get_logs(initialize=False)
+
+                time.sleep(sleep)
+                       
+        finally:
+            for f in cls.files.values():
+                f.close()

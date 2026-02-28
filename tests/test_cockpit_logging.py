@@ -1,17 +1,17 @@
 import pytest
 import sys
+import time
 from lion_tools import CockpitLogging
 
+# sys.stdout = sys.__stdout__
+# sys.stderr = sys.__stderr__
 
-def test_cockpit_logging(spark):
+def test_cockpit_logging():
 
     with pytest.raises(Exception):
         CockpitLogging.reset()
 
-    sys.stdout = CockpitLogging('stdout')
-    sys.stderr = CockpitLogging('stderr')
-
-
+    CockpitLogging.redirect()
 
     print('This is a test log message to both cockpit and original logging.')
 
@@ -24,3 +24,13 @@ def test_cockpit_logging(spark):
 
     from lion_tools import settings
     print(settings.LION_TOOLS_COCKPIT_PATH)
+
+def test_cockpit_logging_reset():
+    iterations = 20 
+    CockpitLogging.redirect()
+
+    for i in range(iterations):
+        print(f'The time is now {time.time()}')
+        time.sleep(1)
+
+    CockpitLogging.reset()

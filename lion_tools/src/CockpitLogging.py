@@ -24,15 +24,30 @@ class CockpitLogging:
             print(f'Log file {log_path} created.')
             return cls.log_file
 
-    def __init__(self, type: str | list[str] = ['stdout', 'stderr'], keep_original = True):
-        type = [type] if isinstance(type, str) else type
-        assert all(t in ['stdout', 'stderr'] for t in type), "type must be either 'stdout' or 'stderr'"
+    @staticmethod
+    def redirect(keep_original: bool = True):
+        sys.stdout = CockpitLogging('stdout', keep_original=keep_original, message=False)
+        sys.stderr = CockpitLogging('stderr', keep_original=keep_original, message=False)
+        CockpitLogging.message('stdout and stderr', keep_original)
+
+    @staticmethod
+    def message(type: str, keep_original):
+        _message = f'Cockpit logging initialised for {type}. '
+        if keep_original:
+            _message += f'Original logging also active. To suppress set keep_original = False.'
+        else:
+            _message += f'Original logging suppressed.'
+        CockpitLogging.get_log_file().write(_message + '\n')
+
+    def __init__(self, type: str, keep_original = True, message = True):
+        assert type in ['stdout', 'stderr'], "type must be either 'stdout' or 'stderr'"
         self.type = type
         self.keep_original = keep_original
-        if self.keep_original:
-            self.write(f'External logging initialised for {self.type}. To supress original logging, set keep_original to False.\n')
-        else:
-            self.write(f'External logging initialised for {self.type}. Original logging suppressed.\n')
+        # by getting the log file here, we ensure that it is created and ready to be written to
+        CockpitLogging.get_log_file()
+
+        if message:
+            CockpitLogging.message(self.type, self.keep_original)
 
     def write(self, data):
         CockpitLogging.get_log_file().write(data)
@@ -51,14 +66,9 @@ class CockpitLogging:
         if not cls.log_file:
             raise Exception('Lion Tools logging not active, reset not possible.')
         
-        print('Resetting logging to standard.')
-
-        # cls.log_file.close()
+        cls.log_file.close()
         cls.log_file = None
-        sys.stdout = cls.standard_loggers['stdout']
-        sys.stderr = cls.standard_loggers['stderr']
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
 
-        print('Logging reset to standard.')
-
-
-
+        print('stdout and stderr logging reset to standard.')
