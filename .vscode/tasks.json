@@ -46,6 +46,27 @@
             "problemMatcher": []
         },
         {
+            "label": "Run test cockpit logging",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/test_cockpit_logging.py",
+                "-v",
+                "-s"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Run test other",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/bin/python",

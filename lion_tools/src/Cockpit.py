@@ -257,6 +257,7 @@ class Cockpit:
         files.sort()
         html = [f.replace(".html", "") for f in files if f.endswith(".html")]
         json = [f.replace(".json", "") for f in files if f.endswith(".json")]
+        log = [f for f in files if f.endswith(".log")]
         json_with_html = [f for f in json if f in html]
         new_json = [f for f in json if f not in json_with_html]
         temp_views = [
@@ -271,6 +272,7 @@ class Cockpit:
             "json_with_html": json_with_html,
             "new_json": new_json,
             "html": html,
+            "log": log,
             "orphan_temp_views": orphan_temp_views,
             "cockpit_path": str(LION_TOOLS_COCKPIT_PATH),
         }
