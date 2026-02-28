@@ -102,8 +102,9 @@ class Cockpit:
             children=[],
             layout=widgets.Layout(
                 width="99.9%",
-                flex="1 1 auto",
-                overflow="auto",
+                height="781px",
+                flex="0 0 781px",  # fixed height
+                overflow="hidden", # handle scroll inside iframes
                 margin="0px",
                 padding="0px",
             ),
@@ -126,11 +127,12 @@ class Cockpit:
         cls.log_panel = widgets.HTML(
             value='',
             layout=widgets.Layout(
-                    flex='1 1 auto',
-                    border='1px solid gray',
-                    padding='5px',
-                    overflow_x='auto',  # horizontal scrollbar when needed
-                    overflow_y='auto'   # (optional) vertical scrollbar
+                    width="99.9%",
+                    height="481px",
+                    flex="0 0 481px",
+                    border="none",
+                    padding="0px",
+                    overflow="hidden",  # horizontal scrollbar when needed
                 )
         )
 
@@ -140,7 +142,7 @@ class Cockpit:
             [css_injection, cls.message_bar, cls.tabs_panel, cls.log_panel],
             layout=widgets.Layout(
                 width="100%",
-                height="600px",
+                height="auto",  # Changed to fit total content
                 display="flex",
                 flex_flow="column",
                 background="#f0f0f0",
@@ -436,52 +438,3 @@ class Cockpit:
             return _local_df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap.tap_end()
-
-    @classmethod
-    def follow_many(cls, sleep: float, api_sleep: float, max_run_time_seconds: float, new_log_sleep: float):
-        """
-        Monitor multiple log files at once.
-        Yields (path, line) whenever a new line appears in any file.
-        """
-
-        assert sleep > 0
-        assert api_sleep > 0
-        assert max_run_time_seconds > 0
-        assert new_log_sleep > 0
-
-        start_time = datetime.datetime.now()
-        last_api_check_time = datetime.datetime.now()
-        last_new_log_check_time = datetime.datetime.now()
-
-        try:
-            while True:
-                # 1. check if we need to quit
-                if (datetime.datetime.now() - start_time).total_seconds() > max_run_time_seconds:
-                    break
-
-                # 2. for each log monitort check for new lines. When found return line by line
-                for path, f in cls.files.items():
-                    while True:
-                        line = f.readline()
-                        if line:
-                            yield path, line.strip()
-                        else:
-                            break
-
-                    # File truncated or rewritten
-                    if os.path.getsize(path) < cls.positions[path]:
-                        f.seek(0)
-                        yield path, '###nue### {"code": "LFR", "message": "Log file reinitialised."}'
-
-                    cls.positions[path] = f.tell()
-
-                # 3. check if new logs need to be monitored
-                if (datetime.datetime.now() - last_new_log_check_time).total_seconds() > new_log_sleep:
-                    last_new_log_check_time = datetime.datetime.now()
-                    cls.get_logs(initialize=False)
-
-                time.sleep(sleep)
-                       
-        finally:
-            for f in cls.files.values():
-                f.close()
