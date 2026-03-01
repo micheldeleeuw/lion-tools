@@ -4,6 +4,7 @@ from pyspark.sql import DataFrame
 from pyspark.sql import Column
 import pyspark.sql.functions as F
 import pyspark.sql.window as W
+from typing import Self
 
 class DataFrameGroup():
 
@@ -212,7 +213,7 @@ class DataFrameGroup():
             sections: bool = None,
             sub_totals: bool = None,
             grand_total: bool = None,
-        ) -> DataFrameGroup:
+        ) -> Self:
     
         by = by or []
         by = [by] if isinstance(by, str) else by
