@@ -186,7 +186,7 @@ class DataFrameDisplay():
         # if not requested but rownum is already present we use that
         # otherswise we just pick the first n rows and add a dummy rownum for the datatable
         if 'sort' in params:
-            sort_by = DataFrameExtensions.sort_transform_expressions(df, *params['sort'])
+            sort_by = DataFrameExtensions.transform_column_expressions(df, *params['sort'])
             df = df.withColumn('_rownum', F.row_number().over(W.orderBy(*sort_by)))
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
