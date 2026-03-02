@@ -53,7 +53,7 @@ class Cockpit:
             df = get_or_create_spark().table(
                 f"global_temp.{params['temp_view_name']}"
             )
-            cls.update_log_panel(f"Loading {params.get('name', 'no name')}...")
+            cls.update_log_panel(f"Loading {params.get('name', 'no name')} ...")
             params["page_length"] = cls.page_length
             DataFrameDisplay.display(df, **params)
         except Exception as e:
@@ -68,6 +68,8 @@ class Cockpit:
 
             if cls.raise_errors:
                 raise
+        finally:
+            cls.update_log_panel(" Done", new_line=False)
 
     @classmethod
     def initialize(cls):
@@ -163,10 +165,12 @@ class Cockpit:
         cls.tabs_panel.selected_index = 0
 
     @classmethod
-    def update_log_panel(cls, message: str | list[str] = None):
+    def update_log_panel(cls, message: str | list[str] = None, new_line: bool = True):
         message = [message] if isinstance(message, str) else message
-        if message:
+        if message and new_line:
             cls.log_lines.extend(message)
+        elif message:
+            cls.log_lines[-1] += "".join(message)
         
         _log_lines = list(cls.log_lines)
         _log_lines += [""] * (cls.log_length - len(_log_lines) + 1)
@@ -299,7 +303,7 @@ class Cockpit:
         cls.monitored_logs = {}
         cls.log_backfill = log_backfill
         cls.log_lines = deque(maxlen=200)
-        cls.log_lines.append("waiting for logs...")
+        cls.log_lines.append("Waiting for logs...")
         cls.log_content = ""
         cls.page_length = page_length
         cls.log_length = log_length
