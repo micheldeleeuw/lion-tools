@@ -54,7 +54,8 @@ class Cockpit:
                 f"global_temp.{params['temp_view_name']}"
             )
             cls.update_log_panel(f"Loading {params.get('name', 'no name')} ...")
-            params["page_length"] = cls.page_length
+            if "page_length" not in params:
+                params["page_length"] = cls.page_length
             DataFrameDisplay.display(df, **params)
         except Exception as e:
             result_html = (
@@ -388,12 +389,18 @@ class Cockpit:
             raise Exception(
                 "file_path parameter is not supported in display_in_cockpit, use display instead."
             )
+        
+        # we want the cockpit to determine the page length unless it is explicitly set
+        keep_page_length = kwargs.get("p") or kwargs.get("page_length") 
 
         # as the cockpit will run in a different session, we need to validate and save the parameters
         # for the cockpit to pick up and do the actual display
         params = DataFrameDisplay.display_validate_parameters(
             _local_df, *args, **kwargs
         )
+
+        if not keep_page_length:
+            del params["page_length"]
 
         if "name" not in params:
             params["name"] = DataFrameExtensions.name(_local_df)
