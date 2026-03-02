@@ -98,15 +98,18 @@ class Cockpit:
 
         cls.tabs = [cls.init_tab]
 
+        height = str(int((cls.page_length * 25) + 197)) + 'px'
+
         cls.tabs_panel = widgets.Tab(
             children=[],
             layout=widgets.Layout(
                 width="99.9%",
-                height="781px",
-                flex="0 0 781px",  # fixed height
+                height=height,
+                flex=f"0 0 {height}",  # fixed height
                 overflow="hidden", # handle scroll inside iframes
-                margin="0px",
+                margin="2px",
                 padding="0px",
+                border_radius='6px',
             ),
         )
         cls.update_tabs_panel()
@@ -121,25 +124,29 @@ class Cockpit:
         ) as f:
             css_injection = widgets.HTML(value=f.read())
 
-        cls.message_bar = widgets.HTML()
-        cls.update_message_bar()
+        # cls.message_bar = widgets.HTML()
+        # cls.update_message_bar()
 
         cls.log_panel = widgets.HTML(
-            value='',
-            layout=widgets.Layout(
-                    width="99.9%",
-                    height="481px",
-                    flex="0 0 481px",
-                    border="none",
-                    padding="0px",
-                    overflow="hidden",  # horizontal scrollbar when needed
-                )
+            # value='',
+            # layout=widgets.Layout(
+            #         width="99.9%",
+            #         height=str(cls.log_height) + "px",
+            #         flex=f'0 0 auto',
+            #         border='1px solid #d3dae4',
+            #         border_radius='6px',
+            #         padding='10px',
+            #         background='#f7f9fc',
+            #         overflow_x='auto',  # horizontal scrollbar when needed
+            #         overflow_y='auto'   # (optional) vertical scrollbar
+            #     )
         )
 
         cls.update_log_panel()
 
         cls.main_panel = widgets.VBox(
-            [css_injection, cls.message_bar, cls.tabs_panel, cls.log_panel],
+            [css_injection, cls.tabs_panel, cls.log_panel],
+            # [css_injection, cls.message_bar, cls.tabs_panel, cls.log_panel],
             layout=widgets.Layout(
                 width="100%",
                 height="auto",  # Changed to fit total content
@@ -192,7 +199,12 @@ class Cockpit:
 
     @classmethod
     def update_log_panel(cls):
-        log_content = "<br>".join(cls.log_lines[-100:])  # show only the latest 100 lines
+        new_log_content = "<br>".join(cls.log_lines[-100:])  # show oldest to newest
+        if cls.log_content == new_log_content:
+            return
+        
+        cls.log_content = new_log_content
+        cls.log_lines = cls.log_lines[-300:]  # keep only the latest 300 lines in memory to avoid memory issues
         with open(
             pathlib.Path(__file__).parent.parent
             / "templates"
@@ -201,7 +213,11 @@ class Cockpit:
             encoding="utf-8",
         ) as f:
             template = f.read()
-        cls.log_panel.value = template.replace("{log}", log_content)
+        cls.log_panel.value = (
+            template
+            .replace("{log_height}", str(cls.log_height-30))
+            .replace("{log}", cls.log_content)
+        )
 
     @classmethod
     def sync_htmls_to_tabs(cls):
@@ -297,19 +313,31 @@ class Cockpit:
                 cls.update_log_panel()
 
     @classmethod
-    def run(cls, timeout=60, tabs=5, clear=False, raise_errors=False, log_backfill=False):
+    def run(
+        cls, 
+        timeout: int = 60, 
+        tabs: int = 5, 
+        clean_start: bool = False, 
+        raise_errors: bool = False, 
+        log_backfill: bool = False, 
+        page_length: int = 15,
+        log_height: int = 200
+        ):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
         It will continuously check for new display requests and update the cockpit accordingly.
         """
-        if clear:
+        if clean_start:
             cls.clear()
 
         cls.max_tabs = tabs
         cls.raise_errors = raise_errors
         cls.monitored_logs = {}
         cls.log_backfill = log_backfill
-        cls.log_lines = []
+        cls.log_lines = ["waiting for logs..."]
+        cls.log_content = ""
+        cls.page_length = page_length
+        cls.log_height = log_height
         cls.initialize()
 
         start_time = time.time()
