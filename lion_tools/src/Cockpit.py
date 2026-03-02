@@ -56,8 +56,10 @@ class Cockpit:
             cls.update_log_panel(f"Loading {params.get('name', 'no name')} ...")
             if "page_length" not in params:
                 params["page_length"] = cls.page_length
+            cls.show_console_progress("true")
             DataFrameDisplay.display(df, **params)
         except Exception as e:
+            cls.show_console_progress("false")
             result_html = (
                 cls.error_template.replace("{title}", params.get("name", "Error"))
                 .replace("{error_type}", type(e).__name__)
@@ -70,6 +72,7 @@ class Cockpit:
             if cls.raise_errors:
                 raise
         finally:
+            cls.show_console_progress("false")
             cls.update_log_panel(" Done", new_line=False)
 
     @classmethod
@@ -107,7 +110,17 @@ class Cockpit:
         cls.update_tabs_panel()
 
         css_injection = widgets.HTML(value=cls.load_file("tabs_css_injection.html", type='template'))
-        cls.log_panel = widgets.HTML()
+        cls.log_panel = widgets.HTML(
+            layout=widgets.Layout(
+                width="99.9%",
+                # height=height,
+                # flex=f"0 0 {height}",  # fixed height
+                # overflow="hidden", # handle scroll inside iframes
+                # margin="2px",
+                # padding="0px",
+                # border_radius='6px',
+            ),
+        )
         cls.update_log_panel()
 
         cls.main_panel = widgets.VBox(
@@ -308,6 +321,7 @@ class Cockpit:
         cls.log_content = ""
         cls.page_length = page_length
         cls.log_length = log_length
+        cls.show_console_progress("false")
         cls.initialize()
 
         start_time = time.time()
@@ -442,3 +456,8 @@ class Cockpit:
             return _local_df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap.tap_end()
+
+    staticmethod
+    def show_console_progress(show: str):
+        assert show in ["true", "false"], "spark_progress_bar parameter must be 'true' or 'false'."
+        get_or_create_spark().conf.set("spark.ui.showConsoleProgress", show)
