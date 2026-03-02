@@ -1,21 +1,25 @@
 <div style="
-    display: flex;
-    flex-direction: column-reverse;
-    margin: 0 0 6px 0;
-    padding: 0;
+    margin: 4px 0 0 0;
+    padding: 10px;
     border: 1px solid #d3dae4;
     border-radius: 3px;
     background: #f7f9fc;
     color: #3f4a5a;
     font-size: 12px;
-    height: {log_height}px;
     font-family: 'Courier New', Courier, monospace;
-    overflow: auto;
+    height: {log_height}px;
+    box-sizing: border-box;
 ">
-    <pre style="
-        margin: 0; 
-        padding: 8px; 
-        background: transparent; 
-        line-height: 1.2;
-    "><code style="background: transparent;">{log}</code></pre>
+    <div style="
+        height: 100%;
+        overflow: auto;
+        display: flex;
+        flex-direction: column-reverse;
+    ">
+        <pre style="
+            margin: 0; 
+            background: transparent; 
+            line-height: 1.2;
+        "><code style="background: transparent;">{log}</code></pre>
+    </div>
 </div>

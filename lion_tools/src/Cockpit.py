@@ -13,6 +13,8 @@ import base64
 from IPython.display import display as ipython_display, HTML
 import ipywidgets as widgets
 from .get_or_create_spark import get_or_create_spark
+from collections import deque
+
 
 class Cockpit:
     """
@@ -42,10 +44,7 @@ class Cockpit:
         else:
             json_file = overview["new_json"][0]
 
-        with open(
-            LION_TOOLS_COCKPIT_PATH.joinpath(json_file + ".json"), "r", encoding="utf-8"
-        ) as f:
-            params = json.load(f)
+        params = json.loads(cls.load_file(json_file), type='cockpit_json')
 
         params["display"] = False
         params["file_path"] = params["html_file"]
@@ -54,20 +53,11 @@ class Cockpit:
             df = get_or_create_spark().table(
                 f"global_temp.{params['temp_view_name']}"
             )
-            cls.update_message_bar(f"Loading {params.get('name', 'no name')}...")
+            cls.update_log_panel(f"Loading {params.get('name', 'no name')}...")
             DataFrameDisplay.display(df, **params)
         except Exception as e:
-            with open(
-                pathlib.Path(__file__).parent.parent
-                / "templates"
-                / "dataframe_error_template.html",
-                "r",
-                encoding="utf-8",
-            ) as f:
-                template = f.read()
-
             result_html = (
-                template.replace("{title}", params.get("name", "Error"))
+                cls.error_template.replace("{title}", params.get("name", "Error"))
                 .replace("{error_type}", type(e).__name__)
                 .replace("{error}", str(e))
             )
@@ -77,8 +67,6 @@ class Cockpit:
 
             if cls.raise_errors:
                 raise
-        finally:
-            cls.update_message_bar()
 
     @classmethod
     def initialize(cls):
@@ -86,6 +74,8 @@ class Cockpit:
         cleanup_old_files()
         cleanup_temp_views()
 
+        cls.log_template = cls.load_file("log_template.html", type='template')
+        cls.error_template = cls.load_file("dataframe_error_template.html", type='template')
         cls.init_tab = {
             "id": "1999_overview",
             "type": "start",
@@ -95,9 +85,7 @@ class Cockpit:
             ),
             "file": None,
         }
-
         cls.tabs = [cls.init_tab]
-
         height = str(int((cls.page_length * 25) + 197)) + 'px'
 
         cls.tabs_panel = widgets.Tab(
@@ -114,39 +102,12 @@ class Cockpit:
         )
         cls.update_tabs_panel()
 
-        # INJECT CUSTOM CSS TO REMOVE TAB PADDING and set the colors of the tabs
-        with open(
-            pathlib.Path(__file__).parent.parent
-            / "templates"
-            / "tabs_css_injection.html",
-            "r",
-            encoding="utf-8",
-        ) as f:
-            css_injection = widgets.HTML(value=f.read())
-
-        # cls.message_bar = widgets.HTML()
-        # cls.update_message_bar()
-
-        cls.log_panel = widgets.HTML(
-            # value='',
-            # layout=widgets.Layout(
-            #         width="99.9%",
-            #         height=str(cls.log_height) + "px",
-            #         flex=f'0 0 auto',
-            #         border='1px solid #d3dae4',
-            #         border_radius='6px',
-            #         padding='10px',
-            #         background='#f7f9fc',
-            #         overflow_x='auto',  # horizontal scrollbar when needed
-            #         overflow_y='auto'   # (optional) vertical scrollbar
-            #     )
-        )
-
+        css_injection = widgets.HTML(value=cls.load_file("tabs_css_injection.html", type='template'))
+        cls.log_panel = widgets.HTML()
         cls.update_log_panel()
 
         cls.main_panel = widgets.VBox(
             [css_injection, cls.tabs_panel, cls.log_panel],
-            # [css_injection, cls.message_bar, cls.tabs_panel, cls.log_panel],
             layout=widgets.Layout(
                 width="100%",
                 height="auto",  # Changed to fit total content
@@ -178,17 +139,20 @@ class Cockpit:
         cleanup_old_files(clean_all=True)
         cleanup_temp_views(clean_all=True)
 
-    @classmethod
-    def update_message_bar(cls, message="&nbsp;"):
-        with open(
-            pathlib.Path(__file__).parent.parent
-            / "templates"
-            / "message_bar_template.html",
-            "r",
-            encoding="utf-8",
-        ) as f:
-            cls.message_bar.value = f.read().replace("{message}", message)
+    @staticmethod
+    def load_file(name: str, type='template') -> str:
+        if type == 'template':
+            path = pathlib.Path(__file__).parent.parent / "templates" / name
+        elif type == 'cockpit_json':
+            path = LION_TOOLS_COCKPIT_PATH.joinpath(name + ".json")
+        elif type == 'cockpit_html':
+            path = LION_TOOLS_COCKPIT_PATH.joinpath(name + ".html")
+        else:
+            path=name
 
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+        
     @classmethod
     def update_tabs_panel(cls):
         cls.tabs_panel.children = tuple(tab.get("content") for tab in cls.tabs)
@@ -198,26 +162,23 @@ class Cockpit:
         cls.tabs_panel.selected_index = 0
 
     @classmethod
-    def update_log_panel(cls):
-        new_log_content = "<br>".join(cls.log_lines[-100:])  # show oldest to newest
-        if cls.log_content == new_log_content:
-            return
+    def update_log_panel(cls, message: str | list[str] = None):
+        message = [message] if isinstance(message, str) else message
+        if message:
+            cls.log_lines.extend(message)
         
-        cls.log_content = new_log_content
-        cls.log_lines = cls.log_lines[-300:]  # keep only the latest 300 lines in memory to avoid memory issues
-        with open(
-            pathlib.Path(__file__).parent.parent
-            / "templates"
-            / "log_template.html",
-            "r",
-            encoding="utf-8",
-        ) as f:
-            template = f.read()
-        cls.log_panel.value = (
-            template
-            .replace("{log_height}", str(cls.log_height-30))
-            .replace("{log}", cls.log_content)
-        )
+        _log_lines = list(cls.log_lines)
+        _log_lines += [""] * (cls.log_length - len(_log_lines) + 1)
+        new_log_content = "<br>".join(_log_lines)  # show oldest to newest
+
+        if cls.log_content != new_log_content:
+            cls.log_content = new_log_content
+            cls.log_panel.value = (
+                cls.log_template
+                .replace("{log_height}", str(cls.log_length*12*1.2 + 22))  # pixel perfect estimate of log height based on number of lines
+                .replace("{log}", cls.log_content)
+            )
+
 
     @classmethod
     def sync_htmls_to_tabs(cls):
@@ -229,17 +190,9 @@ class Cockpit:
         ]
 
         for html in new_htmls:
-            html_file = LION_TOOLS_COCKPIT_PATH.joinpath(html + ".html")
-            with open(html_file, "r", encoding="utf-8") as f:
-                html_content = f.read()
-            json_file = LION_TOOLS_COCKPIT_PATH.joinpath(html + ".json")
-            with open(json_file, "r", encoding="utf-8") as f:
-                params = json.load(f)
-
-            encoded_html = base64.b64encode(html_content.encode("utf-8")).decode(
-                "utf-8"
-            )
-
+            html_content = cls.load_file(html, type='cockpit_html')
+            params = json.loads(cls.load_file(html, type='cockpit_json'))
+            encoded_html = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
             page_length = int(params.get("page_length", 20))
             max_height = str(int(page_length * 25 + 165)) + "px"
             iframe_html = f"""
@@ -265,9 +218,7 @@ class Cockpit:
             if len(cls.tabs) > 1 and cls.init_tab in cls.tabs:
                 cls.tabs.remove(cls.init_tab)
             cls.tabs = cls.tabs[: cls.max_tabs]  # keep only the latest max_tabs tabs
-
             cls.update_tabs_panel()
-            # print(cls.tabs)
 
     @classmethod
     def find_new_logs(cls):
@@ -288,7 +239,7 @@ class Cockpit:
 
     @classmethod
     def process_logs(cls):
-        for log in cls.monitored_logs.values():
+        for log in list(cls.monitored_logs.values()):
             update_needed = False
 
             # Read new lines from the log
@@ -300,12 +251,20 @@ class Cockpit:
                 else:
                     break
 
-            # Check if the log has been reset (truncated or rewritten)
-            if os.path.getsize(log['path']) < log['position']:
+            # Check if the log has been reset (deleted, truncated or rewritten)
+            try:
+                if os.path.getsize(log['path']) < log['position']:
+                    update_needed = True
+                    log['file'].seek(0)
+                    log['position'] = log['file'].tell()
+                    cls.log_lines.append(f'log file {log["log_file"]} was rewritten or truncated.')
+            except FileNotFoundError:
+                # The log file has been deleted, we stop monitoring it
+                log['file'].close()
+                cls.monitored_logs.pop(log['log_file'])
+                cls.log_lines.append(f'log file {log["log_file"]} was deleted.')
                 update_needed = True
-                log['file'].seek(0)
-                log['position'] = log['file'].tell()
-                cls.log_lines.append(f'log file {log["log_file"]} was rewritten or truncated.')
+                continue
             
             # we're done
             log['position'] = log['file'].tell()
@@ -318,15 +277,20 @@ class Cockpit:
         timeout: int = 60, 
         tabs: int = 5, 
         clean_start: bool = False, 
-        raise_errors: bool = False, 
-        log_backfill: bool = False, 
+        raise_errors: bool = False,
+        log_backfill: bool = True, 
         page_length: int = 15,
-        log_height: int = 200
+        log_length: int = 18
         ):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
         It will continuously check for new display requests and update the cockpit accordingly.
         """
+        assert 1 <= timeout <= 1440, "timeout must be between 1 and 1440 minutes."
+        assert 1 <= tabs <= 20, "tabs must be between 1 and 20."
+        assert 1 <= page_length <= 100, "page_length must be between 1 and 100."
+        assert 1 <= log_length <= 100, "log_length must be between 1 and 100."
+        
         if clean_start:
             cls.clear()
 
@@ -334,10 +298,11 @@ class Cockpit:
         cls.raise_errors = raise_errors
         cls.monitored_logs = {}
         cls.log_backfill = log_backfill
-        cls.log_lines = ["waiting for logs..."]
+        cls.log_lines = deque(maxlen=200)
+        cls.log_lines.append("waiting for logs...")
         cls.log_content = ""
         cls.page_length = page_length
-        cls.log_height = log_height
+        cls.log_length = log_length
         cls.initialize()
 
         start_time = time.time()
