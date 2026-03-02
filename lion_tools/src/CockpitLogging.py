@@ -14,10 +14,10 @@ class CockpitLogging:
 
     @staticmethod
     @contextmanager
-    def monitor(clear_log=False):        
+    def monitor():        
         try:
             yield
-        except Exception as e:
+        except BaseException:
             traceback.print_exc()
             raise
 
