@@ -112,7 +112,7 @@ class Cockpit:
                 width="99.9%",
                 # height=height,
                 # flex=f"0 0 {height}",  # fixed height
-                # overflow="hidden", # handle scroll inside iframes
+                overflow="hidden",
                 # margin="2px",
                 # padding="0px",
                 # border_radius='6px',
@@ -295,7 +295,8 @@ class Cockpit:
         raise_errors: bool = False,
         log_backfill: bool = True, 
         page_length: int = 15,
-        log_length: int = 18
+        log_length: int = 18,
+        log_history: int = 200,
         ):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
@@ -305,6 +306,7 @@ class Cockpit:
         assert 1 <= tabs <= 20, "tabs must be between 1 and 20."
         assert 1 <= page_length <= 100, "page_length must be between 1 and 100."
         assert 1 <= log_length <= 100, "log_length must be between 1 and 100."
+        assert 10 <= log_history <= 2000, "log_history must be between 10 and 2000 lines."
         
         if clean_start:
             cls.clear()
@@ -313,7 +315,7 @@ class Cockpit:
         cls.raise_errors = raise_errors
         cls.monitored_logs = {}
         cls.log_backfill = log_backfill
-        cls.log_lines = deque(maxlen=200)
+        cls.log_lines = deque(maxlen=log_history)
         cls.log_lines.append("Waiting for logs...")
         cls.log_content = ""
         cls.page_length = page_length
