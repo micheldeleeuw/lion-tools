@@ -293,17 +293,23 @@ class Cockpit:
         tabs: int = 5, 
         clean_start: bool = False, 
         raise_errors: bool = False,
-        log_backfill: bool = True, 
-        page_length: int = 15,
-        log_length: int = 18,
+        log_backfill: bool = True,
+        size: int = 3,
+        page_length: int = None,
+        log_length: int = None,
         log_history: int = 200,
         ):
         """
         Cockpit server main loop. This method will be called when the cockpit server is started.
         It will continuously check for new display requests and update the cockpit accordingly.
         """
+
+        page_length = int(size * 3) if page_length is None else page_length
+        log_length = int(size * 2.5) if log_length is None else log_length
+        
         assert 1 <= timeout <= 1440, "timeout must be between 1 and 1440 minutes."
         assert 1 <= tabs <= 20, "tabs must be between 1 and 20."
+        assert 1 <= size <= 10, "size must be between 1 and 10."
         assert 1 <= page_length <= 100, "page_length must be between 1 and 100."
         assert 1 <= log_length <= 100, "log_length must be between 1 and 100."
         assert 10 <= log_history <= 2000, "log_history must be between 10 and 2000 lines."
