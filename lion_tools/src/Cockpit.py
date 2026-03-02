@@ -54,6 +54,7 @@ class Cockpit:
                 f"global_temp.{params['temp_view_name']}"
             )
             cls.update_log_panel(f"Loading {params.get('name', 'no name')}...")
+            params["page_length"] = cls.page_length
             DataFrameDisplay.display(df, **params)
         except Exception as e:
             result_html = (
@@ -178,7 +179,6 @@ class Cockpit:
                 .replace("{log_height}", str(cls.log_length*12*1.2 + 22))  # pixel perfect estimate of log height based on number of lines
                 .replace("{log}", cls.log_content)
             )
-
 
     @classmethod
     def sync_htmls_to_tabs(cls):
