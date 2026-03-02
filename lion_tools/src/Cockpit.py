@@ -44,7 +44,7 @@ class Cockpit:
         else:
             json_file = overview["new_json"][0]
 
-        params = json.loads(cls.load_file(json_file), type='cockpit_json')
+        params = json.loads(cls.load_file(json_file, type='cockpit_json'))
 
         params["display"] = False
         params["file_path"] = params["html_file"]
