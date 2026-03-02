@@ -12,7 +12,7 @@
 ">
     <div style="
         height: 100%;
-        overflow: auto;
+        overflow: auto; 
         display: flex;
         flex-direction: column-reverse;
     ">
@@ -20,6 +20,8 @@
             margin: 0; 
             background: transparent; 
             line-height: 1.2;
+            white-space: pre-wrap; /* Forces long text to wrap */
+            word-break: break-word; /* Prevents long words/paths from breaking the layout */
         "><code style="background: transparent;">{log}</code></pre>
     </div>
 </div>
