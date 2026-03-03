@@ -6,11 +6,19 @@
 <title>DataTable View</title>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
 <style>
+    html {
+        box-sizing: border-box;
+    }
+    *, *:before, *:after {
+        box-sizing: inherit;
+    }
+
     body { 
         font-family: Arial, sans-serif; 
-        margin: 15px;
+        margin: 0; /* Removed the 15px margin to prevent iframe scrollbars */
         background: #f0f0f0;
     }
+
     #mainTable {
         width: 100%;
         background: white;
@@ -23,11 +31,14 @@
     #mainTable tr {
         height: 12px; /* minimize row height */
     }
+    
     .dataTables_wrapper {
         padding: 20px;
         background: white;
         border-radius: 8px;
+        width: 100%;
     }
+    
     #columnBtn {
         padding: 4px 12px;
         background: #5f7ea8;
@@ -148,6 +159,7 @@
         align-items: center;
         position: relative;
     }
+
     /* Make DataTables controls text smaller */
     .dataTables_wrapper .dataTables_info,
     .dataTables_wrapper .dataTables_paginate,

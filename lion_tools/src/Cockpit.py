@@ -99,8 +99,8 @@ class Cockpit:
                 height=height,
                 flex=f"0 0 {height}",  # fixed height
                 overflow="hidden", # handle scroll inside iframes
-                margin="2px",
-                padding="0px",
+                margin="0px",
+                padding="10px",
                 border_radius='6px',
             ),
         )
@@ -123,7 +123,7 @@ class Cockpit:
         cls.main_panel = widgets.VBox(
             [css_injection, cls.tabs_panel, cls.log_panel],
             layout=widgets.Layout(
-                width="100%",
+                width="99.9%",
                 height="auto",  # Changed to fit total content
                 display="flex",
                 flex_flow="column",
