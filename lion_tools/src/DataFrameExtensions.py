@@ -63,7 +63,12 @@ class DataFrameExtensions:
         identified_sources = []
         _loop_plan(json.loads(df._jdf.queryExecution().analyzed().prettyJson()))
 
-        return identified_sources
+        _identified_sources = []
+        for source in identified_sources:
+            if source not in _identified_sources:
+                _identified_sources.append(source)
+
+        return _identified_sources
 
     @staticmethod
     def transform_column_expressions(df: DataFrame, *col_exprs, **kwargs) -> list:
