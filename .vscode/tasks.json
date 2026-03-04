@@ -88,13 +88,13 @@
             "problemMatcher": []
         },
         {
-            "label": "Run test",
+            "label": "Run test_group",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/bin/python",
             "args": [
                 "-m",
                 "pytest",
-                "tests/test_snapshot.py",
+                "tests/test_group.py",
                 "-v",
                 "-s"
             ],

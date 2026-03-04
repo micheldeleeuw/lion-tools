@@ -219,6 +219,8 @@ class DataFrameGroup():
         by = [by] if isinstance(by, str) else by
         by = DataFrameExtensions.transform_column_expressions(self.df, *by, include_sort=False)
 
+        print(by, self.by_strings)
+
         assert not (sections and sub_totals), "Sections and sub_totals cannot be used together."
         assert not (by == [] and (sections or sub_totals)
             ), "Sections and sub_totals are not supported without by variables."

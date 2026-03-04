@@ -70,7 +70,7 @@ class Cockpit:
             if cls.raise_errors:
                 raise
         finally:
-            cls.update_log_panel(" Done", new_line=False)
+            cls.update_log_panel(" done", new_line=False)
 
     @classmethod
     def initialize(cls):
@@ -100,7 +100,7 @@ class Cockpit:
                 flex=f"0 0 {height}",  # fixed height
                 overflow="hidden", # handle scroll inside iframes
                 margin="0px",
-                padding="10px",
+                padding="0px",
                 border_radius='6px',
             ),
         )
@@ -112,7 +112,7 @@ class Cockpit:
                 width="99.9%",
                 # height=height,
                 # flex=f"0 0 {height}",  # fixed height
-                overflow="hidden",
+                # overflow="hidden",
                 # margin="2px",
                 # padding="0px",
                 # border_radius='6px',
