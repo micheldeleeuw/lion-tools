@@ -10,10 +10,17 @@ class DataFrameGroup():
 
     def __init__(self, df: DataFrame, *by: list[str], **kwargs):
         self.df = df
-        self.by = DataFrameExtensions.transform_column_expressions(df, *by, include_sort=False)
-        self.sort_by = [(i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1) for i, col in enumerate(by)]
-        self.by_strings = ['*'] if by == ['*'] else [col._jc.toString() for col in self.by]
         self.columns = df.columns
+
+        if by == ['*']:
+            self.by = ['*']
+            self.sort_by = []
+            self.by_strings = ['*']
+        else:
+            self.by = DataFrameExtensions.transform_column_expressions(df, *by, include_sort=False)
+            self.sort_by = [(i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1) for i, col in enumerate(by)]
+            self.by_strings = [col._jc.toString() for col in self.by]
+            
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
         self.columns_nummeric = [
             dtype[0] for dtype in df.dtypes
