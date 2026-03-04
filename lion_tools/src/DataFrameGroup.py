@@ -12,7 +12,7 @@ class DataFrameGroup():
         self.df = df
         self.by = DataFrameExtensions.transform_column_expressions(df, *by, include_sort=False)
         self.sort_by = [(i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1) for i, col in enumerate(by)]
-        self.by_strings = [col._jc.toString() for col in self.by]
+        self.by_strings = ['*'] if by == ['*'] else [col._jc.toString() for col in self.by]
         self.columns = df.columns
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
         self.columns_nummeric = [
@@ -218,8 +218,6 @@ class DataFrameGroup():
         by = by or []
         by = [by] if isinstance(by, str) else by
         by = DataFrameExtensions.transform_column_expressions(self.df, *by, include_sort=False)
-
-        print(by, self.by_strings)
 
         assert not (sections and sub_totals), "Sections and sub_totals cannot be used together."
         assert not (by == [] and (sections or sub_totals)
