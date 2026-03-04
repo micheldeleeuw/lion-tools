@@ -12,6 +12,8 @@ class DataFrameGroup():
         self.df = df
         self.columns = df.columns
 
+        print(by)
+
         if by == ['*']:
             self.by = ['*']
             self.by_strings = ['*']
@@ -21,6 +23,8 @@ class DataFrameGroup():
             self.by_strings = [col._jc.toString() for col in self.by]
             self.sort_by = [(i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1) for i, col in enumerate(by)]
             
+        print(by, self.by, self.by_strings, self.sort_by)
+        
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
         self.columns_nummeric = [
             dtype[0] for dtype in df.dtypes
