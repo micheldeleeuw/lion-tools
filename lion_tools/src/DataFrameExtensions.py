@@ -80,7 +80,7 @@ class DataFrameExtensions:
             col_expr = col_exprs[i]
 
             if isinstance(col_expr, Column):
-                # real column leave it alone, user obviously knows what they are doing
+                # real column, leave it alone, user obviously knows what they are doing
                 continue
 
             if isinstance(col_expr, int) and col_expr < 0:
