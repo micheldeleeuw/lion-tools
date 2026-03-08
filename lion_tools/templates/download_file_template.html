@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        html {
+            box-sizing: border-box;
+        }
+        *, *:before, *:after {
+            box-sizing: inherit;
+        }
+
+        .fake-body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+
+        .download-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60px;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+            background-color: #5f7ea8;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.15s;
+        }
+        
+        .download-btn:hover {
+            background-color: #357abd;
+        }
+        
+        .download-btn:active {
+            background-color: #2a5fa0;
+        }
+    </style>
+</head>
+<body>
+    <div class="fake-body">
+    <div class="download-container">
+        <a 
+           class="download-btn" 
+           download="{title}" 
+           href="data:{type};base64,{content}">
+           Download {title}
+        </a>
+    </div>
+    </div>
+</body>
+</html>

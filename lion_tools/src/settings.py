@@ -1,4 +1,3 @@
-import os
 import pathlib
 import tempfile
 import time
@@ -7,11 +6,13 @@ from .get_or_create_spark import get_or_create_spark
 
 LION_TOOLS_PATH = pathlib.Path(tempfile.gettempdir(), "lion_tools")
 LION_TOOLS_COCKPIT_PATH = LION_TOOLS_PATH.joinpath("cockpit")
+LION_TOOLS_TMP_PATH = LION_TOOLS_PATH.joinpath("tmp")
 # LION_TOOLS_COCKPIT_DISPLAYS_PATH = LION_TOOLS_COCKPIT_PATH.joinpath("dataframe_displays.log")
 LION_TOOLS_PATH_CLEANUP_AGE_SECONDS = 60 * 60 * 24  # 24 hours
 
 LION_TOOLS_PATH.mkdir(exist_ok=True)
 LION_TOOLS_COCKPIT_PATH.mkdir(exist_ok=True)
+LION_TOOLS_TMP_PATH.mkdir(exist_ok=True)
 
 def cleanup_old_files(clean_all=False):
     cutoff = time.time() - LION_TOOLS_PATH_CLEANUP_AGE_SECONDS
@@ -47,8 +48,3 @@ def cleanup_temp_views(keep_last=10, clean_all=False):
             spark.catalog.dropGlobalTempView(view_name)
         except Exception:
             pass  # Silently ignore errors
-    
-def on_databricks():
-    if os.getenv("DATABRICKS_RUNTIME_VERSION") is not None:
-        return True
-    return False

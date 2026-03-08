@@ -1,20 +1,20 @@
 from pprint import pprint
 from .settings import LION_TOOLS_PATH, LION_TOOLS_COCKPIT_PATH
-from .settings import cleanup_old_files, cleanup_temp_views, on_databricks
+from .settings import cleanup_old_files, cleanup_temp_views
 from .DataFrameDisplay import DataFrameDisplay
 from .DataFrameExtensions import DataFrameExtensions
 from .DataFrameTap import DataFrameTap
+from .DataFrameExcel import DataFrameExcel
 from datetime import datetime
 import json
 import os
 import time
-import pathlib
 import base64
 from IPython.display import display as ipython_display, HTML
 import ipywidgets as widgets
 from .get_or_create_spark import get_or_create_spark
 from collections import deque
-
+from .Tools import Tools
 
 class Cockpit:
     """
@@ -44,7 +44,7 @@ class Cockpit:
         else:
             json_file = overview["new_json"][0]
 
-        params = json.loads(cls.load_file(json_file, type='cockpit_json'))
+        params = json.loads(Tools.load_file(json_file, type='cockpit_json'))
 
         params["display"] = False
         params["file_path"] = params["html_file"]
@@ -78,8 +78,8 @@ class Cockpit:
         cleanup_old_files()
         cleanup_temp_views()
 
-        cls.log_template = cls.load_file("log_template.html", type='template')
-        cls.error_template = cls.load_file("dataframe_error_template.html", type='template')
+        cls.log_template = Tools.load_file("log_template.html", type='template')
+        cls.error_template = Tools.load_file("dataframe_error_template.html", type='template')
         cls.init_tab = {
             "id": "1999_overview",
             "type": "start",
@@ -106,7 +106,7 @@ class Cockpit:
         )
         cls.update_tabs_panel()
 
-        css_injection = widgets.HTML(value=cls.load_file("tabs_css_injection.html", type='template'))
+        css_injection = widgets.HTML(value=Tools.load_file("tabs_css_injection.html", type='template'))
         cls.log_panel = widgets.HTML(
             layout=widgets.Layout(
                 width="99.9%",
@@ -133,42 +133,19 @@ class Cockpit:
             ),
         )
 
-        if on_databricks():
-            # use the default display method in Databricks, as it can handle the interactivity
-            # and sandboxing better than iframes in that environment
-            try:
-                _display = eval("display")
-            except:
-                raise Exception(
-                    "Could not find the display function to render the cockpit in Databricks."
-                )
-            else:
-                _display(cls.main_panel)
-        else:
-            # use the IPython display method in other environments
-            ipython_display(cls.main_panel, sandbox="allow-scripts allow-same-origin")
+        Tools.display(cls.main_panel, sandbox="allow-scripts allow-same-origin")
 
     @classmethod
     def clear(cls):
         cleanup_old_files(clean_all=True)
         cleanup_temp_views(clean_all=True)
-
-    @staticmethod
-    def load_file(name: str, type='template') -> str:
-        if type == 'template':
-            path = pathlib.Path(__file__).parent.parent / "templates" / name
-        elif type == 'cockpit_json':
-            path = LION_TOOLS_COCKPIT_PATH.joinpath(name + ".json")
-        elif type == 'cockpit_html':
-            path = LION_TOOLS_COCKPIT_PATH.joinpath(name + ".html")
-        else:
-            path=name
-
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
         
     @classmethod
     def update_tabs_panel(cls):
+        # if the initial tab is still there and we have more than 1 tab, remove the initial tab
+        if len(cls.tabs) > 1 and cls.init_tab in cls.tabs:
+            cls.tabs.remove(cls.init_tab)
+        cls.tabs = cls.tabs[: cls.max_tabs]  # keep only the latest max_tabs tabs
         cls.tabs_panel.children = tuple(tab.get("content") for tab in cls.tabs)
         for i, tab in enumerate(cls.tabs):
             cls.tabs_panel.set_title(i, tab.get("name"))
@@ -196,17 +173,48 @@ class Cockpit:
             )
 
     @classmethod
+    def sync_xlsx_to_tabs(cls):
+        overview = cls.get_overview()
+        xlsx_files = overview["xlsx"]
+        max_xslsx_in_tabs = max([
+            '_'.join(tab['id'].split('_')[-3:])
+            for tab in cls.tabs if tab.get("type") == "xlsx"
+        ] + ['0'])  # in case there are no xlsx tabs yet
+        
+        new_xlsx_files = [
+            xlsx for xlsx in xlsx_files
+            if xlsx not in [tab['id'] for tab in cls.tabs]
+            and '_'.join(xlsx.split('_')[-3:]) > max_xslsx_in_tabs
+        ]
+
+        for xlsx in new_xlsx_files:
+            title = '_'.join(xlsx.replace('_lion_tools_tmp_', '').split('_')[:-3]) + '.xlsx'
+            html_content = DataFrameExcel.download_button(
+                path=str(LION_TOOLS_COCKPIT_PATH.joinpath(xlsx)), 
+                display_or_return='return',
+                title = title,
+            )
+            new_tab = {
+                "id": xlsx,
+                "type": "xlsx",
+                "name": title,  # remove prefix and timestamp from name
+                "content": widgets.HTML(value=html_content),
+            }
+            cls.tabs.insert(0, new_tab)  # move newly added tab to the left-most position
+            cls.update_tabs_panel()
+
+    @classmethod
     def sync_htmls_to_tabs(cls):
         overview = cls.get_overview()
         htmls = overview["html"]
-        lastest_id_in_tabs = max([tab.get("id") for tab in cls.tabs])
+        lastest_id_in_tabs = max([tab.get("id") for tab in cls.tabs if tab['type'] == 'html'] + ['0'])  # in case there are no html tabs yet
         new_htmls = [html for html in htmls if html > lastest_id_in_tabs][
             -cls.max_tabs :
         ]
 
         for html in new_htmls:
-            html_content = cls.load_file(html, type='cockpit_html')
-            params = json.loads(cls.load_file(html, type='cockpit_json'))
+            html_content = Tools.load_file(html, type='cockpit_html')
+            params = json.loads(Tools.load_file(html, type='cockpit_json'))
             encoded_html = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
             page_length = int(params.get("page_length", 20))
             max_height = str(int(page_length * 25 + 165)) + "px"
@@ -226,13 +234,10 @@ class Cockpit:
                 "name": params.get("name", "no name"),
                 "content": widgets.HTML(value=iframe_html),
             }
+
             cls.tabs.insert(
                 0, new_tab
             )  # move newly added tab to the left-most position
-            # if the initial tab is still there and we have more than 1 tab, remove the initial tab
-            if len(cls.tabs) > 1 and cls.init_tab in cls.tabs:
-                cls.tabs.remove(cls.init_tab)
-            cls.tabs = cls.tabs[: cls.max_tabs]  # keep only the latest max_tabs tabs
             cls.update_tabs_panel()
 
     @classmethod
@@ -339,10 +344,13 @@ class Cockpit:
             # 2. Get new lines from the monitored log files
             cls.process_logs()
 
-            # 3. Add new html files to the tabs (both lazy and non-lazy mode)
+            # 3. Add new xlsx files to the tabs
+            cls.sync_xlsx_to_tabs()
+
+            # 4. Add new html files to the tabs (both lazy and non-lazy mode)
             cls.sync_htmls_to_tabs()
 
-            # 4. Create html files for new json files (only lazy mode)
+            # 5. Create html files for new json files (only lazy mode)
             cls.create_html_for_json()
             if time.time() - start_time > timeout * 60:
                 print("Timeout reached, stopping the Cockpit.")
@@ -358,6 +366,7 @@ class Cockpit:
         files.sort()
         html = [f.replace(".html", "") for f in files if f.endswith(".html")]
         json = [f.replace(".json", "") for f in files if f.endswith(".json")]
+        xlsx = [f for f in files if f.endswith(".xlsx")]
         log = [f for f in files if f.endswith(".log")]
         json_with_html = [f for f in json if f in html]
         new_json = [f for f in json if f not in json_with_html]
@@ -374,6 +383,7 @@ class Cockpit:
             "new_json": new_json,
             "html": html,
             "log": log,
+            "xlsx": xlsx,
             "orphan_temp_views": orphan_temp_views,
             "cockpit_path": str(LION_TOOLS_COCKPIT_PATH),
         }
@@ -387,7 +397,7 @@ class Cockpit:
         """
         Currently only Databricks is supported for lazy mode.
         """
-        if on_databricks():
+        if Tools.on_databricks():
             return True
         else:
             return False

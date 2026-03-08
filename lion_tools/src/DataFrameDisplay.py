@@ -8,6 +8,7 @@ from IPython.display import HTML as display_HTML
 from IPython.display import display
 from .DataFrameExtensions import DataFrameExtensions
 from .DataFrameTap import DataFrameTap
+from .Tools import Tools
 
 
 class DataFrameDisplay():
@@ -179,7 +180,7 @@ class DataFrameDisplay():
         dtypes = [dtype for dtype in df.dtypes if dtype[0] != '_rownum']
         nummeric_columns = [
             i for i, (col, dtype) in enumerate(dtypes)
-            if dtype in ['int', 'bigint', 'double', 'float', 'decimal'] or dtype.startswith('decimal(')
+            if Tools.check_data_type(dtype, 'num')
         ]
 
         # If sorting is requested, we do this the real way, with a rownum

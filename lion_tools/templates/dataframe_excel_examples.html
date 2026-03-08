@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>to_excel() Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        pre code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            border-radius: 0.5rem;
+        }
+        .param-list > li { margin-bottom: 0.75rem; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-6 md:p-10">
+    <div class="max-w-4xl mx-auto">
+        
+        <header class="mb-10 border-b border-slate-200 pb-6">
+            <h1 class="text-4xl font-extrabold text-blue-600 mb-2">to_excel()</h1>
+            <p class="text-slate-600 text-lg">Creates an Excel worksheet from Spark DataFrames with extended formatting functionality.</p>
+        </header>
+
+        <section class="mb-10 bg-white shadow-sm border border-slate-200 rounded-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4 text-slate-800">Features</h2>
+            <ul class="list-disc list-inside text-slate-700 space-y-1 mb-6">
+                <li>Multiple sheets by creating a sheet per dataframe</li>
+                <li>Formatting of values</li>
+                <li>Background colors of columns</li>
+                <li>Set column width to longest value (automatic)</li>
+                <li>Autofilter (automatic)</li>
+            </ul>
+
+            <h2 class="text-2xl font-semibold mb-4 text-slate-800 mt-8">Parameters</h2>
+            <ul class="param-list text-slate-700">
+                <li>
+                    <strong>*dfs:</strong> list of dataframes or dictionaries with more details. See examples for the workings of this parameter.
+                    <div class="mt-3 mb-4">
+                        <span class="text-sm font-semibold text-slate-500 uppercase tracking-wider">Format Definition:</span>
+                        <pre><code class="language-python p-4 mt-2">dict(
+    df=dataframe,
+    name=sheet name,
+    column_options=[
+        'column name': dict(
+            width=1-...,
+            format='format code, see below',
+            bg_color='color name or #code',
+            other options, see https://xlsxwriter.readthedocs.io/format.html#format
+            for details
+        ),
+        ...
+    ],
+    autofilter=True/False,
+    index=True/False,
+    autofit=True/False,
+    freeze_first_row=True/False,
+    border=0-13,
+    border_color='color name or #code',
+    num_format='format code, see below, or Excel native format',
+),
+dict(
+    ... -> additional entry per dataframe=sheet
+),</code></pre>
+                    </div>
+                </li>
+            </ul>
+        </section>
+
+        <section>
+            <h2 class="text-3xl font-bold mb-6 text-slate-800">Usage Examples</h2>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 1: Standard Export</h3>
+                    <p class="text-slate-600 text-sm mt-1">Export the dataframe df to file my_file.xlsx in the standard export directory (/Workspace/Shared/excel_exports/)</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel(df, 'my_file.xlsx')</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 2: Subdirectory Export</h3>
+                    <p class="text-slate-600 text-sm mt-1">Export to a subdirectory of the standard export directory.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel(df, 'mdleeuw/my_file.xlsx')</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 3: Full Path</h3>
+                    <p class="text-slate-600 text-sm mt-1">Export to a full path in the Workspace.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel(df, path='/Workspace/Teams/BestTeam/some_sub_sir/my_file.xlsx')</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 4: Column Colors</h3>
+                    <p class="text-slate-600 text-sm mt-1">Set the color of some of the columns.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel(
+    {
+        'df': df,
+        'column_options': {
+            'article_id': {'bg_color': 'yellow'},
+            'article_desc': {'bg_color': '#FFF0F0'},
+        },
+    },
+    file_name='my_file.xlsx'
+)</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 5: Numeric Formatting</h3>
+                    <p class="text-slate-600 text-sm mt-1">Set format of all numeric columns to have 0 decimals and thousands separator.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel(
+    {
+        'df': df,
+        'num_format': 'number0',
+    },
+    file_name='my_file.xlsx'
+)</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 6: Specific Column Formatting</h3>
+                    <p class="text-slate-600 text-sm mt-1">Set format of columns to have thousands separator, one column with 0 decimals and one column with a euro sign and 2 decimals.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel(
+    {
+        'df': df,
+        'column_options': {
+            'jobber_end_qty_at_financial_cost_price_amt': {'format': 'number0'},
+            'jobber_end_qty_at_csp_amt': {'format': 'euro2'},
+        },
+    },
+    file_name='my_file.xlsx'
+)</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 7: Multiple DataFrames to Sheets</h3>
+                    <p class="text-slate-600 text-sm mt-1">Export 2 dataframes to 2 sheets in the same Excel file.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel([voorbeeld_df, voorbeeld2_df], file_name='my_file.xlsx')
+
+# or identical:
+to_excel([{'df': voorbeeld_df}, {'df': voorbeeld2_df}], file_name='my_file.xlsx')</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 8: Named Sheets</h3>
+                    <p class="text-slate-600 text-sm mt-1">2 named sheets.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel([
+    {'df': voorbeeld_df, 'name': 'Revenue'},
+    {'df': voorbeeld2_df, 'name': 'Inventory'}
+], file_name='my_file.xlsx')</code></pre>
+                </div>
+            </div>
+
+            <div class="mb-8 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden">
+                <div class="bg-slate-100 px-5 py-3 border-b border-slate-200">
+                    <h3 class="font-bold text-slate-800">Example 9: Mixed Options</h3>
+                    <p class="text-slate-600 text-sm mt-1">First sheet with options, second sheet without options.</p>
+                </div>
+                <div class="text-sm">
+                    <pre><code class="language-python p-5">to_excel([
+    {
+        'df': voorbeeld_df, 'name': 'Revenue', 'column_options': {
+            'revenue_amount': {'bg_color': 'yellow', 'format': 'euro0'},
+            'quantity': {'bg_color': '#FFF0F0'},
+        }
+    },
+    voorbeeld2_df,
+], file_name='my_file.xlsx')</code></pre>
+                </div>
+            </div>
+
+        </section>
+    </div>
+</body>
+</html>
