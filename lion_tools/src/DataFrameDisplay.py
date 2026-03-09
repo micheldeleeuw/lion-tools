@@ -261,7 +261,7 @@ class DataFrameDisplay():
                     margin='0'
                     frameborder='0'
                     sandbox='allow-scripts allow-same-origin'
-                    style='border: 1px solid #ddd; overflow: hidden;'>
+                    style='border: 0px; overflow: hidden;'>
             </iframe>
         """            
 
