@@ -219,7 +219,7 @@ class Cockpit:
             params = json.loads(Tools.load_file(html, type='cockpit_json'))
             encoded_html = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
             page_length = int(params.get("page_length", 20))
-            max_height = str(int(page_length * 25 + 165)) + "px"
+            max_height = str(int(page_length * 25 + 130)) + "px"
             iframe_html = f"""
                 <iframe
                     src="data:text/html;base64,{encoded_html}"
