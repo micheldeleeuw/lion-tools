@@ -248,6 +248,9 @@ class DataFrameGroup():
 
         return self
 
+    def count(self, **kwargs) -> DataFrame:
+        return self.agg("count(*) as count", **kwargs)
+
     def __getattr__(self, name):
         if name in self.single_aggregation_functions():
             def wrapper(*args, **kwargs):
