@@ -225,7 +225,7 @@ class Cockpit:
                     height="{max_height}"
                     frameborder="0"
                     sandbox='allow-scripts allow-same-origin'
-                    style="border: 1px solid #ddd; margin: 0px; padding: 0px;">
+                    style="border: 1px solid #ddd; margin: 0px; padding: 0px;  overflow: hidden;">
                 </iframe>
             """
             new_tab = {
