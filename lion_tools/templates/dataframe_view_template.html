@@ -15,7 +15,7 @@
 
     body { 
         font-family: Arial, sans-serif; 
-        margin: 0; /* Removed the 15px margin to prevent iframe scrollbars */
+        margin: 0; 
         background: #f0f0f0;
     }
 
@@ -29,7 +29,7 @@
         white-space: nowrap;
     }
     #mainTable tr {
-        height: 12px; /* minimize row height */
+        height: 12px;
     }
     
     .dataTables_wrapper {
@@ -39,6 +39,21 @@
         width: 100%;
     }
     
+    /* New Reset Button Styles */
+    #resetBtn {
+        padding: 4px 12px;
+        background: #95a5a6;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        margin-right: 10px;
+    }
+    #resetBtn:hover {
+        background: #7f8c8d;
+    }
+
     #columnBtn {
         padding: 4px 12px;
         background: #5f7ea8;
@@ -160,14 +175,12 @@
         position: relative;
     }
 
-    /* Make DataTables controls text smaller */
     .dataTables_wrapper .dataTables_info,
     .dataTables_wrapper .dataTables_paginate,
     .dataTables_wrapper .dataTables_length,
     .dataTables_wrapper .dataTables_filter label {
         font-size: 12px;
     }
-    /* Make the length menu dropdown smaller */
     .dataTables_wrapper .dataTables_length select {
         font-size: 11px;
         padding: 2px 4px;
@@ -201,11 +214,16 @@ $(document).ready(function() {
         ],
     });
     
-    // Add button to the left of search bar
+    // Capture original state for the reset button
+    // JSON parse/stringify creates a clean copy of the ordering array
+    var initialOrder = table.order() ? JSON.parse(JSON.stringify(table.order())) : [];
+    var initialLength = table.page.len();
+
+    // Add Reset and Column buttons
+    var resetBtn = $('<button id="resetBtn">Reset</button>');
     var columnBtn = $('<button id="columnBtn">Columns</button>');
     var columnList = $('<div id="columnList"></div>');
     
-    // Add select/deselect all buttons
     var selectButtonsDiv = $('<div class="select-buttons"></div>');
     var selectAllBtn = $('<button class="select-btn">Select All</button>');
     var deselectAllBtn = $('<button class="select-btn">Deselect All</button>');
@@ -214,7 +232,6 @@ $(document).ready(function() {
     
     var columnItemsContainer = $('<div class="column-items-container"></div>');
     
-    // Populate the list with fixed options
     var options = {columns};
     options.forEach(function(option) {
         var columnName = option.split('---')[0];
@@ -227,17 +244,14 @@ $(document).ready(function() {
         columnItemsContainer.append(item);
     });
     
-    // Add copy buttons container
     var buttonsContainer = $('<div class="buttons-container"></div>');
     
-    // First row: select/deselect buttons
     var selectButtonsRow = $('<div class="button-row"></div>');
     var selectAllBtn = $('<button class="select-btn">Select All</button>');
     var deselectAllBtn = $('<button class="select-btn">Deselect All</button>');
     selectButtonsRow.append(selectAllBtn);
     selectButtonsRow.append(deselectAllBtn);
     
-    // Second row: copy buttons
     var copyButtonsRow = $('<div class="button-row"></div>');
     var copyBtn1 = $('<button class="copy-btn" data-format="simple">Copy 1</button>');
     var copyBtn2 = $('<button class="copy-btn" data-format="quoted">Copy 2</button>');
@@ -252,34 +266,41 @@ $(document).ready(function() {
     columnList.append(columnItemsContainer);
     columnList.append(buttonsContainer);
     
+    // Insert Reset button first, then Column button so Reset ends up on the far left
+    $('.dataTables_filter label').before(resetBtn);
     $('.dataTables_filter label').before(columnBtn);
     $('.dataTables_filter').append(columnList);
     
+    // Reset button logic
+    resetBtn.on('click', function(e) {
+        e.preventDefault();
+        table.search('');              // Clear search filter
+        table.order(initialOrder);     // Reset to original column sort
+        table.page.len(initialLength); // Reset to original page length
+        table.draw();                  // Redraw the table to apply changes
+    });
+
     // Toggle column list on button click
     columnBtn.on('click', function(e) {
         e.stopPropagation();
         columnList.toggleClass('show');
     });
     
-    // Handle column item clicks to toggle selection
     columnList.on('click', '.column-item', function(e) {
         e.stopPropagation();
         $(this).toggleClass('selected');
     });
     
-    // Handle select all button
     selectAllBtn.on('click', function(e) {
         e.stopPropagation();
         $('.column-item').addClass('selected');
     });
     
-    // Handle deselect all button
     deselectAllBtn.on('click', function(e) {
         e.stopPropagation();
         $('.column-item').removeClass('selected');
     });
     
-    // Copy selected columns to clipboard with different formats
     function copyToClipboard(format, button) {
         var selectedColumns = [];
         $('#columnList .column-item.selected').each(function() {
@@ -290,21 +311,17 @@ $(document).ready(function() {
             var columnString;
             
             if (format === 'simple') {
-                // col1, col2, col3
                 columnString = selectedColumns.join(', ');
             } else if (format === 'quoted') {
-                // "col1", "col2", "col3"
                 columnString = selectedColumns.map(function(col) {
                     return '"' + col + '"';
                 }).join(', ');
             } else if (format === 'quoted-newline') {
-                // "col1",\n"col2",\n"col3",
                 columnString = selectedColumns.map(function(col) {
                     return '"' + col + '"';
                 }).join(',\n') + ',';
             }
             
-            // Create a temporary textarea to copy from
             var textarea = $('<textarea>');
             textarea.val(columnString);
             textarea.css({
@@ -343,14 +360,12 @@ $(document).ready(function() {
         }
     }
     
-    // Handle clicks on all copy buttons
     columnList.on('click', '.copy-btn', function(e) {
         e.stopPropagation();
         var format = $(this).data('format');
         copyToClipboard(format, $(this));
     });
     
-    // Close column list when clicking outside
     $(document).on('click', function(e) {
         if (!$(e.target).closest('#columnBtn, #columnList').length) {
             columnList.removeClass('show');
