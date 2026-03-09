@@ -213,6 +213,8 @@ class Cockpit:
         ]
 
         for html in new_htmls:
+            # we load the html from file and encode it to add it as hardcoded source to a iframe
+            # that is will be the content of the tab
             html_content = Tools.load_file(html, type='cockpit_html')
             params = json.loads(Tools.load_file(html, type='cockpit_json'))
             encoded_html = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
