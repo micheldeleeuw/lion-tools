@@ -90,7 +90,7 @@ class Cockpit:
             "file": None,
         }
         cls.tabs = [cls.init_tab]
-        height = str(int((cls.page_length * 25) + 197)) + 'px'
+        height = str(int((cls.page_length * 25) + 162)) + 'px'
 
         cls.tabs_panel = widgets.Tab(
             children=[],
