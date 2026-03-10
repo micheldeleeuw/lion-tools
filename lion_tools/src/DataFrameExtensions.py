@@ -5,6 +5,7 @@ from pyspark.sql.column import Column
 from pyspark.sql import DataFrame
 import inspect
 import json
+import re
 
 
 class DataFrameExtensions:
@@ -18,8 +19,11 @@ class DataFrameExtensions:
         # Extend DataFrame with new methods
         DataFrame.eCockpit = DataFrameExtensions.cockpit
         DataFrame.eDisplay = DataFrameExtensions.display
+        DataFrame.eExcel = DataFrameExtensions.excel
+        DataFrame.eExcelCockpit = DataFrameExtensions.excel_cockpit
         DataFrame.eGroup = DataFrameExtensions.group
         DataFrame.eName = DataFrameExtensions.name
+        DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns
         DataFrame.eTap = DataFrameExtensions.tap
         DataFrame.eTapEnd = DataFrameExtensions.tap_end
         DataFrame.eSort = DataFrameExtensions.sort
@@ -31,6 +35,22 @@ class DataFrameExtensions:
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
+
+    def excel(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
+        from .DataFrameExcel import DataFrameExcel
+        
+        DataFrameExcel.to_excel(*([df] + list(dfs)), name=name)
+    
+        if passthrough:
+            return df
+
+    def excel_cockpit(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
+        from .DataFrameExcel import DataFrameExcel
+        
+        DataFrameExcel.to_cockpit(*([df] + list(dfs)), name=name)
+    
+        if passthrough:
+            return df
 
     @staticmethod
     def sources(df: DataFrame) -> list:
@@ -168,3 +188,36 @@ class DataFrameExtensions:
     def tap_end(df: DataFrame) -> DataFrame:
         from .DataFrameTap import DataFrameTap
         return DataFrameTap.tap_end()
+
+    @staticmethod
+    def normalize_columns(
+            df: DataFrame,
+            replace_special_characters: bool = True,
+            replace_spaces: bool = True,
+            rename_duplicates: bool = True,
+            compress_underscores: bool = True,
+        ) -> DataFrame:
+        
+        new_columns = df.columns
+        if replace_special_characters:
+            new_columns = [re.sub(r'[!"#$%&\'()*+,\-./`]', '_', col.lower()) for col in new_columns]
+
+        if replace_spaces:
+            new_columns = [col.replace(" ", "_") for col in new_columns]
+
+        if compress_underscores:
+            new_columns = [re.sub(r'_+', '_', col) for col in new_columns]
+            new_columns = [col.strip('_') for col in new_columns]
+
+        if rename_duplicates:
+            column_counts = {}
+            _new_columns = new_columns
+            new_columns = []
+            for col in _new_columns:
+                if col in column_counts:
+                    new_columns.append(f"{col}_{column_counts[col]}")
+                    column_counts[col] += 1
+                else:
+                    new_columns.append(col)
+                    column_counts[col] = 1
+        return df.toDF(*new_columns)
