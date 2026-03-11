@@ -90,7 +90,7 @@ class Cockpit:
             "file": None,
         }
         cls.tabs = [cls.init_tab]
-        height = str(int((cls.page_length * 25) + 162)) + 'px'
+        height = str(int((cls.page_length * 25) + 207)) + 'px'
 
         cls.tabs_panel = widgets.Tab(
             children=[],
@@ -99,7 +99,7 @@ class Cockpit:
                 height=height,
                 flex=f"0 0 {height}",  # fixed height
                 overflow="hidden", # handle scroll inside iframes
-                margin="0px",
+                margin="2px",
                 padding="0px",
                 border_radius='6px',
             ),
@@ -112,7 +112,7 @@ class Cockpit:
                 width="99.9%",
                 # height=height,
                 # flex=f"0 0 {height}",  # fixed height
-                # overflow="hidden",
+                overflow="hidden",
                 # margin="2px",
                 # padding="0px",
                 # border_radius='6px',
@@ -218,8 +218,9 @@ class Cockpit:
             html_content = Tools.load_file(html, type='cockpit_html')
             params = json.loads(Tools.load_file(html, type='cockpit_json'))
             encoded_html = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
-            page_length = int(params.get("page_length", 20))
-            max_height = str(int(page_length * 25 + 130)) + "px"
+            page_length = int(params.get("page_length", 15))
+            # The vertical scollbar comes from the iframe, we set it to the height of the tab
+            max_height = str(int((cls.page_length * 25) + 207 - 10)) + 'px'
             iframe_html = f"""
                 <iframe
                     src="data:text/html;base64,{encoded_html}"
@@ -227,7 +228,7 @@ class Cockpit:
                     height="{max_height}"
                     frameborder="0"
                     sandbox='allow-scripts allow-same-origin'
-                    style="border: 1px solid #ddd; margin: 0px; padding: 0px;  overflow: hidden;">
+                    style="border: 1px solid #ddd; margin: 0px; padding: 0px;">
                 </iframe>
             """
             new_tab = {
