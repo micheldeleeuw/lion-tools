@@ -218,8 +218,9 @@ class Cockpit:
             html_content = Tools.load_file(html, type='cockpit_html')
             params = json.loads(Tools.load_file(html, type='cockpit_json'))
             encoded_html = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
-            page_length = int(params.get("page_length", 20))
-            max_height = str(int(page_length * 25 + 165)) + "px"
+            page_length = int(params.get("page_length", 15))
+            # The vertical scollbar comes from the iframe, we set it to the height of the tab
+            max_height = str(int((cls.page_length * 25) + 207 - 10)) + 'px'
             iframe_html = f"""
                 <iframe
                     src="data:text/html;base64,{encoded_html}"
