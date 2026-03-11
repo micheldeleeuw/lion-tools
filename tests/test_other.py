@@ -1,4 +1,4 @@
 import pytest
 
-def test_x(spark):
-    pass
+def test_transpose(spark, movies):
+    movies.eTranspose().show()

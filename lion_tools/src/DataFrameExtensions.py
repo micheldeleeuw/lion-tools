@@ -28,6 +28,8 @@ class DataFrameExtensions:
         DataFrame.eTapEnd = DataFrameExtensions.tap_end
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
+        DataFrame.eSummarize = DataFrameExtensions.summarize
+        DataFrame.eTranspose = DataFrameExtensions.transpose
 
         # Short aliases, pls don't extend these
         DataFrame.eD = DataFrameExtensions.display
@@ -35,6 +37,49 @@ class DataFrameExtensions:
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
+
+    @staticmethod
+    def transpose(
+            df: DataFrame,
+            n: int = 100,
+            sort: str = 'column',
+            add_data_type: bool = False, 
+            column_name_source: str = None,
+        ) -> DataFrame:
+
+        cols = df.columns
+        schema = df.schema
+
+        if column_name_source and column_name_source not in cols:
+            raise ValueError(f"column_name_source '{column_name_source}' does not exist in the dataframe.")
+        
+        transposed = (
+            df
+            .limit(n)
+            .select(
+                F.explode(
+                    F.array(*[
+                        F.struct(
+                            F.lit(col).alias('column_name'),
+                            F.col(col).cast('string').alias('value'),
+                        )
+                        for col in cols
+                    ])
+                ).alias('exploded')
+            )
+            .select()
+        )
+
+        return transposed
+
+    @staticmethod
+    def summarize(
+            df: DataFrame, 
+            top: int = 5, 
+            stats: list[str] = ["min", "max", "sum", "avg", "count_null",  "count_not_null"]
+        ) -> DataFrame:
+        from .DataFrameSummarize import DataFrameSummarize
+        return DataFrameSummarize.summarize(df, top, stats)
 
     def excel(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
         from .DataFrameExcel import DataFrameExcel
@@ -44,6 +89,7 @@ class DataFrameExtensions:
         if passthrough:
             return df
 
+    @staticmethod
     def excel_cockpit(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
         from .DataFrameExcel import DataFrameExcel
         
