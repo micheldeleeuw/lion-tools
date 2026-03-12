@@ -256,7 +256,7 @@ class DataFrameDisplay():
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
-                    width='99.9%' 
+                    width='100%' 
                     height='{max_height}px'
                     margin='0'
                     frameborder='0'
@@ -264,7 +264,6 @@ class DataFrameDisplay():
                     style='border: 1px solid #ddd;'>
             </iframe>
         """            
-        # style='border: 1px solid #ddd; overflow-y: hidden; overflow-x: auto; display: block;'>
 
         if params['display']:
             display(display_HTML(iframe_html))
