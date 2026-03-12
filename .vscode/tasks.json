@@ -25,7 +25,7 @@
             "problemMatcher": []
         },
         {
-            "label": "Run test tab",
+            "label": "Run test_tab",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/bin/python",
             "args": [
@@ -67,7 +67,28 @@
             "problemMatcher": []
         },
         {
-            "label": "Run test other",
+            "label": "Run test_summarize",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/test_summarize.py",
+                "-v",
+                "-s"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": false
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+        {
+            "label": "Run test_other",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/bin/python",
             "args": [

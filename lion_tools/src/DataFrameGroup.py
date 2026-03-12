@@ -222,8 +222,6 @@ class DataFrameGroup():
             grand_total: bool = None,
         ) -> Self:
     
-        # by = by or []
-        # by = [by] if isinstance(by, str) else by
         by = DataFrameExtensions.transform_column_expressions(self.df, *by, include_sort=False)
 
         assert not (sections and sub_totals), "Sections and sub_totals cannot be used together."
