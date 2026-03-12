@@ -1,11 +1,9 @@
 from typing import Callable
 
 import pyspark.sql.functions as F
-from pyspark.sql.column import Column
+from pyspark.sql.window import Window
 from pyspark.sql import DataFrame
-import inspect
-import json
-import re
+from pyspark.sql.column import Column
 
 
 class DataFrameExtensions:
@@ -30,6 +28,7 @@ class DataFrameExtensions:
         DataFrame.eSources = DataFrameExtensions.sources
         DataFrame.eSummarize = DataFrameExtensions.summarize
         DataFrame.eTranspose = DataFrameExtensions.transpose
+        DataFrame.eTop = DataFrameExtensions.top
 
         # Short aliases, pls don't extend these
         DataFrame.eD = DataFrameExtensions.display
@@ -39,12 +38,25 @@ class DataFrameExtensions:
         print("Use extend_dataframe() to extend DataFrame functionality.")
 
     @staticmethod
+    def top(
+        df: DataFrame,
+        *by: str,
+        n: int = 10,
+        transpose: bool = False,
+    ):
+        from .DataFrameSummarize import DataFrameSummarize
+
+        return DataFrameSummarize.top(df, *by, n=n, transpose=transpose)
+
+
+    @staticmethod
     def transpose(
             df: DataFrame,
+            *by: str,
             n: int = 100,
-            sort: str = 'column',
             add_data_type: bool = False, 
             column_name_source: str = None,
+            data_type: str = 'string',
         ) -> DataFrame:
 
         cols = df.columns
@@ -53,21 +65,40 @@ class DataFrameExtensions:
         if column_name_source and column_name_source not in cols:
             raise ValueError(f"column_name_source '{column_name_source}' does not exist in the dataframe.")
         
+        assert 1 <= n <= 2000, "n must be between 1 and 2000 to prevent excessive memory usage."
+        assert data_type in ['string', 'double', 'int'], "data_type must be one of 'string', 'double', or 'int'."
+        
+        data_types = [dtype for col, dtype in df.dtypes]
+
+        W = Window.partitionBy(*by).orderBy(F.lit(1))
+        
         transposed = (
             df
-            .limit(n)
+            .withColumn('_n', F.row_number().over(W))
+            # .eTap(lambda x: x.show())
+            .filter(F.col('_n') <= n)
+            .withColumn('_transpose_id', F.col(column_name_source) if column_name_source else F.col('_n'))
             .select(
+                '_transpose_id',
+                *by,
                 F.explode(
                     F.array(*[
                         F.struct(
-                            F.lit(col).alias('column_name'),
-                            F.col(col).cast('string').alias('value'),
+                            F.lit(i).alias('column_no'),
+                            F.lit(col).alias('column'),
+                            F.lit(data_types[i]).alias('data_type'),
+                            F.col(col).try_cast(data_type).alias('value'),
                         )
-                        for col in cols
+                        for i, col in enumerate([col for col in cols if col != column_name_source])
                     ])
                 ).alias('exploded')
             )
-            .select()
+            .select(*by, '_transpose_id', 'exploded.column_no', 'exploded.column', 'exploded.data_type', 'exploded.value')
+            .groupBy(*by, 'column_no', 'column', 'data_type')
+            .pivot('_transpose_id')
+            .agg(F.first('value'))
+            .drop('data_type' if not add_data_type else '_non_existing_column')
+            .orderBy(*by, 'column_no')
         )
 
         return transposed
@@ -75,11 +106,18 @@ class DataFrameExtensions:
     @staticmethod
     def summarize(
             df: DataFrame, 
+            *by: str,
             top: int = 5, 
-            stats: list[str] = ["min", "max", "sum", "avg", "count_null",  "count_not_null"]
+            stats: list[str] = [
+                "count_distinct",
+                "count_null",  "count_not_null", 
+                "min", "max", "avg", "sum",   
+            ],
+            round_decimals: int = 5
         ) -> DataFrame:
         from .DataFrameSummarize import DataFrameSummarize
-        return DataFrameSummarize.summarize(df, top, stats)
+
+        return DataFrameSummarize.summarize(df, *by, top=top, stats=stats)
 
     def excel(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
         from .DataFrameExcel import DataFrameExcel
