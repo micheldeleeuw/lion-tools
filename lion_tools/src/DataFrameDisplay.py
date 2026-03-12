@@ -252,7 +252,7 @@ class DataFrameDisplay():
             with open(params['file_path'], 'w', encoding='utf-8') as f:
                 f.write(html_content)
 
-        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 165)) + 'px'
+        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 175)) + 'px'
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
