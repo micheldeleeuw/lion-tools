@@ -256,12 +256,12 @@ class DataFrameDisplay():
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
-                    width='100%' 
+                    width='99.9%' 
                     height='{max_height}px'
                     margin='0'
                     frameborder='0'
                     sandbox='allow-scripts allow-same-origin'
-                    style='border: 1px solid #ddd;'>
+                    style='border: 1px solid #ddd; overflow-y: hidden; overflow-x: auto; display: block;'>
             </iframe>
         """            
 
