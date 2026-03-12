@@ -4,6 +4,9 @@ import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column
+import inspect
+import json
+import re
 
 
 class DataFrameExtensions:
