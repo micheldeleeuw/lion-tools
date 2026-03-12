@@ -13,8 +13,6 @@ def test_summarize(spark, movies):
     movies.eSummarize('Director').show()
 
 def test_top(spark, movies):
-    return
-
     movies.eTop().show()
     movies.eTop(n=10, transpose=True).show()
     movies.eTop('Director').show()
