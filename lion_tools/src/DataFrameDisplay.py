@@ -14,6 +14,88 @@ from .Tools import Tools
 class DataFrameDisplay():
 
     @staticmethod
+    def set_colors(df, *color_rules: dict):
+        assert all(isinstance(rule, dict) for rule in color_rules), "color_rules must be a list of dictionaries"
+        allowed_keys = {'column', 'columns', 'color', 'style', 'styles', 'condition'}
+        cols = df.columns
+
+        for i, rule in enumerate(color_rules):
+            assert all(key in allowed_keys for key in rule.keys()), (
+                "color_rules can only contain the following keys: {}".format(allowed_keys))
+            assert not ('column' in rule and 'columns' in rule), (
+                "color_rules cannot contain both 'column' and 'columns' keys")
+            assert not ('style' in rule and 'styles' in rule), (
+                "color_rules cannot contain both 'style' and 'styles' keys")
+
+            if 'column' in rule:
+                rule['columns'] = [rule['column']]
+                del rule['column']
+            
+            if 'columns' not in rule:
+                rule['columns'] = cols
+
+            assert all(col in cols for col in rule['columns']), (
+                "color_rules columns must be valid column names in the DataFrame")
+
+            if 'style' in rule:
+                rule['styles'] = [rule['style']]
+                del rule['style']
+            
+            assert 'color' in rule or 'styles' in rule, (
+                "color_rules must contain 'color' and/or 'style' keys")
+            
+            if 'color' not in rule:
+                rule['color'] = None
+
+            if 'styles' not in rule:
+                rule['styles'] = None
+
+            if rule['styles']:
+                assert all (style in ['bold', 'italic', 'underline'] for style in rule['styles']), (
+                    "color_rules styles can only contain the following values: 'bold', 'italic', 'underline'")
+
+            if 'condition' not in rule:
+                rule['condition'] = F.lit(True)
+            elif isinstance(rule['condition'], str):
+                rule['condition'] = F.expr(rule['condition'])
+
+            rule['i'] = i
+
+        return (
+            df
+            # get the colors. step 1: create an array of colors for each rule that applies to the column
+            .withColumns({
+                f"_{col}_color": 
+                    F.array(*[F.when(rule['condition'], F.lit(rule['color'])) for rule in color_rules if col in rule['columns']])
+                for col in cols
+            })
+            # step 2, compact the array to remove null values and get the first color that applies to the column
+            .withColumns({
+                f"_{col}_color": F.try_element_at(F.array_compact(F.col(f"_{col}_color")), F.lit(1)) for col in cols
+            })
+            # same for styles, but be aware more then 1 style can apply
+            .withColumns({
+                f"_{col}_style": 
+                    F.array(*[F.when(rule['condition'], F.lit(rule['styles'])) for rule in color_rules if col in rule['columns']])
+                for col in cols
+            })
+            .withColumns({
+                f"_{col}_style": F.array_distinct(F.array_compact(F.flatten(F.col(f"_{col}_style")))) for col in cols
+            })
+            .withColumn(
+                '_color_style', 
+                F.array(*[
+                    F.struct(
+                        F.lit(col).alias('column'), 
+                        F.col(f"_{col}_color").alias('color'), 
+                        F.col(f"_{col}_style").alias('style'),
+                    ) for col in cols
+                ])
+            )
+            .drop(*[f"_{col}_color" for col in cols], *[f"_{col}_style" for col in cols])
+        )
+
+    @staticmethod
     def display_validate_parameters(df, *args, **kwargs):
         if not ('pyspark.sql' in str(type(df)) and 'DataFrame' in str(type(df))):
             raise Exception("This method can only be used on a pyspark DataFrame")
@@ -28,7 +110,8 @@ class DataFrameDisplay():
             'page_length',
             'display',
             'lazy',
-            'allow_additional_parameters'
+            'allow_additional_parameters',
+            'color_rules',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -106,6 +189,10 @@ class DataFrameDisplay():
         else:
             kwargs['lazy'] = True
 
+        if 'color_rules' in kwargs:
+            if not isinstance(kwargs['color_rules'], list):
+                raise Exception("color_rules must be a list of dictionaries")
+            
         return kwargs
         
     @staticmethod
