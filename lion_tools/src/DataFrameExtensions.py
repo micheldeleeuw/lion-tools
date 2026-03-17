@@ -27,6 +27,7 @@ class DataFrameExtensions:
         DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns
         DataFrame.eTap = DataFrameExtensions.tap
         DataFrame.eTapEnd = DataFrameExtensions.tap_end
+        DataFrame.eRound = DataFrameExtensions.round
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
         DataFrame.eSummarize = DataFrameExtensions.summarize
@@ -39,6 +40,17 @@ class DataFrameExtensions:
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
+
+
+    @staticmethod
+    def round(df: DataFrame, precision=2, columns=None) -> DataFrame:
+        columns = [dtype[0] for dtype in df.dtypes if dtype[1] == 'double'] if not columns else columns
+
+        return df.withColumns({
+            col: F.round(F.col(col), precision) for col in columns
+            for col in columns
+        })
+
 
     @staticmethod
     def top(
