@@ -356,7 +356,8 @@ class Cockpit:
             # 5. Create html files for new json files (only lazy mode)
             cls.create_html_for_json()
             if time.time() - start_time > timeout * 60:
-                print("Timeout reached, stopping the Cockpit.")
+                cls.log_lines.append("Timeout reached, stopping the Cockpit.")
+                cls.update_log_panel()
                 break
             if time.time() - mean_time < 0.2:
                 time.sleep(0.5)
