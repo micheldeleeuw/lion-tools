@@ -27,6 +27,7 @@ class DataFrameExtensions:
         DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns
         DataFrame.eTap = DataFrameExtensions.tap
         DataFrame.eTapEnd = DataFrameExtensions.tap_end
+        DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns
         DataFrame.eRound = DataFrameExtensions.round
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
@@ -40,6 +41,14 @@ class DataFrameExtensions:
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
+
+    
+    @staticmethod
+    def remove_empty_columns(df: DataFrame) -> DataFrame:
+        column_filling = df.selectExpr(*[f"min(if(`{col}` is null, 1, 0)) as `{col}`" for col in df.columns]).collect()[0].asDict()
+        non_empty_columns = [col for col in df.columns if column_filling[col] == 0]
+        
+        return df.select(*non_empty_columns)
 
 
     @staticmethod
