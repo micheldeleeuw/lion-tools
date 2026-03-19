@@ -5,7 +5,7 @@ from .DataFrameDisplay import DataFrameDisplay
 from .DataFrameExtensions import DataFrameExtensions
 from .DataFrameTap import DataFrameTap
 from .DataFrameExcel import DataFrameExcel
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import time
@@ -49,6 +49,7 @@ class Cockpit:
         params["display"] = False
         params["file_path"] = params["html_file"]
         params["allow_additional_parameters"] = True
+        pre_timestamp = datetime.now()
         try:
             df = get_or_create_spark().table(
                 f"global_temp.{params['temp_view_name']}"
@@ -70,7 +71,8 @@ class Cockpit:
             if cls.raise_errors:
                 raise
         finally:
-            cls.update_log_panel(" done", new_line=False)
+            cls.update_log_panel(f" done ({str(timedelta(seconds=round((datetime.now() - pre_timestamp).total_seconds(), 2))).replace('0000', '')})", new_line=False)
+
 
     @classmethod
     def initialize(cls):
