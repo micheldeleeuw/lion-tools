@@ -13,6 +13,9 @@ from .Tools import Tools
 
 class DataFrameDisplay():
 
+    # max_table_bytes = 500000
+    max_table_bytes = 100000
+
     @staticmethod
     def set_colors(df, *color_rules: dict):
         assert all(isinstance(rule, dict) for rule in color_rules), "color_rules must be a list of dictionaries"
@@ -249,8 +252,8 @@ class DataFrameDisplay():
         }
 
         # if the total (byte) size of the data is large we limited the number of rows to avoid browser performance issues
-        if stats['__total__']['avg_width'] * stats['__total__']['rows'] > 500000 and len(df_collected) > 1:
-            new_n = int(500000 / stats['__total__']['avg_width'])
+        if stats['__total__']['avg_width'] * stats['__total__']['rows'] > DataFrameDisplay.max_table_bytes and len(df_collected) > 1:
+            new_n = int(DataFrameDisplay.max_table_bytes / stats['__total__']['avg_width'])
             df_collected = df_collected[:new_n]
             stats['__total__']['size_limit'] = True
             stats['__total__']['rows'] = new_n
