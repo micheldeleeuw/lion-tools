@@ -13,10 +13,29 @@ from .Tools import Tools
 
 class DataFrameDisplay():
 
+    color_codes = dict(
+        traffic_light_red = {'color': '#f7d3cc'},
+        traffic_light_yellow = {'color': '#f7e998'},
+        traffic_light_green = {'color': '#d3f7d3'},
+        light0 = {'color': '#FFF0FF'},
+        light1 = {'color': '#F0FFF0'},
+        light2 = {'color': '#FFFFF0'},
+        light3 = {'color': '#F0FFFF'},
+        light4 = {'color': '#FFF0F0'},
+        light5 = {'color': '#F0F0FF'},
+        light6 = {'color': '#F0F0F0'},
+    )
+
+    style_codes = dict(
+        bold = {'style': 'font-weight: bold;'},
+        italic = {'style': 'font-style: italic;'},
+        underline = {'style': 'text-decoration: underline;'},
+    )
+
     @staticmethod
     def set_colors(df, *color_rules: dict):
         assert all(isinstance(rule, dict) for rule in color_rules), "color_rules must be a list of dictionaries"
-        allowed_keys = {'column', 'columns', 'color', 'style', 'styles', 'condition'}
+        allowed_keys = {'column', 'columns', 'color_code', 'style_code', 'condition'}
         cols = df.columns
 
         for i, rule in enumerate(color_rules):
@@ -24,8 +43,6 @@ class DataFrameDisplay():
                 "color_rules can only contain the following keys: {}".format(allowed_keys))
             assert not ('column' in rule and 'columns' in rule), (
                 "color_rules cannot contain both 'column' and 'columns' keys")
-            assert not ('style' in rule and 'styles' in rule), (
-                "color_rules cannot contain both 'style' and 'styles' keys")
 
             if 'column' in rule:
                 rule['columns'] = [rule['column']]
@@ -37,22 +54,20 @@ class DataFrameDisplay():
             assert all(col in cols for col in rule['columns']), (
                 "color_rules columns must be valid column names in the DataFrame")
 
-            if 'style' in rule:
-                rule['styles'] = [rule['style']]
-                del rule['style']
+            assert 'color_code' in rule or 'style_code' in rule, (
+                "color_rules must contain 'color_code' and/or 'style_code' keys")
             
-            assert 'color' in rule or 'styles' in rule, (
-                "color_rules must contain 'color' and/or 'style' keys")
-            
-            if 'color' not in rule:
-                rule['color'] = None
+            if 'color_code' in rule:
+                assert isinstance(rule['color_code'], str) and rule['color_code'] in DataFrameDisplay.color_codes, (
+                    "color_code must be one of the codes in DataFrameDisplay.color_codes")
+            else:
+                rule['color_code'] = None
 
-            if 'styles' not in rule:
-                rule['styles'] = None
-
-            if rule['styles']:
-                assert all (style in ['bold', 'italic', 'underline'] for style in rule['styles']), (
-                    "color_rules styles can only contain the following values: 'bold', 'italic', 'underline'")
+            if 'style_code' in rule:
+                assert isinstance(rule['style_code'], str) and rule['style_code'] in DataFrameDisplay.style_codes, (
+                    "style_code must be one of the codes in DataFrameDisplay.style_codes")
+            else:
+                rule['style_code'] = None
 
             if 'condition' not in rule:
                 rule['condition'] = F.lit(True)
@@ -65,13 +80,13 @@ class DataFrameDisplay():
             df
             # get the colors. step 1: create an array of colors for each rule that applies to the column
             .withColumns({
-                f"_{col}_color": 
-                    F.array(*[F.when(rule['condition'], F.lit(rule['color'])) for rule in color_rules if col in rule['columns']])
+                f"_{col}_color_code": 
+                    F.array(*[F.when(rule['condition'], F.lit(rule['color_code'])) for rule in color_rules if col in rule['columns']])
                 for col in cols
             })
             # step 2, compact the array to remove null values and get the first color that applies to the column
             .withColumns({
-                f"_{col}_color": F.try_element_at(F.array_compact(F.col(f"_{col}_color")), F.lit(1)) for col in cols
+                f"_{col}_color_code": F.try_element_at(F.array_compact(F.col(f"_{col}_color_code")), F.lit(1)) for col in cols
             })
             # same for styles, but be aware more then 1 style can apply
             .withColumns({
@@ -87,12 +102,12 @@ class DataFrameDisplay():
                 F.array(*[
                     F.struct(
                         F.lit(col).alias('column'), 
-                        F.col(f"_{col}_color").alias('color'), 
+                        F.col(f"_{col}_color_code").alias('color_code'), 
                         F.col(f"_{col}_style").alias('style'),
                     ) for col in cols
                 ])
             )
-            .drop(*[f"_{col}_color" for col in cols], *[f"_{col}_style" for col in cols])
+            .drop(*[f"_{col}_color_code" for col in cols], *[f"_{col}_style" for col in cols])
         )
 
     @staticmethod
