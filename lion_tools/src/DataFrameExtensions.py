@@ -28,6 +28,8 @@ class DataFrameExtensions:
         DataFrame.eTap = DataFrameExtensions.tap
         DataFrame.eTapEnd = DataFrameExtensions.tap_end
         DataFrame.eSetColors = DataFrameExtensions.set_colors
+        DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns
+        DataFrame.eRound = DataFrameExtensions.round
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
         DataFrame.eSummarize = DataFrameExtensions.summarize
@@ -45,6 +47,25 @@ class DataFrameExtensions:
     def set_colors(df, *color_rules: dict):
         from .DataFrameDisplay import DataFrameDisplay
         return DataFrameDisplay.set_colors(df, *color_rules)
+
+    
+    @staticmethod
+    def remove_empty_columns(df: DataFrame) -> DataFrame:
+        column_filling = df.selectExpr(*[f"min(if(`{col}` is null, 1, 0)) as `{col}`" for col in df.columns]).collect()[0].asDict()
+        non_empty_columns = [col for col in df.columns if column_filling[col] == 0]
+        
+        return df.select(*non_empty_columns)
+
+
+    @staticmethod
+    def round(df: DataFrame, precision=2, columns=None) -> DataFrame:
+        columns = [dtype[0] for dtype in df.dtypes if dtype[1] == 'double'] if not columns else columns
+
+        return df.withColumns({
+            col: F.round(F.col(col), precision) for col in columns
+            for col in columns
+        })
+
 
     @staticmethod
     def top(
