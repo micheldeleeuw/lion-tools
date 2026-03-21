@@ -9,12 +9,108 @@ from IPython.display import display
 from .DataFrameExtensions import DataFrameExtensions
 from .DataFrameTap import DataFrameTap
 from .Tools import Tools
+from pyspark.sql import Row
 
 
 class DataFrameDisplay():
+    color_codes = dict(
+        traffic_light_red = {'color': '#f7d3cc'},
+        traffic_light_yellow = {'color': '#f7e998'},
+        traffic_light_green = {'color': '#d3f7d3'},
+        light0 = {'color': '#FFF0FF'},
+        light1 = {'color': '#F0FFF0'},
+        light2 = {'color': '#FFFFF0'},
+        light3 = {'color': '#F0FFFF'},
+        light4 = {'color': '#FFF0F0'},
+        light5 = {'color': '#F0F0FF'},
+        light6 = {'color': '#F0F0F0'},
+    )
 
+    style_codes = dict(
+        bold = {'style': 'font-weight: bold;'},
+        italic = {'style': 'font-style: italic;'},
+        underline = {'style': 'text-decoration: underline;'},
+    )
     # max_table_bytes = 500000
     max_table_bytes = 100000
+
+    @staticmethod
+    def set_colors(df, *color_rules: dict):
+        assert all(isinstance(rule, dict) for rule in color_rules), "color_rules must be a list of dictionaries"
+        allowed_keys = {'column', 'columns', 'color_code', 'style_code', 'condition'}
+        cols = df.columns
+
+        for i, rule in enumerate(color_rules):
+            assert all(key in allowed_keys for key in rule.keys()), (
+                "color_rules can only contain the following keys: {}".format(allowed_keys))
+            assert not ('column' in rule and 'columns' in rule), (
+                "color_rules cannot contain both 'column' and 'columns' keys")
+
+            if 'column' in rule:
+                rule['columns'] = [rule['column']]
+                del rule['column']
+            
+            if 'columns' not in rule:
+                rule['columns'] = cols
+
+            assert all(col in cols for col in rule['columns']), (
+                "color_rules columns must be valid column names in the DataFrame")
+
+            assert 'color_code' in rule or 'style_code' in rule, (
+                "color_rules must contain 'color_code' and/or 'style_code' keys")
+            
+            if 'color_code' in rule:
+                assert isinstance(rule['color_code'], str) and rule['color_code'] in DataFrameDisplay.color_codes, (
+                    "color_code must be one of the codes in DataFrameDisplay.color_codes")
+            else:
+                rule['color_code'] = None
+
+            if 'style_code' in rule:
+                assert isinstance(rule['style_code'], str) and rule['style_code'] in DataFrameDisplay.style_codes, (
+                    "style_code must be one of the codes in DataFrameDisplay.style_codes")
+            else:
+                rule['style_code'] = None
+
+            if 'condition' not in rule:
+                rule['condition'] = F.lit(True)
+            elif isinstance(rule['condition'], str):
+                rule['condition'] = F.expr(rule['condition'])
+
+            rule['i'] = i
+
+        return (
+            df
+            # get the colors. step 1: create an array of colors for each rule that applies to the column
+            .withColumns({
+                f"_{col}_color_code": 
+                    F.array(*[F.when(rule['condition'], F.lit(rule['color_code'])) for rule in color_rules if col in rule['columns']])
+                for col in cols
+            })
+            # step 2, compact the array to remove null values and get the first color that applies to the column
+            .withColumns({
+                f"_{col}_color_code": F.try_element_at(F.array_compact(F.col(f"_{col}_color_code")), F.lit(1)) for col in cols
+            })
+            # same for styles, but be aware more then 1 style can apply
+            .withColumns({
+                f"_{col}_style": 
+                    F.array(*[F.when(rule['condition'], F.lit(rule['styles'])) for rule in color_rules if col in rule['columns']])
+                for col in cols
+            })
+            .withColumns({
+                f"_{col}_style": F.array_distinct(F.array_compact(F.flatten(F.col(f"_{col}_style")))) for col in cols
+            })
+            .withColumn(
+                '_color_style', 
+                F.array(*[
+                    F.struct(
+                        F.lit(col).alias('column'), 
+                        F.col(f"_{col}_color_code").alias('color_code'), 
+                        F.col(f"_{col}_style").alias('style'),
+                    ) for col in cols
+                ])
+            )
+            .drop(*[f"_{col}_color_code" for col in cols], *[f"_{col}_style" for col in cols])
+        )
 
     @staticmethod
     def display_validate_parameters(df, *args, **kwargs):
@@ -31,7 +127,8 @@ class DataFrameDisplay():
             'page_length',
             'display',
             'lazy',
-            'allow_additional_parameters'
+            'allow_additional_parameters',
+            'color_rules',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -109,6 +206,10 @@ class DataFrameDisplay():
         else:
             kwargs['lazy'] = True
 
+        if 'color_rules' in kwargs:
+            if not isinstance(kwargs['color_rules'], list):
+                raise Exception("color_rules must be a list of dictionaries")
+            
         return kwargs
         
     @staticmethod
@@ -120,9 +221,8 @@ class DataFrameDisplay():
         for row in df_collected:
             html_body += '<tr>'
             for col in cols:
-                value = row[col]
+                value = DataFrameDisplay.cast_to_expandable_html(row[col])
                 value = '' if not value else html.escape(str(value))
-                # value = 'null&nbsp;&nbsp;' if not value else value
                 html_body += f'<td>{value}</td>'
             html_body += '</tr>\n'
                 
@@ -138,6 +238,57 @@ class DataFrameDisplay():
 
         return html_table
     
+    @staticmethod
+    def cast_to_expandable_html(data):
+
+        if isinstance(data, Row):
+            # Convert Row to a dictionary and handle it as a dict
+            return DataFrameDisplay.cast_to_expandable_html(data.asDict())
+
+        # Handle Lists
+        elif isinstance(data, list):
+            # Create a single-line preview of the list
+            preview = ", ".join(str(x) for x in data)
+            
+            # Recurse through items and join them with line breaks (<br>)
+            expanded_items = [DataFrameDisplay.cast_to_expandable_html(item) for item in data]
+            multi_line = "<br>".join(expanded_items)
+            
+            return DataFrameDisplay.expandable_html(preview, multi_line, closing_characters='[]')
+
+
+        # Handle Dictionaries (Optional, but useful for complex data)
+        elif isinstance(data, dict):
+            # preview = f"Dictionary ({len(data)} keys)"
+            preview = ", ".join(f"{k}: {v}" for k, v in data.items())
+
+            # Truncate the preview if it gets too long
+
+            expanded_items = [f"<b>{k}:</b> {DataFrameDisplay.cast_to_expandable_html(v)}" for k, v in data.items()]
+            multi_line = "<br>".join(expanded_items)
+
+            return DataFrameDisplay.expandable_html(preview, multi_line, closing_characters='{}')
+            
+        # Handle basic data types (strings, ints, floats, etc.)
+        else:
+            return str(data)
+        
+
+    @staticmethod
+    def expandable_html(preview, multi_line, closing_characters='[]', max_preview_length=60):
+            if len(preview) > max_preview_length:
+                preview = preview[:max_preview_length - 3] + "..."
+            
+            return f"""
+            <details style="font-family: sans-serif;">
+                <summary style="cursor: pointer;">{closing_characters[0]}{preview}{closing_characters[1]}</summary>
+                <div style="padding-left: 25px; border-left: 2px solid #eee; margin-top: 5px;">
+                    {multi_line}
+                </div>
+            </details>
+            """
+            
+
     @staticmethod
     def collect_data_and_stats(df):
         cols = df.columns

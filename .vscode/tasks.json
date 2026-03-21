@@ -25,6 +25,27 @@
             "problemMatcher": []
         },
         {
+            "label": "Run test_colors",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python",
+            "args": [
+                "-m",
+                "pytest",
+                "tests/test_colors.py",
+                "-v",
+                "-s"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Run test_tab",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/bin/python",

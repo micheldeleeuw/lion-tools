@@ -27,6 +27,7 @@ class DataFrameExtensions:
         DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns
         DataFrame.eTap = DataFrameExtensions.tap
         DataFrame.eTapEnd = DataFrameExtensions.tap_end
+        DataFrame.eSetColors = DataFrameExtensions.set_colors
         DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns
         DataFrame.eRound = DataFrameExtensions.round
         DataFrame.eSort = DataFrameExtensions.sort
@@ -41,6 +42,11 @@ class DataFrameExtensions:
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
+    
+    @staticmethod
+    def set_colors(df, *color_rules: dict):
+        from .DataFrameDisplay import DataFrameDisplay
+        return DataFrameDisplay.set_colors(df, *color_rules)
 
     
     @staticmethod
