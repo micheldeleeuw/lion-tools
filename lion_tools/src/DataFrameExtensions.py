@@ -56,7 +56,6 @@ class DataFrameExtensions:
         
         return df.select(*non_empty_columns)
 
-
     @staticmethod
     def round(df: DataFrame, precision=2, columns=None) -> DataFrame:
         columns = [dtype[0] for dtype in df.dtypes if dtype[1] == 'double'] if not columns else columns
