@@ -9,6 +9,7 @@ from IPython.display import display
 from .DataFrameExtensions import DataFrameExtensions
 from .DataFrameTap import DataFrameTap
 from .Tools import Tools
+from pyspark.sql import Row
 
 
 class DataFrameDisplay():
@@ -207,9 +208,8 @@ class DataFrameDisplay():
         for row in df_collected:
             html_body += '<tr>'
             for col in cols:
-                value = row[col]
+                value = DataFrameDisplay.cast_to_expandable_html(row[col])
                 value = '' if not value else html.escape(str(value))
-                # value = 'null&nbsp;&nbsp;' if not value else value
                 html_body += f'<td>{value}</td>'
             html_body += '</tr>\n'
                 
@@ -225,6 +225,57 @@ class DataFrameDisplay():
 
         return html_table
     
+    @staticmethod
+    def cast_to_expandable_html(data):
+
+        if isinstance(data, Row):
+            # Convert Row to a dictionary and handle it as a dict
+            return DataFrameDisplay.cast_to_expandable_html(data.asDict())
+
+        # Handle Lists
+        elif isinstance(data, list):
+            # Create a single-line preview of the list
+            preview = ", ".join(str(x) for x in data)
+            
+            # Recurse through items and join them with line breaks (<br>)
+            expanded_items = [DataFrameDisplay.cast_to_expandable_html(item) for item in data]
+            multi_line = "<br>".join(expanded_items)
+            
+            return DataFrameDisplay.expandable_html(preview, multi_line, closing_characters='[]')
+
+
+        # Handle Dictionaries (Optional, but useful for complex data)
+        elif isinstance(data, dict):
+            # preview = f"Dictionary ({len(data)} keys)"
+            preview = ", ".join(f"{k}: {v}" for k, v in data.items())
+
+            # Truncate the preview if it gets too long
+
+            expanded_items = [f"<b>{k}:</b> {DataFrameDisplay.cast_to_expandable_html(v)}" for k, v in data.items()]
+            multi_line = "<br>".join(expanded_items)
+
+            return DataFrameDisplay.expandable_html(preview, multi_line, closing_characters='{}')
+            
+        # Handle basic data types (strings, ints, floats, etc.)
+        else:
+            return str(data)
+        
+
+    @staticmethod
+    def expandable_html(preview, multi_line, closing_characters='[]', max_preview_length=60):
+            if len(preview) > max_preview_length:
+                preview = preview[:max_preview_length - 3] + "..."
+            
+            return f"""
+            <details style="font-family: sans-serif;">
+                <summary style="cursor: pointer;">{closing_characters[0]}{preview}{closing_characters[1]}</summary>
+                <div style="padding-left: 25px; border-left: 2px solid #eee; margin-top: 5px;">
+                    {multi_line}
+                </div>
+            </details>
+            """
+            
+
     @staticmethod
     def collect_data_and_stats(df):
         cols = df.columns
