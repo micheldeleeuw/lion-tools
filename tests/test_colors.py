@@ -10,10 +10,10 @@ def test_set_colors(spark, movies):
         movies.eSetColors({'columns': ['Title']})
 
     movies.eSetColors(
-        {'column': 'Director', 'color': 'red', 'style': 'bold'},
+        {'column': 'Director', 'color': 'red', 'style_code': 'bold'},
         {'columns': ['Director', 'Distributor'], 'color': '#123456'},
-        {'color': 'red', 'condition': F.col('IMDB Rating') < 6, 'styles': ['bold']},
-        {'columns': ['IMDB Votes'], 'color': '1', 'styles': ['italic']},
+        {'color': 'red', 'condition': F.col('IMDB Rating') < 6, 'style_code': 'bold'},
+        {'columns': ['IMDB Votes'], 'color': '1', 'style_code': 'italic'},
     ).show(truncate=False)
 
     # movies.eSetColors(

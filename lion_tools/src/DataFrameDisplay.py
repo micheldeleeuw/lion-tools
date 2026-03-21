@@ -31,6 +31,7 @@ class DataFrameDisplay():
         italic = {'style': 'font-style: italic;'},
         underline = {'style': 'text-decoration: underline;'},
     )
+
     # max_table_bytes = 500000
     max_table_bytes = 100000
 
@@ -54,10 +55,10 @@ class DataFrameDisplay():
                 rule['columns'] = cols
 
             assert all(col in cols for col in rule['columns']), (
-                "color_rules columns must be valid column names in the DataFrame")
+                "column must be valid column in the DataFrame")
 
             assert 'color_code' in rule or 'style_code' in rule, (
-                "color_rules must contain 'color_code' and/or 'style_code' keys")
+                "color_rules must contain 'color_code' or 'style_code' or both")
             
             if 'color_code' in rule:
                 assert isinstance(rule['color_code'], str) and rule['color_code'] in DataFrameDisplay.color_codes, (
@@ -80,24 +81,36 @@ class DataFrameDisplay():
 
         return (
             df
-            # get the colors. step 1: create an array of colors for each rule that applies to the column
+            # get the colors
+            # step 1: create an array of colors and an array of styles
+            # for each rule that applies to a column
             .withColumns({
                 f"_{col}_color_code": 
-                    F.array(*[F.when(rule['condition'], F.lit(rule['color_code'])) for rule in color_rules if col in rule['columns']])
-                for col in cols
-            })
-            # step 2, compact the array to remove null values and get the first color that applies to the column
-            .withColumns({
-                f"_{col}_color_code": F.try_element_at(F.array_compact(F.col(f"_{col}_color_code")), F.lit(1)) for col in cols
-            })
-            # same for styles, but be aware more then 1 style can apply
-            .withColumns({
-                f"_{col}_style": 
-                    F.array(*[F.when(rule['condition'], F.lit(rule['styles'])) for rule in color_rules if col in rule['columns']])
+                    F.array(*[
+                        F.when(rule['condition'], F.lit(rule['color_code']))
+                        for rule in color_rules if col in rule['columns']
+                    ])
                 for col in cols
             })
             .withColumns({
-                f"_{col}_style": F.array_distinct(F.array_compact(F.flatten(F.col(f"_{col}_style")))) for col in cols
+                f"_{col}_style_code": 
+                    F.array(*[
+                        F.when(rule['condition'], F.lit(rule['style_code']))
+                        for rule in color_rules if col in rule['columns']
+                    ])
+                for col in cols
+            })
+            # step 2, compact the array's to remove null values and get the first color or 
+            # style that applies to the column
+            .withColumns({
+                f"_{col}_color_code":
+                    F.try_element_at(F.array_compact(F.col(f"_{col}_color_code")), F.lit(1))
+                for col in cols
+            })
+            .withColumns({
+                f"_{col}_style_code":
+                    F.try_element_at(F.array_compact(F.col(f"_{col}_style_code")), F.lit(1))
+                for col in cols
             })
             .withColumn(
                 '_color_style', 
@@ -105,11 +118,14 @@ class DataFrameDisplay():
                     F.struct(
                         F.lit(col).alias('column'), 
                         F.col(f"_{col}_color_code").alias('color_code'), 
-                        F.col(f"_{col}_style").alias('style'),
+                        F.col(f"_{col}_style_code").alias('style_code'),
                     ) for col in cols
                 ])
             )
-            .drop(*[f"_{col}_color_code" for col in cols], *[f"_{col}_style" for col in cols])
+            .drop(
+                *[f"_{col}_color_code" for col in cols],
+                *[f"_{col}_style_code" for col in cols]
+            )
         )
 
     @staticmethod
@@ -239,55 +255,69 @@ class DataFrameDisplay():
         return html_table
     
     @staticmethod
-    def cast_to_expandable_html(data):
+    def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None):
 
         if isinstance(data, Row):
             # Convert Row to a dictionary and handle it as a dict
-            return DataFrameDisplay.cast_to_expandable_html(data.asDict())
+            return DataFrameDisplay.cast_to_expandable_html(
+                data.asDict(), 
+                add_quotes_when_needed=True,
+                preview_prefix='Row(', 
+                preview_postfix=')'
+            )
 
         # Handle Lists
         elif isinstance(data, list):
             # Create a single-line preview of the list
-            preview = ", ".join(str(x) for x in data)
+            preview = ", ".join(
+                DataFrameDisplay.to_string(x, add_quotes_when_needed=True)
+                for x in data
+            )
+            expanded_items = [
+                DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                for item in data
+            ]
+            multi_line = "".join(expanded_items)
             
-            # Recurse through items and join them with line breaks (<br>)
-            expanded_items = [DataFrameDisplay.cast_to_expandable_html(item) for item in data]
-            multi_line = "<br>".join(expanded_items)
-            
-            return DataFrameDisplay.expandable_html(preview, multi_line, closing_characters='[]')
+            return DataFrameDisplay.expandable_html(preview, multi_line, preview_prefix='[', preview_postfix=']')
 
 
         # Handle Dictionaries (Optional, but useful for complex data)
         elif isinstance(data, dict):
-            # preview = f"Dictionary ({len(data)} keys)"
-            preview = ", ".join(f"{k}: {v}" for k, v in data.items())
-
-            # Truncate the preview if it gets too long
-
-            expanded_items = [f"<b>{k}:</b> {DataFrameDisplay.cast_to_expandable_html(v)}" for k, v in data.items()]
+            preview = ", ".join(f"{k}: {DataFrameDisplay.to_string(v, add_quotes_when_needed=True)}" for k, v in data.items())
+            expanded_items = [f"<b>{k}:</b> {DataFrameDisplay.cast_to_expandable_html(v, add_quotes_when_needed=True)}" for k, v in data.items()]
             multi_line = "<br>".join(expanded_items)
 
-            return DataFrameDisplay.expandable_html(preview, multi_line, closing_characters='{}')
+            return DataFrameDisplay.expandable_html(
+                preview, 
+                multi_line, 
+                preview_prefix=preview_prefix if preview_prefix else '{', 
+                preview_postfix=preview_postfix if preview_postfix else '}'
+            )
             
         # Handle basic data types (strings, ints, floats, etc.)
         else:
-            return str(data)
+            return DataFrameDisplay.to_string(data, add_quotes_when_needed=add_quotes_when_needed)
         
+    @staticmethod
+    def to_string(value, add_quotes_when_needed=False):
+        if add_quotes_when_needed and isinstance(value, str):
+            return f"'{value}'"
+        return str(value)
 
     @staticmethod
-    def expandable_html(preview, multi_line, closing_characters='[]', max_preview_length=60):
-            if len(preview) > max_preview_length:
-                preview = preview[:max_preview_length - 3] + "..."
-            
-            return f"""
-            <details style="font-family: sans-serif;">
-                <summary style="cursor: pointer;">{closing_characters[0]}{preview}{closing_characters[1]}</summary>
-                <div style="padding-left: 25px; border-left: 2px solid #eee; margin-top: 5px;">
-                    {multi_line}
-                </div>
-            </details>
-            """
-            
+    def expandable_html(preview, multi_line, preview_prefix, preview_postfix, max_preview_length=60):
+        if len(preview) > max_preview_length:
+            preview = preview[:max_preview_length - 3] + "..."
+        
+        return f"""
+        <details style="font-family: sans-serif;">
+            <summary style="cursor: pointer;">{preview_prefix}{preview}{preview_postfix}</summary>
+            <div style="padding-left: 25px; border-left: 2px solid #eee; margin-top: 3px; margin-bottom: 3px; line-height: 1.4;">
+                {multi_line}
+            </div>
+        </details>
+        """
 
     @staticmethod
     def collect_data_and_stats(df):
