@@ -216,8 +216,6 @@ class DataFrameDisplay():
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         elif has_rownum:
-            # rownum to last position
-            df = df.selectExpr('* except(_rownum)', '_rownum')
             df = df.filter(F.col('_rownum') < params['n'] + 1).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         else:
@@ -225,6 +223,8 @@ class DataFrameDisplay():
             df = df.limit(params['n']).withColumn('_rownum', F.lit(0))
             ordering = "ordering: true"
             
+        # rownum to last position
+        df = df.selectExpr('* except(_rownum)', '_rownum')
         df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df, all_cols, cols, dtypes)
         columns_popup = str(list([
             html.escape(
