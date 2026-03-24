@@ -256,14 +256,15 @@ class DataFrameDisplay():
     
     @staticmethod
     def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None):
+        # print(type(data))
 
         if isinstance(data, Row):
             # Convert Row to a dictionary and handle it as a dict
             return DataFrameDisplay.cast_to_expandable_html(
                 data.asDict(), 
                 add_quotes_when_needed=True,
-                preview_prefix='Row(', 
-                preview_postfix=')'
+                # preview_prefix='Row(', 
+                # preview_postfix=')'
             )
 
         # Handle Lists
