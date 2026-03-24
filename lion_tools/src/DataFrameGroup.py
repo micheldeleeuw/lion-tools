@@ -108,7 +108,7 @@ class DataFrameGroup():
         else:
             self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
-        self.result = self.result.drop("_totals_type")
+        # self.result = self.result.drop("_totals_type")
 
     def _get_aggregates(self) -> DataFrame:
         from pyspark.sql.group import GroupedData

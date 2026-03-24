@@ -139,12 +139,36 @@ class DataFrameDisplay():
         return html_table
     
     @staticmethod
+    def remove_unnecessary_sub_totals(df_collected, cols):
+        # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
+        group_record_count = 0
+        df_collected_new = []
+        for row in df_collected:
+            if row['_totals_type'] <= 2: 
+                # regular rows
+                group_record_count += 1
+            else:
+                group_record_count = 0
+
+            if row['_totals_type'] == 3 and group_record_count <= 1:
+                # unnecessary sub total rows 
+                pass
+            else:
+                df_collected_new.append(row)
+                    
+            for col in cols:
+                value = row[col]        
+
+    @staticmethod
     def collect_data_and_stats(df):
         cols = df.columns
         dtypes = df.dtypes
         df_collected = df.collect()
-
         stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
+
+        if '_totals_type' in cols:
+            df_collected = DataFrameDisplay.remove_unnecessary_sub_totals(df_collected, cols)
+
         for row in df_collected:
             for col in cols:
                 value = row[col]
@@ -220,7 +244,7 @@ class DataFrameDisplay():
         for i, col in enumerate(nummeric_columns):
             col_name = cols[col]
             decimals = df_statistics[col_name]['decimals']
-            if i>0:
+            if i > 0:
                 col_defs_number_format += ',\n            '
             col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
         col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format
