@@ -143,6 +143,7 @@ class DataFrameDisplay():
         # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
         group_record_count = 0
         df_collected_new = []
+        
         for row in df_collected:
             if row['_totals_type'] <= 2: 
                 # regular rows
@@ -155,9 +156,8 @@ class DataFrameDisplay():
                 pass
             else:
                 df_collected_new.append(row)
-                    
-            for col in cols:
-                value = row[col]        
+
+        return df_collected_new                    
 
     @staticmethod
     def collect_data_and_stats(df):
