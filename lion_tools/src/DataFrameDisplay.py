@@ -139,11 +139,10 @@ class DataFrameDisplay():
         return html_table
     
     @staticmethod
-    def remove_unnecessary_sub_totals(df_collected, cols):
+    def remove_unnecessary_sub_totals(df_collected):
         # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
         group_record_count = 0
         df_collected_new = []
-        
         for row in df_collected:
             if row['_totals_type'] <= 2: 
                 # regular rows
@@ -160,14 +159,12 @@ class DataFrameDisplay():
         return df_collected_new                    
 
     @staticmethod
-    def collect_data_and_stats(df):
-        cols = df.columns
-        dtypes = df.dtypes
+    def collect_data_and_stats(df, all_cols, cols, dtypes):
         df_collected = df.collect()
         stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
 
-        if '_totals_type' in cols:
-            df_collected = DataFrameDisplay.remove_unnecessary_sub_totals(df_collected, cols)
+        if '_totals_type' in all_cols:
+            df_collected = DataFrameDisplay.remove_unnecessary_sub_totals(df_collected)
 
         for row in df_collected:
             for col in cols:
@@ -201,10 +198,10 @@ class DataFrameDisplay():
     def display(df, *args, **kwargs):
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
 
-        cols = df.columns
-        has_rownum = '_rownum' in cols
-        cols = [col for col in cols if col != '_rownum']
-        dtypes = [dtype for dtype in df.dtypes if dtype[0] != '_rownum']
+        all_cols = df.columns
+        has_rownum = '_rownum' in all_cols
+        cols = [col for col in all_cols if col not in ('_rownum', '_totals_type')]
+        dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type')]
         nummeric_columns = [
             i for i, (col, dtype) in enumerate(dtypes)
             if Tools.check_data_type(dtype, 'num')
@@ -228,7 +225,7 @@ class DataFrameDisplay():
             df = df.limit(params['n']).withColumn('_rownum', F.lit(0))
             ordering = "ordering: true"
             
-        df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df)
+        df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df, all_cols, cols, dtypes)
         columns_popup = str(list([
             html.escape(
                 col + '---(' + dtype + ')'
