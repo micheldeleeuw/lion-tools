@@ -114,6 +114,7 @@ class DataFrameDisplay():
     @staticmethod
     def data_to_html_table(df_collected, cols):
         # note we don't use tabulate here as we need to build the table body with additional functionality
+        cols = [col for col in cols if col != '_totals_type']
 
         html_header = ''.join([f'<th>{html.escape(str(col))}</th>' for col in cols])
         html_body = ''
@@ -199,9 +200,9 @@ class DataFrameDisplay():
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
 
         all_cols = df.columns
-        has_rownum = '_rownum' in all_cols
         cols = [col for col in all_cols if col not in ('_rownum', '_totals_type')]
         dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type')]
+        has_rownum = '_rownum' in all_cols
         nummeric_columns = [
             i for i, (col, dtype) in enumerate(dtypes)
             if Tools.check_data_type(dtype, 'num')
