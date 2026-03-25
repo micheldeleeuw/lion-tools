@@ -51,8 +51,16 @@ class DataFrameExtensions:
         return df.select(*non_empty_columns)
 
     @staticmethod
-    def round(df: DataFrame, precision=2, columns=None) -> DataFrame:
-        columns = [dtype[0] for dtype in df.dtypes if dtype[1] == 'double'] if not columns else columns
+    def round(df: DataFrame, precision: int = 2, columns: list[str] = None) -> DataFrame:
+        assert isinstance(precision, int),  "Precision must be an integer."
+
+        columns = columns if columns else [
+            dtype[0] for dtype in df.dtypes
+            if dtype[1] in ("double", "integer", "int", "short", "long", "float", "bigint")
+            or dtype[1].find("decimal") > -1
+        ]
+
+        columns = [columns] if isinstance(columns, str) else columns
 
         return df.withColumns({
             col: F.round(F.col(col), precision) for col in columns

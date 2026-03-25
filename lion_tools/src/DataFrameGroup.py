@@ -27,12 +27,14 @@ class DataFrameGroup():
             if dtype[1] in ("double", "integer", "int", "short", "long", "float", "bigint")
             or dtype[1].find("decimal") > -1
         ]
+        self.add_rownum = kwargs.get("add_rownum", False)
+
         self.pivot_column = None
         self.totals_by = []
         self.sections = False
         self.sub_totals = False
         self.grand_total = False
-        self.add_rownum = kwargs.get("add_rownum", False)
+        self.round = False
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -59,6 +61,7 @@ class DataFrameGroup():
     def agg(self, *aggs: str, **kwargs) -> DataFrame:
         self.alias = kwargs.get("alias", False)
         self.normalize_column_names = kwargs.get("normalize_column_names", False)
+        self.round = kwargs.get("round", self.round)
 
         assert not (self.by_strings == ['*'] and not(self.sections or self.sub_totals or self.grand_total) and len(aggs) > 0
             ), "When grouping by all columns, no aggregation functions can be provided unless totals are requested."
@@ -169,6 +172,9 @@ class DataFrameGroup():
                     allowMissingColumns=True,
                 )
             )
+
+        if self.round or self.round == 0:
+            result = DataFrameExtensions.round(result, self.round)
 
         self.result = result
         

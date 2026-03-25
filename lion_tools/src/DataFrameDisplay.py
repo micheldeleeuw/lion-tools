@@ -31,7 +31,8 @@ class DataFrameDisplay():
             'page_length',
             'display',
             'lazy',
-            'allow_additional_parameters'
+            'allow_additional_parameters',
+            'pretty_headers',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -109,14 +110,19 @@ class DataFrameDisplay():
         else:
             kwargs['lazy'] = True
 
+        if 'pretty_headers' in kwargs:
+            if not isinstance(kwargs['pretty_headers'], bool):
+                raise Exception("pretty_headers must be a boolean value")
+
         return kwargs
         
     @staticmethod
-    def data_to_html_table(df_collected, cols):
+    def data_to_html_table(df_collected, cols, pretty_headers=False):
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = [col for col in cols if col != '_totals_type']
 
-        html_header = ''.join([f'<th>{html.escape(str(col))}</th>' for col in cols])
+        headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
+        html_header = ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers])
         html_body = ''
         for row in df_collected:
             html_body += '<tr>'
@@ -148,14 +154,15 @@ class DataFrameDisplay():
             if row['_totals_type'] <= 2: 
                 # regular rows
                 group_record_count += 1
-            else:
-                group_record_count = 0
 
-            if row['_totals_type'] == 3 and group_record_count <= 1:
+            if row['_totals_type'] in (3, 4) and group_record_count <= 1:
                 # unnecessary sub total rows 
                 pass
             else:
                 df_collected_new.append(row)
+
+            if row['_totals_type'] == 4: 
+                group_record_count = 0
 
         return df_collected_new                    
 
@@ -207,6 +214,7 @@ class DataFrameDisplay():
             i for i, (col, dtype) in enumerate(dtypes)
             if Tools.check_data_type(dtype, 'num')
         ]
+        pretty_headers = params['pretty_headers'] if 'pretty_headers' in params else False
 
         # If sorting is requested, we do this the real way, with a rownum
         # if not requested but rownum is already present we use that
@@ -262,7 +270,7 @@ class DataFrameDisplay():
 
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, df.columns))
+        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, df.columns, pretty_headers))
         html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
