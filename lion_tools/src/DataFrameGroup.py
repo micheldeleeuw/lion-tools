@@ -173,7 +173,7 @@ class DataFrameGroup():
                 )
             )
 
-        if self.round:
+        if self.round or self.round == 0:
             result = DataFrameExtensions.round(result, self.round)
 
         self.result = result
