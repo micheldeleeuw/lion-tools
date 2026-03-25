@@ -148,14 +148,15 @@ class DataFrameDisplay():
             if row['_totals_type'] <= 2: 
                 # regular rows
                 group_record_count += 1
-            else:
-                group_record_count = 0
 
             if row['_totals_type'] == 3 and group_record_count <= 1:
                 # unnecessary sub total rows 
                 pass
             else:
                 df_collected_new.append(row)
+
+            if row['_totals_type'] >= 3: 
+                group_record_count = 0
 
         return df_collected_new                    
 
