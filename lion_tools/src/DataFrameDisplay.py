@@ -145,6 +145,7 @@ class DataFrameDisplay():
             'lazy',
             'allow_additional_parameters',
             'color_rules',
+            'pretty_headers',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -226,13 +227,19 @@ class DataFrameDisplay():
             if not isinstance(kwargs['color_rules'], list):
                 raise Exception("color_rules must be a list of dictionaries")
             
+        if 'pretty_headers' in kwargs:
+            if not isinstance(kwargs['pretty_headers'], bool):
+                raise Exception("pretty_headers must be a boolean value")
+
         return kwargs
         
     @staticmethod
-    def data_to_html_table(df_collected, cols):
+    def data_to_html_table(df_collected, cols, pretty_headers=False):
         # note we don't use tabulate here as we need to build the table body with additional functionality
+        cols = [col for col in cols if col != '_totals_type']
 
-        html_header = ''.join([f'<th>{html.escape(str(col))}</th>' for col in cols])
+        headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
+        html_header = ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers])
         html_body = ''
         for row in df_collected:
             html_body += '<tr>'
@@ -325,8 +332,34 @@ class DataFrameDisplay():
         cols = df.columns
         dtypes = df.dtypes
         df_collected = df.collect()
+    def remove_unnecessary_sub_totals(df_collected):
+        # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
+        group_record_count = 0
+        df_collected_new = []
+        for row in df_collected:
+            if row['_totals_type'] <= 2: 
+                # regular rows
+                group_record_count += 1
 
+            if row['_totals_type'] in (3, 4) and group_record_count <= 1:
+                # unnecessary sub total rows 
+                pass
+            else:
+                df_collected_new.append(row)
+
+            if row['_totals_type'] == 4: 
+                group_record_count = 0
+
+        return df_collected_new                    
+
+    @staticmethod
+    def collect_data_and_stats(df, all_cols, cols, dtypes):
+        df_collected = df.collect()
         stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
+
+        if '_totals_type' in all_cols:
+            df_collected = DataFrameDisplay.remove_unnecessary_sub_totals(df_collected)
+
         for row in df_collected:
             for col in cols:
                 value = row[col]
@@ -359,14 +392,15 @@ class DataFrameDisplay():
     def display(df, *args, **kwargs):
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
 
-        cols = df.columns
-        has_rownum = '_rownum' in cols
-        cols = [col for col in cols if col != '_rownum']
-        dtypes = [dtype for dtype in df.dtypes if dtype[0] != '_rownum']
+        all_cols = df.columns
+        cols = [col for col in all_cols if col not in ('_rownum', '_totals_type')]
+        dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type')]
+        has_rownum = '_rownum' in all_cols
         nummeric_columns = [
             i for i, (col, dtype) in enumerate(dtypes)
             if Tools.check_data_type(dtype, 'num')
         ]
+        pretty_headers = params['pretty_headers'] if 'pretty_headers' in params else False
 
         # If sorting is requested, we do this the real way, with a rownum
         # if not requested but rownum is already present we use that
@@ -377,8 +411,6 @@ class DataFrameDisplay():
             df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         elif has_rownum:
-            # rownum to last position
-            df = df.selectExpr('* except(_rownum)', '_rownum')
             df = df.filter(F.col('_rownum') < params['n'] + 1).orderBy('_rownum')            
             ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         else:
@@ -386,7 +418,9 @@ class DataFrameDisplay():
             df = df.limit(params['n']).withColumn('_rownum', F.lit(0))
             ordering = "ordering: true"
             
-        df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df)
+        # rownum to last position
+        df = df.selectExpr('* except(_rownum)', '_rownum')
+        df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df, all_cols, cols, dtypes)
         columns_popup = str(list([
             html.escape(
                 col + '---(' + dtype + ')'
@@ -402,7 +436,7 @@ class DataFrameDisplay():
         for i, col in enumerate(nummeric_columns):
             col_name = cols[col]
             decimals = df_statistics[col_name]['decimals']
-            if i>0:
+            if i > 0:
                 col_defs_number_format += ',\n            '
             col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
         col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format
@@ -422,7 +456,7 @@ class DataFrameDisplay():
 
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, df.columns))
+        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, df.columns, pretty_headers))
         html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
