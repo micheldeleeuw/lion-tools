@@ -353,7 +353,7 @@ class Cockpit:
         cls.monitored_logs = {}
         cls.log_backfill = log_backfill
         cls.log_lines = deque(maxlen=log_history)
-        cls.append_to_log_lines(f"Waiting for logs, timeout set to {timeout} minutes.")
+        cls.append_to_log_lines(f"Waiting for logs, timeout set to {timeout} minutes after the last activity.")
         cls.log_content = ""
         cls.page_length = page_length
         cls.log_length = log_length
@@ -361,7 +361,6 @@ class Cockpit:
 
         cls.last_active_time = time.time()
         while True:
-            mean_time = time.time()
             # Reading and processing log files is fast and we want it close to the action
             # in the generating session, so we do it first
             # 1. Find new log files
@@ -384,8 +383,11 @@ class Cockpit:
                 cls.append_to_log_lines("Timeout reached, stopping the Cockpit.")
                 cls.update_log_panel()
                 break
-            if time.time() - mean_time < 0.2:
+
+            if time.time() - cls.last_active_time > 0.2:
                 time.sleep(0.5)
+            elif time.time() - cls.last_active_time > 10:
+                time.sleep(2)
 
     @staticmethod
     def get_overview():
