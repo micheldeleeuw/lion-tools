@@ -353,7 +353,7 @@ class Cockpit:
         cls.monitored_logs = {}
         cls.log_backfill = log_backfill
         cls.log_lines = deque(maxlen=log_history)
-        cls.append_to_log_lines(f"Waiting for logs, timeout set to {timeout} minutes...")
+        cls.append_to_log_lines(f"Waiting for logs, timeout set to {timeout} minutes.")
         cls.log_content = ""
         cls.page_length = page_length
         cls.log_length = log_length
