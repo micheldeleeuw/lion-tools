@@ -311,7 +311,10 @@ class DataFrameDisplay():
     def to_string(value, add_quotes_when_needed=False):
         if add_quotes_when_needed and isinstance(value, str):
             return f"'{value}'"
-        return str(value)
+        elif isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
+            return value[0:4] + "..." + value[-4:]
+        else:
+            return str(value)
 
     @staticmethod
     def expandable_html(preview, multi_line, preview_prefix, preview_postfix, max_preview_length=60):
