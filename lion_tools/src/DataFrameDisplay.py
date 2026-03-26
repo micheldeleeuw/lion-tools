@@ -169,8 +169,13 @@ class DataFrameDisplay():
                 )
             ):
                 # unnecessary empty row when both the previous and next group have only one record
+                # or when this is the last row in the table and the previous group has only one record
+                pass
+            if row['_totals_type'] == 5 and rownum == df_collected_len - 1:
+                # empty row at end of table coming from sections
                 pass
             else:
+                # normal row or necessary sub total/empty row
                 df_collected_new.append(row)
 
             if row['_totals_type'] == 4: 
