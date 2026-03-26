@@ -303,9 +303,10 @@ class Cockpit:
         if isinstance(lines, str):
             lines = [lines]
 
-        # add the current time to each line
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        lines = [f"[{timestamp}] - {line}" for line in lines]
+        if not new_line:
+            # add the current time to each new line
+            timestamp = datetime.now().strftime("%H:%M:%S")
+            lines = [f"[{timestamp}] - {line}" for line in lines]
 
         if new_line:
             cls.log_lines.extend(lines)
