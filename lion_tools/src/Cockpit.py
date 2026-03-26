@@ -153,6 +153,7 @@ class Cockpit:
             cls.tabs_panel.set_title(i, tab.get("name"))
         # move the focus to the newly added tab
         cls.tabs_panel.selected_index = 0
+        cls.last_active_time = time.time()
 
     @classmethod
     def update_log_panel(cls, message: str | list[str] = None, new_line: bool = True):
@@ -173,6 +174,7 @@ class Cockpit:
                 .replace("{log_height}", str(cls.log_length*12*1.2 + 22))  # pixel perfect estimate of log height based on number of lines
                 .replace("{log}", cls.log_content)
             )
+            cls.last_active_time = time.time()
 
     @classmethod
     def sync_xlsx_to_tabs(cls):
@@ -299,7 +301,7 @@ class Cockpit:
     @classmethod
     def run(
         cls, 
-        timeout: int = 60, 
+        timeout: int = 10, 
         tabs: int = 5, 
         clean_start: bool = False, 
         raise_errors: bool = False,
@@ -338,7 +340,7 @@ class Cockpit:
         cls.log_length = log_length
         cls.initialize()
 
-        start_time = time.time()
+        cls.last_active_time = time.time()
         while True:
             mean_time = time.time()
             # Reading and processing log files is fast and we want it close to the action
@@ -357,7 +359,9 @@ class Cockpit:
 
             # 5. Create html files for new json files (only lazy mode)
             cls.create_html_for_json()
-            if time.time() - start_time > timeout * 60:
+
+            # 6. House keeping
+            if time.time() - cls.last_active_time > timeout * 60:
                 cls.log_lines.append("Timeout reached, stopping the Cockpit.")
                 cls.update_log_panel()
                 break
