@@ -303,7 +303,7 @@ class Cockpit:
         if isinstance(lines, str):
             lines = [lines]
 
-        if not new_line:
+        if new_line:
             # add the current time to each new line
             timestamp = datetime.now().strftime("%H:%M:%S")
             lines = [f"[{timestamp}] - {line}" for line in lines]
