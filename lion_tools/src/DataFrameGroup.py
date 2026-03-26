@@ -155,7 +155,7 @@ class DataFrameGroup():
                     self.df
                     .select(*self.totals_by)
                     .distinct()
-                    .withColumn("_totals_type", F.lit(4)),
+                    .withColumn("_totals_type", F.lit(5)),
                     allowMissingColumns=True,
                 )
             )

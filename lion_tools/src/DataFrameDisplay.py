@@ -150,13 +150,16 @@ class DataFrameDisplay():
         # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
         group_record_count = 0
         df_collected_new = []
-        for row in df_collected:
+        for rownum, row in enumerate(df_collected):
             if row['_totals_type'] <= 2: 
                 # regular rows
                 group_record_count += 1
 
-            if row['_totals_type'] in (3, 4) and group_record_count <= 1:
-                # unnecessary sub total rows 
+            if row['_totals_type'] == 3 and group_record_count <= 1:
+                # unnecessary sub total row
+                pass
+            elif row['_totals_type'] == 4 and group_record_count <= 1 and df_collected[rownum + 2]['_totals_type'] > 2:
+                # unnecessary empty row when both the previous and next group have only one record
                 pass
             else:
                 df_collected_new.append(row)
