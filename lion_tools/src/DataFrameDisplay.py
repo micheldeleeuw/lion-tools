@@ -282,10 +282,10 @@ class DataFrameDisplay():
                 for x in data
             )
             expanded_items = [
-                DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
                 for item in data
             ]
-            multi_line = "".join(expanded_items)
+            multi_line = "<br>".join(expanded_items)
             
             return DataFrameDisplay.expandable_html(preview, multi_line, preview_prefix='[', preview_postfix=']')
 
