@@ -59,6 +59,8 @@ class DataFrameGroup():
         return self
 
     def agg(self, *aggs: str, **kwargs) -> DataFrame:
+        assert all(key in ["alias", "normalize_column_names", "round"] for key in kwargs.keys()), "Invalid keyword argument(s) provided."
+
         self.alias = kwargs.get("alias", False)
         self.normalize_column_names = kwargs.get("normalize_column_names", False)
         self.round = kwargs.get("round", self.round)
@@ -98,7 +100,7 @@ class DataFrameGroup():
                     for col in self.totals_by
                 })
                 .withColumns({
-                    col: F.expr(f"if(_totals_type not in (4), `{col}`, null)")
+                    col: F.expr(f"if(_totals_type not in (4, 5), `{col}`, null)")
                     for col in self.result.columns
                     if col not in ('_rownum', '_totals_type')
                 })
@@ -106,8 +108,6 @@ class DataFrameGroup():
                 .withColumn("", F.expr("case when _totals_type in (3, 9) then '+' else null end"))
                 .orderBy('_rownum')
             )
-
-            
         else:
             self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
@@ -155,7 +155,7 @@ class DataFrameGroup():
                     self.df
                     .select(*self.totals_by)
                     .distinct()
-                    .withColumn("_totals_type", F.lit(4)),
+                    .withColumn("_totals_type", F.lit(5)),
                     allowMissingColumns=True,
                 )
             )
