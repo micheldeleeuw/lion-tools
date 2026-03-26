@@ -160,7 +160,14 @@ class DataFrameDisplay():
             if row['_totals_type'] == 3 and group_record_count <= 1:
                 # unnecessary sub total row when the group has only one record
                 pass
-            elif row['_totals_type'] == 4 and group_record_count <= 1 and (rownum + 2) < df_collected_len and df_collected[rownum + 2]['_totals_type'] > 2:
+            elif (
+                row['_totals_type'] == 4 and 
+                group_record_count <= 1 and 
+                (
+                    ((rownum + 2) < df_collected_len and df_collected[rownum + 2]['_totals_type'] > 2) or
+                    (rownum + 2) >= df_collected_len
+                )
+            ):
                 # unnecessary empty row when both the previous and next group have only one record
                 pass
             else:
