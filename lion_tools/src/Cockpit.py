@@ -1,3 +1,4 @@
+from email import message
 from pprint import pprint
 from .settings import LION_TOOLS_PATH, LION_TOOLS_COCKPIT_PATH
 from .settings import cleanup_old_files, cleanup_temp_views
@@ -158,10 +159,9 @@ class Cockpit:
     @classmethod
     def update_log_panel(cls, message: str | list[str] = None, new_line: bool = True):
         message = [message] if isinstance(message, str) else message
-        if message and new_line:
-            cls.log_lines.extend(message)
-        elif message:
-            cls.log_lines[-1] += "".join(message)
+
+        if message:
+            cls.append_to_log_lines(message, new_line=new_line)
         
         _log_lines = list(cls.log_lines)
         _log_lines += [""] * (cls.log_length - len(_log_lines) + 1)
@@ -274,7 +274,7 @@ class Cockpit:
                 line = log['file'].readline()
                 if line:
                     update_needed = True
-                    cls.log_lines.append(line.strip())
+                    cls.append_to_log_lines(line.strip())
                 else:
                     break
 
@@ -284,12 +284,12 @@ class Cockpit:
                     update_needed = True
                     log['file'].seek(0)
                     log['position'] = log['file'].tell()
-                    cls.log_lines.append(f'log file {log["log_file"]} was rewritten or truncated.')
+                    cls.append_to_log_lines(f'log file {log["log_file"]} was rewritten or truncated.')
             except FileNotFoundError:
                 # The log file has been deleted, we stop monitoring it
                 log['file'].close()
                 cls.monitored_logs.pop(log['log_file'])
-                cls.log_lines.append(f'log file {log["log_file"]} was deleted.')
+                cls.append_to_log_lines(f'log file {log["log_file"]} was deleted.')
                 update_needed = True
                 continue
             
@@ -297,6 +297,20 @@ class Cockpit:
             log['position'] = log['file'].tell()
             if update_needed:
                 cls.update_log_panel()
+
+    @classmethod
+    def append_to_log_lines(cls, lines: str | list[str], new_line: bool = True):
+        if isinstance(lines, str):
+            lines = [lines]
+
+        if new_line:
+            cls.log_lines.extend(lines)
+        else:
+            if len(lines) > 1:
+                raise ValueError("When new_line is False only a single line is allowed.")
+            
+            cls.log_lines[-1] += "".join(lines[0])
+
 
     @classmethod
     def run(
@@ -334,7 +348,7 @@ class Cockpit:
         cls.monitored_logs = {}
         cls.log_backfill = log_backfill
         cls.log_lines = deque(maxlen=log_history)
-        cls.log_lines.append(f"Waiting for logs, timeout set to {timeout} minutes...")
+        cls.append_to_log_lines(f"Waiting for logs, timeout set to {timeout} minutes...")
         cls.log_content = ""
         cls.page_length = page_length
         cls.log_length = log_length
@@ -362,7 +376,7 @@ class Cockpit:
 
             # 6. House keeping
             if time.time() - cls.last_active_time > timeout * 60:
-                cls.log_lines.append("Timeout reached, stopping the Cockpit.")
+                cls.append_to_log_lines("Timeout reached, stopping the Cockpit.")
                 cls.update_log_panel()
                 break
             if time.time() - mean_time < 0.2:
