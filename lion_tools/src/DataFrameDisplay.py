@@ -33,7 +33,7 @@ class DataFrameDisplay():
     )
 
     # max_table_bytes = 500000
-    max_table_bytes = 100000
+    max_table_bytes = 200000
 
     @staticmethod
     def set_colors(df, *color_rules: dict):
@@ -224,6 +224,9 @@ class DataFrameDisplay():
             kwargs['lazy'] = True
 
         if 'color_rules' in kwargs:
+            if isinstance(kwargs['color_rules'], dict):
+                kwargs['color_rules'] = [kwargs['color_rules']]
+                
             if not isinstance(kwargs['color_rules'], list):
                 raise Exception("color_rules must be a list of dictionaries")
             
@@ -239,22 +242,21 @@ class DataFrameDisplay():
         cols = [col for col in cols if col != '_totals_type']
 
         headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
-        html_header = ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers])
-        html_body = ''
+        table_header = ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers])
+        table_body = ''
         for row in df_collected:
-            html_body += '<tr>'
+            table_body += '<tr>'
             for col in cols:
                 value = DataFrameDisplay.cast_to_expandable_html(row[col])
-                value = '' if not value else html.escape(str(value))
-                html_body += f'<td>{value}</td>'
-            html_body += '</tr>\n'
+                table_body += f'<td>{value}</td>'
+            table_body += '</tr>\n'
                 
 
         html_table = f"""
             <table id="mainTable" class="display" style="width:100%">
-                <thead><tr>{html_header}</tr></thead>
+                <thead><tr>{table_header}</tr></thead>
                 <tbody>
-                    {html_body}
+                    {table_body}
                 </tbody>
             </table>
         """
@@ -281,11 +283,22 @@ class DataFrameDisplay():
                 DataFrameDisplay.to_string(x, add_quotes_when_needed=True)
                 for x in data
             )
-            expanded_items = [
-                "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
-                for item in data
-            ]
-            multi_line = "<br>".join(expanded_items)
+
+            if (
+                len(data) > 0 and 
+                (isinstance(data[0], Row) or isinstance(data[0], dict) or isinstance(data[0], list))
+            ):
+                expanded_items = [
+                    DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                    for item in data
+                ]
+                multi_line = "".join(expanded_items)
+            else:
+                expanded_items = [
+                    "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                    for item in data
+                ]
+                multi_line = "<br>".join(expanded_items)
             
             return DataFrameDisplay.expandable_html(preview, multi_line, preview_prefix='[', preview_postfix=']')
 
@@ -310,15 +323,16 @@ class DataFrameDisplay():
     @staticmethod
     def to_string(value, add_quotes_when_needed=False):
         if add_quotes_when_needed and isinstance(value, str):
-            return f"'{value}'"
+            return f"'{html.escape(value)}'"
         elif add_quotes_when_needed and value is None:
             return 'null'
         elif value is None:
             return ''
         elif isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
+            value = html.escape(value)
             return value[0:5] + "...." + value[-5:]
         else:
-            return str(value)
+            return html.escape(str(value))
 
     @staticmethod
     def expandable_html(preview, multi_line, preview_prefix, preview_postfix, max_preview_length=60):
@@ -334,11 +348,6 @@ class DataFrameDisplay():
         </details>
         """
 
-    @staticmethod
-    def collect_data_and_stats(df):
-        cols = df.columns
-        dtypes = df.dtypes
-        df_collected = df.collect()
     def remove_unnecessary_sub_totals(df_collected):
         # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
         group_record_count = 0
@@ -378,6 +387,8 @@ class DataFrameDisplay():
 
     @staticmethod
     def collect_data_and_stats(df, all_cols, cols, dtypes):
+        cols = df.columns
+        dtypes = df.dtypes
         df_collected = df.collect()
         stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
 
@@ -416,10 +427,14 @@ class DataFrameDisplay():
     def display(df, *args, **kwargs):
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
 
+        if 'color_rules' in params:
+            df = DataFrameDisplay.set_colors(df, *params['color_rules'])
+
         all_cols = df.columns
         cols = [col for col in all_cols if col not in ('_rownum', '_totals_type')]
         dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type')]
         has_rownum = '_rownum' in all_cols
+        has_colors = '_color_style' in all_cols
         nummeric_columns = [
             i for i, (col, dtype) in enumerate(dtypes)
             if Tools.check_data_type(dtype, 'num')

@@ -5,6 +5,7 @@ from pyspark.sql import Column
 import pyspark.sql.functions as F
 import pyspark.sql.window as W
 from typing import Self
+from .Tools import Tools
 
 class DataFrameGroup():
 
@@ -24,8 +25,7 @@ class DataFrameGroup():
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
         self.columns_nummeric = [
             dtype[0] for dtype in df.dtypes
-            if dtype[1] in ("double", "integer", "int", "short", "long", "float", "bigint")
-            or dtype[1].find("decimal") > -1
+            if Tools.check_data_type(dtype[1], 'num')
         ]
         self.add_rownum = kwargs.get("add_rownum", False)
 
