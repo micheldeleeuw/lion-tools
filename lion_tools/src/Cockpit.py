@@ -148,10 +148,25 @@ class Cockpit:
         # if the initial tab is still there and we have more than 1 tab, remove the initial tab
         if len(cls.tabs) > 1 and cls.init_tab in cls.tabs:
             cls.tabs.remove(cls.init_tab)
-        cls.tabs = cls.tabs[: cls.max_tabs]  # keep only the latest max_tabs tabs
+
+        # Keep number of tabs definied by max_tabs by removing duplicates and old tabs if needed
+        while len(cls.tabs) > cls.max_tabs:
+            names = [tab.get("name") for tab in cls.tabs]
+            tab_to_remove = None
+            # Search from oldest (end) to newest (start) for a tab whose name appears in a newer tab
+            for i in range(len(cls.tabs) - 1, -1, -1):
+                if cls.tabs[i].get("name") in names[:i]:
+                    tab_to_remove = cls.tabs[i]
+                    break
+            if tab_to_remove is None:
+                tab_to_remove = cls.tabs[-1]  # fall back to the oldest tab
+            cls.tabs.remove(tab_to_remove)
+            
+        # Populate the tabs panel with the content of the tabs and set the titles        
         cls.tabs_panel.children = tuple(tab.get("content") for tab in cls.tabs)
         for i, tab in enumerate(cls.tabs):
             cls.tabs_panel.set_title(i, tab.get("name"))
+        
         # move the focus to the newly added tab
         cls.tabs_panel.selected_index = 0
         cls.last_active_time = time.time()
