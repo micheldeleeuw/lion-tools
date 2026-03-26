@@ -311,6 +311,10 @@ class DataFrameDisplay():
     def to_string(value, add_quotes_when_needed=False):
         if add_quotes_when_needed and isinstance(value, str):
             return f"'{value}'"
+        elif add_quotes_when_needed and value is None:
+            return 'null'
+        elif value is None:
+            return ''
         elif isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
             return value[0:4] + "..." + value[-4:]
         else:
