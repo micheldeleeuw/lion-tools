@@ -316,7 +316,7 @@ class DataFrameDisplay():
         elif value is None:
             return ''
         elif isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
-            return value[0:6] + "...." + value[-6:]
+            return value[0:5] + "...." + value[-5:]
         else:
             return str(value)
 
