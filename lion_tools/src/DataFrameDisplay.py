@@ -13,18 +13,32 @@ from pyspark.sql import Row
 
 
 class DataFrameDisplay():
-    color_codes = dict(
-        traffic_light_red = {'color': '#f7d3cc'},
-        traffic_light_yellow = {'color': '#f7e998'},
-        traffic_light_green = {'color': '#d3f7d3'},
-        light0 = {'color': '#FFF0FF'},
-        light1 = {'color': '#F0FFF0'},
-        light2 = {'color': '#FFFFF0'},
-        light3 = {'color': '#F0FFFF'},
-        light4 = {'color': '#FFF0F0'},
-        light5 = {'color': '#F0F0FF'},
-        light6 = {'color': '#F0F0F0'},
-    )
+    color_codes_colors = [
+        # Grays
+        "slate", "gray", "zinc", "neutral", "stone",
+        # Colors
+        "red", "orange", "amber", "yellow", "lime", "green", "emerald", 
+        "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", 
+        "fuchsia", "pink", "rose"
+    ]
+
+    color_codes_weights = [
+        "50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"
+    ]
+    
+    color_codes_weight_mapping_background_to_font = {
+        '50': '900',
+        '100': '900',
+        '200': '950',
+        '300': '950',
+        '400': '950',
+        '500': '50',
+        '600': '50',
+        '700': '50',
+        '800': '50',
+        '900': '50',
+        '950': '100'
+    }
 
     style_codes = dict(
         bold = {'style': 'font-weight: bold;'},
@@ -61,8 +75,28 @@ class DataFrameDisplay():
                 "color_rules must contain 'color_code' or 'style_code' or both")
             
             if 'color_code' in rule:
-                assert isinstance(rule['color_code'], str) and rule['color_code'] in DataFrameDisplay.color_codes, (
-                    "color_code must be one of the codes in DataFrameDisplay.color_codes")
+                if len(rule['color_code'].split('-')) == 1:
+                    # both background and font weight are not set, set background to 100
+                    rule['color_code'] += '-100'
+                if len(rule['color_code'].split('-')) == 2:
+                    # font weight is not set, set it to a value that works with the background weight
+                    rule['color_code'] += ('-' + 
+                        DataFrameDisplay.color_codes_weight_mapping_background_to_font.get(rule['color_code'].split('-')[1], 'x'))
+
+                color_code = rule['color_code']
+                error_message = (
+                    "color_code must be in the tailwind CSS format `color(-xxx-yyy)` where color is one of"
+                    f"\n{DataFrameDisplay.color_codes_colors}"
+                    f"\nand xxx and yyy (both optional) are one of {DataFrameDisplay.color_codes_weights}"
+                    "\nwhere xxx is the background weight and yyy is the font weight. See https://tailwindcss.com/docs/colors for details."
+                    f"\nEvaluated color_code: {color_code}"
+                )
+
+                assert isinstance(color_code, str) and len(color_code.split('-')) in (2, 3), error_message
+                assert color_code.split('-')[0] in DataFrameDisplay.color_codes_colors, error_message
+                assert color_code.split('-')[1] in DataFrameDisplay.color_codes_weights, error_message
+                assert color_code.split('-')[2] in DataFrameDisplay.color_codes_weights, error_message
+
             else:
                 rule['color_code'] = None
 
@@ -239,7 +273,7 @@ class DataFrameDisplay():
     @staticmethod
     def data_to_html_table(df_collected, cols, pretty_headers=False):
         # note we don't use tabulate here as we need to build the table body with additional functionality
-        cols = [col for col in cols if col != '_totals_type']
+        cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
         headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
         table_header = ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers])
@@ -247,8 +281,27 @@ class DataFrameDisplay():
         for row in df_collected:
             table_body += '<tr>'
             for col in cols:
+                # style
+                style_str = ''
+                if '_color_style' in row and row['_color_style'] is not None:
+                    style_info = next((row.asDict() for row in row['_color_style'] if row['column'] == col), None)
+                    if style_info is not None:
+                        color_code = style_info.get('color_code', None)
+                        style_code = style_info.get('style_code', None)
+                        if color_code is not None:
+                            color_parts = color_code.split('-')
+                            background_color = f"bg-{color_parts[0]}-{color_parts[1]}"
+                            text_color = f"text-{color_parts[0]}-{color_parts[2]}"
+                            style_str += f"{background_color} {text_color} "
+                        if style_code is not None:
+                            style_str += DataFrameDisplay.style_codes[style_code]['style']
+
+                # value
                 value = DataFrameDisplay.cast_to_expandable_html(row[col])
-                table_body += f'<td>{value}</td>'
+                if style_str != '':
+                    table_body += f'<td class="{style_str.strip()}">{value}</td>'
+                else:
+                    table_body += f'<td>{value}</td>'
             table_body += '</tr>\n'
                 
 
@@ -388,15 +441,16 @@ class DataFrameDisplay():
     @staticmethod
     def collect_data_and_stats(df, all_cols, cols, dtypes):
         cols = df.columns
+        stat_cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
         dtypes = df.dtypes
         df_collected = df.collect()
-        stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes}
+        stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes if col in stat_cols}
 
         if '_totals_type' in all_cols:
             df_collected = DataFrameDisplay.remove_unnecessary_sub_totals(df_collected)
 
         for row in df_collected:
-            for col in cols:
+            for col in stat_cols:
                 value = row[col]
                 if value is not None:
                     length = len(str(value))
@@ -407,10 +461,10 @@ class DataFrameDisplay():
 
         stats['__total__'] = {
             'rows': len(df_collected), 
-            'columns': len(cols), 
-            'width': sum([stats[col]['length'] for col in cols]),
-            'avg_width': sum([stats[col]['total'] for col in cols]) / len(df_collected) if len(df_collected) > 0 else 0,
-            'width_with_header': sum([max(stats[col]['length'], stats[col]['header_length']) for col in cols]),
+            'columns': len(stat_cols), 
+            'width': sum([stats[col]['length'] for col in stat_cols]),
+            'avg_width': sum([stats[col]['total'] for col in stat_cols]) / len(df_collected) if len(df_collected) > 0 else 0,
+            'width_with_header': sum([max(stats[col]['length'], stats[col]['header_length']) for col in stat_cols]),
             'size_limit': False,
         }
 
@@ -431,8 +485,8 @@ class DataFrameDisplay():
             df = DataFrameDisplay.set_colors(df, *params['color_rules'])
 
         all_cols = df.columns
-        cols = [col for col in all_cols if col not in ('_rownum', '_totals_type')]
-        dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type')]
+        cols = [col for col in all_cols if col not in ('_rownum', '_totals_type', '_color_style')]
+        dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type', '_color_style')]
         has_rownum = '_rownum' in all_cols
         has_colors = '_color_style' in all_cols
         nummeric_columns = [
