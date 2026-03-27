@@ -27,24 +27,19 @@ class DataFrameDisplay():
     ]
     
     color_codes_weight_mapping_background_to_font = {
-        '50': '900',
-        '100': '900',
-        '200': '950',
-        '300': '950',
-        '400': '950',
-        '500': '50',
-        '600': '50',
-        '700': '50',
-        '800': '50',
-        '900': '50',
-        '950': '100'
+        '50': '900', '100': '900', '200': '950', '300': '950', '400': '950', '500': '50',
+        '600': '50', '700': '50', '800': '50', '900': '50', '950': '100'
     }
 
-    style_codes = dict(
-        bold = {'style': 'font-weight: bold;'},
-        italic = {'style': 'font-style: italic;'},
-        underline = {'style': 'text-decoration: underline;'},
-    )
+    style_codes = [
+        'underline', 'overline', 'line-through', 'no-underline',
+        'decoration-solid', 'decoration-double', 'decoration-dotted', 'decoration-dashed', 'decoration-wavy',
+        'uppercase', 'lowercase', 'capitalize', 'normal-case',
+        'font-sans', 'font-serif', 'font-mono',
+        'font-thin', 'font-bold', 'font-black',
+        'italic', 'not-italic',
+        'antialiased', 'subpixel-antialiased',
+    ]
 
     # max_table_bytes = 500000
     max_table_bytes = 200000
@@ -101,8 +96,8 @@ class DataFrameDisplay():
                 rule['color_code'] = None
 
             if 'style_code' in rule:
-                assert isinstance(rule['style_code'], str) and rule['style_code'] in DataFrameDisplay.style_codes, (
-                    "style_code must be one of the codes in DataFrameDisplay.style_codes")
+                assert isinstance(rule['style_code'], str) and all(code in DataFrameDisplay.style_codes for code in rule['style_code'].split(" ")), (
+                    f"style_code must be one of {DataFrameDisplay.style_codes}")
             else:
                 rule['style_code'] = None
 
@@ -180,6 +175,7 @@ class DataFrameDisplay():
             'allow_additional_parameters',
             'color_rules',
             'pretty_headers',
+            'format_totals',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -257,6 +253,12 @@ class DataFrameDisplay():
         else:
             kwargs['lazy'] = True
 
+        if 'format_totals' in kwargs:
+            if not isinstance(kwargs['format_totals'], bool):
+                raise Exception("format_totals must be a boolean value")
+        else:
+            kwargs['format_totals'] = True
+
         if 'color_rules' in kwargs:
             if isinstance(kwargs['color_rules'], dict):
                 kwargs['color_rules'] = [kwargs['color_rules']]
@@ -294,7 +296,7 @@ class DataFrameDisplay():
                             text_color = f"text-{color_parts[0]}-{color_parts[2]}"
                             style_str += f"{background_color} {text_color} "
                         if style_code is not None:
-                            style_str += DataFrameDisplay.style_codes[style_code]['style']
+                            style_str += f"{style_code} "
 
                 # value
                 value = DataFrameDisplay.cast_to_expandable_html(row[col])
@@ -483,6 +485,9 @@ class DataFrameDisplay():
 
         if 'color_rules' in params:
             df = DataFrameDisplay.set_colors(df, *params['color_rules'])
+
+        if "_totals_type" in df.columns and 'format_totals' in params and params['format_totals']:
+            df = DataFrameExtensions.set_colors(df, dict(condition='_totals_type >= 3', style_code='italic'))
 
         all_cols = df.columns
         cols = [col for col in all_cols if col not in ('_rownum', '_totals_type', '_color_style')]
