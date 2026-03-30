@@ -5,6 +5,7 @@ from pyspark.sql import Column
 import pyspark.sql.functions as F
 import pyspark.sql.window as W
 from typing import Self
+from .Tools import Tools
 
 class DataFrameGroup():
 
@@ -24,14 +25,16 @@ class DataFrameGroup():
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
         self.columns_nummeric = [
             dtype[0] for dtype in df.dtypes
-            if dtype[1] in ("double", "integer", "int", "short", "long", "float", "bigint")
-            or dtype[1].find("decimal") > -1
+            if Tools.check_data_type(dtype[1], 'num')
         ]
+        self.add_rownum = kwargs.get("add_rownum", False)
+
+        self.pivot_column = None
         self.totals_by = []
         self.sections = False
         self.sub_totals = False
         self.grand_total = False
-        self.add_rownum = kwargs.get("add_rownum", False)
+        self.round = False
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -46,10 +49,21 @@ class DataFrameGroup():
             "min", "max", "sum", "avg", "avg_null", "count", "count_distinct",
             "count_null", "count_not_null", "first", "last", "collect_set", "collect_list",
         )
+    
+    def pivot(self, column: str) -> Self:
+        assert self.by_strings != ['*'], "Pivoting is not supported when grouping by all columns."
+        assert column in self.columns, f"Pivot column must be one of the columns in the DataFrame. Available columns: {self.columns}."
+        assert column not in self.by_strings, f"Pivot column cannot be one of the grouping columns."
+        
+        self.pivot_column = column
+        return self
 
     def agg(self, *aggs: str, **kwargs) -> DataFrame:
+        assert all(key in ["alias", "normalize_column_names", "round"] for key in kwargs.keys()), "Invalid keyword argument(s) provided."
+
         self.alias = kwargs.get("alias", False)
         self.normalize_column_names = kwargs.get("normalize_column_names", False)
+        self.round = kwargs.get("round", self.round)
 
         assert not (self.by_strings == ['*'] and not(self.sections or self.sub_totals or self.grand_total) and len(aggs) > 0
             ), "When grouping by all columns, no aggregation functions can be provided unless totals are requested."
@@ -86,7 +100,7 @@ class DataFrameGroup():
                     for col in self.totals_by
                 })
                 .withColumns({
-                    col: F.expr(f"if(_totals_type not in (4), `{col}`, null)")
+                    col: F.expr(f"if(_totals_type not in (4, 5), `{col}`, null)")
                     for col in self.result.columns
                     if col not in ('_rownum', '_totals_type')
                 })
@@ -94,20 +108,29 @@ class DataFrameGroup():
                 .withColumn("", F.expr("case when _totals_type in (3, 9) then '+' else null end"))
                 .orderBy('_rownum')
             )
-
-            
         else:
             self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
-        self.result = self.result.drop("_totals_type")
+        # self.result = self.result.drop("_totals_type")
 
     def _get_aggregates(self) -> DataFrame:
+        from pyspark.sql.group import GroupedData
+
+        def _apply_pivot(grouped_df):
+            if self.pivot_column:
+                return grouped_df.pivot(self.pivot_column)
+            else:
+                return grouped_df
+
+        GroupedData._apply_pivot = _apply_pivot
+
         if self.by_strings == ['*']:
             result = self.df.withColumn("_totals_type", F.lit(1))
         else:
             result = (
                 self.df
                 .groupBy(*self.by)
+                ._apply_pivot()
                 .agg(*self.aggs)
                 .withColumn("_totals_type", F.lit(2))
             )
@@ -118,6 +141,7 @@ class DataFrameGroup():
                 .unionByName(
                     self.df
                     .groupBy(*self.totals_by)
+                    ._apply_pivot()
                     .agg(*self.aggs)
                     .withColumn("_totals_type", F.expr("explode(array(3, 4))")),
                     allowMissingColumns=True,
@@ -131,7 +155,7 @@ class DataFrameGroup():
                     self.df
                     .select(*self.totals_by)
                     .distinct()
-                    .withColumn("_totals_type", F.lit(4)),
+                    .withColumn("_totals_type", F.lit(5)),
                     allowMissingColumns=True,
                 )
             )
@@ -142,11 +166,15 @@ class DataFrameGroup():
                 .unionByName(
                     self.df
                     .groupBy()
+                    ._apply_pivot()
                     .agg(*self.aggs)
                     .withColumn("_totals_type", F.lit(9)),
                     allowMissingColumns=True,
                 )
             )
+
+        if not self.round is False:
+            result = DataFrameExtensions.round(result, self.round)
 
         self.result = result
         
