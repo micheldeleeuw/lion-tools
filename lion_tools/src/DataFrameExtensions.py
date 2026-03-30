@@ -85,6 +85,33 @@ class DataFrameExtensions:
 
         return DataFrameSummarize.top(df, *by, n=n, transpose=transpose)
 
+    @staticmethod
+    def summarize(
+            df: DataFrame, 
+            *by: str,
+            top: int = 5, 
+            stats: list[str] = [
+                "count_distinct",
+                "count_null",  "count_not_null", 
+                "min", "max", "avg", "sum",   
+            ],
+            round_decimals: int = 5
+        ) -> DataFrame:
+        from .DataFrameSummarize import DataFrameSummarize
+
+        return DataFrameSummarize.summarize(df, *by, top=top, stats=stats)
+
+    @staticmethod
+    def top(
+        df: DataFrame,
+        *by: str,
+        n: int = 10,
+        transpose: bool = False,
+    ):
+        from .DataFrameSummarize import DataFrameSummarize
+
+        return DataFrameSummarize.top(df, *by, n=n, transpose=transpose)
+
 
     @staticmethod
     def transpose(
