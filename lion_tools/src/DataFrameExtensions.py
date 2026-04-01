@@ -7,16 +7,22 @@ from pyspark.sql.column import Column
 import inspect
 import json
 import re
+import importlib
 
 
 class DataFrameExtensions:
 
     @staticmethod
-    def extend_dataframe() -> None:
+    def extend_dataframe(package: str = "pyspark.sql") -> None:
+
+        allowable_packages = [None, "pyspark.sql", "pyspark.sql.connect"]
+        if package not in allowable_packages:
+            raise ValueError(f"Package '{package}' is not supported. Use on of {allowable_packages}.")
 
         global DataFrame
-        from pyspark.sql import DataFrame
-
+        # from pyspark.sql import DataFrame
+        DataFrame = importlib.import_module(package).DataFrame
+        
         # Extend DataFrame with new methods
         DataFrame.eCockpit = DataFrameExtensions.cockpit
         DataFrame.eDisplay = DataFrameExtensions.display
