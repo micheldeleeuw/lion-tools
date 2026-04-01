@@ -15,7 +15,7 @@ class DataFrameExtensions:
     @staticmethod
     def extend_dataframe(package: str = "pyspark.sql") -> None:
 
-        allowable_packages = ["pyspark.sql", "pyspark.sql.connect"]
+        allowable_packages = ["pyspark.sql", "pyspark.sql.connect.dataframe"]
         if package not in allowable_packages:
             raise ValueError(f"Package '{package}' is not supported. Use one of {allowable_packages}.")
 
