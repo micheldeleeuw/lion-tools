@@ -30,6 +30,7 @@ class DataFrameExtensions:
         DataFrame.eSetColors = DataFrameExtensions.set_colors
         DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns
         DataFrame.eRound = DataFrameExtensions.round
+        DataFrame.eSections = DataFrameExtensions.sections
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
         DataFrame.eSummarize = DataFrameExtensions.summarize
@@ -42,12 +43,22 @@ class DataFrameExtensions:
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
+
+
+    @staticmethod
+    def sections(df: DataFrame, *section_columns: str) -> DataFrame:
+        from .DataFrameGroup import DataFrameGroup
+
+        return (
+            DataFrameGroup(df, '*')
+            .totals(*section_columns, sections=True)
+            .agg()
+        )
     
     @staticmethod
     def set_colors(df, *color_rules: dict):
         from .DataFrameDisplay import DataFrameDisplay
         return DataFrameDisplay.set_colors(df, *color_rules)
-
     
     @staticmethod
     def remove_empty_columns(df: DataFrame) -> DataFrame:
