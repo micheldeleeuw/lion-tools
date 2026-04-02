@@ -8,6 +8,7 @@ import inspect
 import json
 import re
 import importlib
+import random
 
 
 class DataFrameExtensions:
@@ -26,6 +27,7 @@ class DataFrameExtensions:
         # Extend DataFrame with new methods
         DataFrame.eCockpit = DataFrameExtensions.cockpit
         DataFrame.eDisplay = DataFrameExtensions.display
+        DataFrame.eExamples = DataFrameExtensions.examples
         DataFrame.eExcel = DataFrameExtensions.excel
         DataFrame.eExcelCockpit = DataFrameExtensions.excel_cockpit
         DataFrame.eGroup = DataFrameExtensions.group
@@ -49,6 +51,45 @@ class DataFrameExtensions:
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
+
+
+    @staticmethod
+    def examples(
+            df, 
+            strata_columns: list[str] = [],
+            keep_together_columns: list[str] = [],
+            number_of_examples: int = 3,
+            strata_columns_first: bool = True,
+            n: int = 0,
+            filter: str = 'true',
+        ):
+
+        number_of_examples = n if n and n != 0 else number_of_examples
+        strata_columns = [strata_columns] if not isinstance(strata_columns, list) else strata_columns
+        strata_columns_first = False if strata_columns == [] else strata_columns_first
+        keep_together_columns = [keep_together_columns] if not isinstance(keep_together_columns, list) else keep_together_columns
+
+        assert isinstance(number_of_examples, int), "number_of_examples / n must be an integer."
+
+        examples = (
+            df
+            .filter(filter)
+            .withColumn('__id', F.row_number().over(Window.partitionBy(*strata_columns).orderBy(F.rand(seed=random.randint(1, 99999999)))))
+            .filter(f'__id <= {number_of_examples}')
+            .drop('__id', '__dummy')
+        )
+
+        if keep_together_columns != []:
+            examples = (
+                df
+                .join(examples.select(*keep_together_columns).distinct(), on=keep_together_columns)
+            )
+
+        if strata_columns_first:
+            strata_columns = [f"`{col}`" for col in strata_columns]
+            examples = examples.selectExpr(*strata_columns, f'* except({",".join(strata_columns)})')
+
+        return examples
 
 
     @staticmethod

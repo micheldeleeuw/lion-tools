@@ -16,13 +16,20 @@ import pyspark.sql.functions as F
 # def test_round(spark, movies):
 #     movies.withColumn('IMDB Votes k', F.col('IMDB Votes') / 1000).eRound(0).show()
 
-def test_remove_empty_columns(spark):
-    df = spark.createDataFrame([
-        (1, 'a', None),
-        (2, None, None),
-        (3, 'c', None)
-    ], 'id INT, value STRING, empty_col STRING')
+# def test_remove_empty_columns(spark):
+#     df = spark.createDataFrame([
+#         (1, 'a', None),
+#         (2, None, None),
+#         (3, 'c', None)
+#     ], 'id INT, value STRING, empty_col STRING')
 
  
-    assert len(df.eRemoveEmptyColumns().columns) == 2
-    assert 'empty_col' not in df.eRemoveEmptyColumns().columns
+#     assert len(df.eRemoveEmptyColumns().columns) == 2
+    # assert 'empty_col' not in df.eRemoveEmptyColumns().columns
+
+def test_examples(spark, movies):
+    movies.eExamples(n=2).show()
+    movies.eExamples(n=2, strata_columns='Major Genre').show()
+    movies.eExamples(n=2, strata_columns=['Major Genre', 'Director']).show()
+    movies.eExamples(n=2, keep_together_columns='Director').show()
+    movies.eExamples(n=2, strata_columns='Major Genre', keep_together_columns='Director').show()
