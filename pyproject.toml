@@ -27,8 +27,6 @@ Repository = "https://github.com/micheldeleeuw/lion-tools"
 where = ["."]
 include = ["lion_tools*"]
 
-[tool.setuptools.package-data]
-lion_tools = ["templates/*.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
