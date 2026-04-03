@@ -10,7 +10,7 @@ class DataFrameSummarize():
             *by: str,
             top: int = 5, 
             stats: list[str] = [
-                "count_distinct",
+                "approx_count_distinct",
                 "count_null",  "count_not_null", 
                 "min", "max", "avg", "sum",   
             ],

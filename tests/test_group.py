@@ -7,12 +7,13 @@ def test_group(spark, movies):
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix').agg().show(10)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').count().show(10)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').agg('sum').show(1)
+    movies.eGroup('Major Genre').agg('count_distinct', 'approx_count_distinct').show(2)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').agg('avg(`IMDB Rating`)').show(1)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').agg('avg(`IMDB Rating`)', 'sum(`IMDB Votes`)').show(1)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').sum().show(1)
     # movies.eGroup('-substr(`Director`, 1, 1) as DirectorPrefix', 'Major Genre').sum('IMDB Rating', 'IMDB Votes').show(1)
     # movies.show(10)
-    movies.eGroup('Distributor', 'Major Genre').pivot('Creative Type').totals('Distributor').count().show(100)
+    # movies.eGroup('Distributor', 'Major Genre').pivot('Creative Type').totals('Distributor').count().show(100)
 
     # with pytest.raises(AssertionError):
     #     movies.eGroup('Major Genre').totals('x').sum().show()

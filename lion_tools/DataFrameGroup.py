@@ -46,7 +46,7 @@ class DataFrameGroup():
     @staticmethod
     def single_aggregation_functions() -> list[str]:
         return (
-            "min", "max", "sum", "avg", "avg_null", "count", "count_distinct",
+            "min", "max", "sum", "avg", "avg_null", "count", "count_distinct", "approx_count_distinct",
             "count_null", "count_not_null", "first", "last", "collect_set", "collect_list",
         )
     
@@ -111,7 +111,9 @@ class DataFrameGroup():
         else:
             self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
-        # self.result = self.result.drop("_totals_type")
+        if not(self.sections or self.sub_totals or self.grand_total):
+            self.result = self.result.drop("_totals_type")
+        
 
     def _get_aggregates(self) -> DataFrame:
         from pyspark.sql.group import GroupedData
