@@ -204,7 +204,7 @@ class DataFrameGroup():
                     result_expression = None
 
                     if col in self.columns_nummeric and agg == "avg_null":
-                        result_expression = f"avg(coalesce(`{col}`, 0))"
+                        result_expression = f"avg(coalesce(`{col}`, 0.0))"
                     elif agg == "count_distinct":
                         result_expression = f"count(distinct(`{col}`))"
                     elif agg == "count_null":
@@ -212,7 +212,7 @@ class DataFrameGroup():
                     elif agg == "count_not_null":
                         result_expression = f"sum(case when `{col}` is not null then 1 else 0 end)"
                     elif col in self.columns_nummeric or agg in (
-                        "max", "min", "count", "first", "collect_set", "collect_list",
+                        "max", "min", "count", "first", "collect_set", "collect_list", "approx_count_distinct",
                     ):
                         result_expression = f"{agg}(`{col}`)"
                     else:

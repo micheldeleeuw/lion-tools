@@ -41,7 +41,7 @@ class DataFrameExtensions:
         DataFrame.eSections = DataFrameExtensions.sections
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
-        DataFrame.eSummarize = DataFrameExtensions.summarize
+        DataFrame.eSummary = DataFrameExtensions.summary
         DataFrame.eTranspose = DataFrameExtensions.transpose
         DataFrame.eTop = DataFrameExtensions.top
 
@@ -139,25 +139,25 @@ class DataFrameExtensions:
         n: int = 10,
         transpose: bool = False,
     ):
-        from .DataFrameSummarize import DataFrameSummarize
+        from .DataFrameSummary import DataFrameSummarize
 
         return DataFrameSummarize.top(df, *by, n=n, transpose=transpose)
 
     @staticmethod
-    def summarize(
+    def summary(
             df: DataFrame, 
             *by: str,
             top: int = 5, 
             stats: list[str] = [
-                "count_distinct",
+                "approx_count_distinct",
                 "count_null",  "count_not_null", 
                 "min", "max", "avg", "sum",   
             ],
             round_decimals: int = 5
         ) -> DataFrame:
-        from .DataFrameSummarize import DataFrameSummarize
+        from .DataFrameSummary import DataFrameSummary
 
-        return DataFrameSummarize.summarize(df, *by, top=top, stats=stats)
+        return DataFrameSummary.summary(df, *by, top=top, stats=stats)
 
     @staticmethod
     def top(
@@ -166,7 +166,7 @@ class DataFrameExtensions:
         n: int = 10,
         transpose: bool = False,
     ):
-        from .DataFrameSummarize import DataFrameSummarize
+        from .DataFrameSummary import DataFrameSummarize
 
         return DataFrameSummarize.top(df, *by, n=n, transpose=transpose)
 
@@ -237,7 +237,7 @@ class DataFrameExtensions:
             ],
             round_decimals: int = 5
         ) -> DataFrame:
-        from .DataFrameSummarize import DataFrameSummarize
+        from .DataFrameSummary import DataFrameSummarize
 
         return DataFrameSummarize.summarize(df, *by, top=top, stats=stats)
 

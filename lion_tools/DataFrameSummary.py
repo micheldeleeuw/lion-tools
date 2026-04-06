@@ -2,10 +2,10 @@ from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 
-class DataFrameSummarize():
+class DataFrameSummary():
 
     @staticmethod
-    def summarize(
+    def summary(
             df: DataFrame, 
             *by: str,
             top: int = 5, 
@@ -14,17 +14,22 @@ class DataFrameSummarize():
                 "count_null",  "count_not_null", 
                 "min", "max", "avg", "sum",   
             ],
-            round_decimals: int = 5
+            round_decimals: int = 5,
+            include_datatypes: bool = True,
         ) -> DataFrame:
 
         top = 0 or top
-        allowable_stats = ["min", "max", "sum", "avg", "count_null",  "count_not_null",  "count_distinct"]
+        allowable_stats = [
+            "min", "max", "sum", "avg", "avg_null", "count_null",  "count_not_null",
+            "count_distinct", "approx_count_distinct"
+        ]
 
         assert 0 <= top <= 100, "top must be between 0 and 100"
         assert all(stat in allowable_stats for stat in stats), f"stats must be a list of {allowable_stats}"
 
         summary = df.eGroup(*by).agg(*stats)
         df_cols = df.columns
+        df_dtypes = dict(df.dtypes)
         summary_cols = summary.columns
 
         summary = (
@@ -37,13 +42,14 @@ class DataFrameSummarize():
                             F.struct(
                                 F.lit(i).alias('column_no'),
                                 F.lit(col).alias('column'),
+                                F.lit(df_dtypes[col]).alias('datatype'),
                                 *[
                                     F.lit(None).alias(stat)
                                     if f"{stat}_{col}" not in summary_cols
                                     else F.col(f"{stat}_{col}").cast('string').alias(stat)
                                     if stat in ['min', 'max']
                                     else F.round(F.col(f"{stat}_{col}").cast('double'), round_decimals).alias(stat)
-                                    if stat in ['avg', 'sum']
+                                    if stat in ['avg', 'avg_null', 'sum']
                                     else F.col(f"{stat}_{col}").cast('int').alias(stat)
                                     for stat in stats
                                 ],
@@ -57,17 +63,21 @@ class DataFrameSummarize():
         )
 
         if top > 0:
-            top = DataFrameSummarize.top(df, *by, n=top, transpose=True)
-            # summary.show()
-            # top.show()
+            top = DataFrameSummary.top(df, *by, n=top, transpose=True)
             summary = (
                 summary
                 .join(
                     top,
-                    [*[summary[col].eqNullSafe(top[col]) for col in by], summary['column_no'].eqNullSafe(top['column_no'])],
+                    [
+                        *[summary[col].eqNullSafe(top[col]) for col in by], 
+                        summary['column_no'].eqNullSafe(top['column_no']),
+                    ],
                     'left'
                 )
-                .select(*[summary[col] for col in summary.columns], *[top[col] for col in top.columns if col.startswith('occurence_')])
+                .select(
+                    *[summary[col] for col in summary.columns], 
+                    *[top[col] for col in top.columns if col.startswith('occurence_')]
+                )
             )
 
         return summary.orderBy(*by, 'column_no')
