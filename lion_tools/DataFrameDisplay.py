@@ -566,7 +566,7 @@ class DataFrameDisplay():
         length_menu = str([[*_options, -1], [*_options, "All"]])
 
         # Load template using relative path from this file's location
-        with open(pathlib.Path(__file__).parent.parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
+        with open(pathlib.Path(__file__).parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         # create html

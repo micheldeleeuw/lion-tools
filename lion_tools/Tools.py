@@ -29,7 +29,7 @@ class Tools():
     @staticmethod
     def load_file(name: str, type='template') -> str:
         if type == 'template':
-            path = pathlib.Path(__file__).parent.parent / "templates" / name
+            path = pathlib.Path(__file__).parent / "templates" / name
         elif type == 'cockpit_json':
             path = LION_TOOLS_COCKPIT_PATH.joinpath(name + ".json")
         elif type == 'cockpit_html':
