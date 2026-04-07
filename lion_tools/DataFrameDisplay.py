@@ -170,6 +170,7 @@ class DataFrameDisplay():
 
         valid_keys = [
             'name',
+            'add_time_to_name',
             'n',
             'passthrough',
             'file_path',
@@ -207,6 +208,12 @@ class DataFrameDisplay():
         else:
             assert isinstance(kwargs['display'], bool), "display must be a boolean value"
 
+        if 'add_time_to_name' in kwargs:
+            if not isinstance(kwargs['add_time_to_name'], bool):
+                raise Exception("add_time_to_name must be a boolean value")
+        else:
+            kwargs['add_time_to_name'] = False
+                    
         if 'name' in kwargs:
             if not isinstance(kwargs['name'], str):
                 raise Exception("name must be a string")
@@ -283,8 +290,11 @@ class DataFrameDisplay():
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
+        # table header
         headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
-        table_header = ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers])
+        table_header = '<tr>' + ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers]) + '</tr>'
+
+        # table body
         table_body = ''
         for row in df_collected:
             table_body += '<tr>'
@@ -313,9 +323,12 @@ class DataFrameDisplay():
             table_body += '</tr>\n'
                 
 
+        # bring it together
         html_table = f"""
             <table id="mainTable" class="display" style="width:100%">
-                <thead><tr>{table_header}</tr></thead>
+                <thead>
+                    <{table_header}
+                </thead>
                 <tbody>
                     {table_body}
                 </tbody>

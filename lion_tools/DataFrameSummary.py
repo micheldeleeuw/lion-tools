@@ -4,6 +4,7 @@ from pyspark.sql.window import Window
 
 # from lion_tools import DataFrameExtensions
 from .DataFrameDisplay import DataFrameDisplay
+from .DataFrameGroup import DataFrameGroup
 
 
 class DataFrameSummary():
@@ -31,7 +32,7 @@ class DataFrameSummary():
         assert 0 <= top <= 100, "top must be between 0 and 100"
         assert all(stat in allowable_stats for stat in stats), f"stats must be a list of {allowable_stats}"
 
-        summary = df.eGroup(*by).agg(*stats)
+        summary = DataFrameGroup(df, *by).agg(*stats)
         df_cols = df.columns
         df_dtypes = dict(df.dtypes)
         summary_cols = summary.columns
@@ -146,8 +147,8 @@ class DataFrameSummary():
             "min", "max", "avg", "sum",   
         ],
         color_code_thresholds=[
-            ('>= 1.0', 'red'),
-            ('>= 0.01', 'yellow'),
+            ('>= 0.1', 'red'),
+            ('>= 0.0001', 'yellow'),
         ], 
         round_decimals: int = 5,
         ignore_missing_columns: bool = False,
@@ -161,14 +162,12 @@ class DataFrameSummary():
         name2 = DataFrameExtensions.name(_df2)
         name1 = name1 if name1 != 'unnamed' else 'base'
         name2 = name2 if name2 != 'unnamed' else 'compare'
-        assert isinstance(color_code_thresholds, list), "color_code_thresholds must be a list in the format [(condition, color_code), ...]"
+        assert isinstance(color_code_thresholds, list), (
+            "color_code_thresholds must be a list in the format [(condition, color_code), ...]")
 
         if ignore_missing_columns:
             _df1 = _df1.select(*common_columns)
             _df2 = _df2.select(*common_columns)
-
-        missing_columns_1 = list(set(_df2.columns) - set(_df1.columns))
-        missing_columns_2 = list(set(_df1.columns) - set(_df2.columns))
 
         summary1 = DataFrameSummary.summary(_df1, *by, stats=stats, round_decimals=round_decimals, top=0)
         summary2 = DataFrameSummary.summary(_df2, *by, stats=stats, round_decimals=round_decimals, top=0)
@@ -234,10 +233,12 @@ class DataFrameSummary():
                 lambda df: df.withColumn(
                     'result',
                     F.expr(
-                        'case when ' + ' and '.join([
+                        'case ' + 
+                        'when ' + ' and '.join([
                             f"{stat}__diff_perc = 0.0" for stat in stats
                         ] + [f"datatype__diff_perc = 0.0"]) + 
-                        ' then "" else "≠" end'
+                        ' then "" ' +
+                        ' else "≠" end'
                     )
                 )
                 .select(
@@ -251,7 +252,7 @@ class DataFrameSummary():
                 *[
                     {
                         'column': "result",
-                        'condition': " or ".join([f"{stat}__diff_perc {condition}" for stat in stats]),
+                        'condition': " or ".join([f"abs({stat}__diff_perc) {condition}" for stat in stats]),
                         'color_code': color_code,
                     }
                     for condition, color_code in color_code_thresholds
@@ -259,7 +260,7 @@ class DataFrameSummary():
                 *[
                     {
                         'column': f"{stat}__diff_perc",
-                        'condition': f"{stat}__diff_perc {condition}",
+                        'condition': f"abs({stat}__diff_perc) {condition}",
                         'color_code': color_code,
                     }
                     for stat in stats

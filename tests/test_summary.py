@@ -69,7 +69,7 @@ def test_summary_2(spark):
         base
         .eCompareSummary(
             compare, 
-            # 'some_str',
+            'some_str',
             stats=[
                 "min", "max", "sum", "avg", "avg_null", "count_null",  "count_not_null",
                 "count_distinct", "approx_count_distinct"
@@ -78,7 +78,7 @@ def test_summary_2(spark):
             round_decimals=2,
         )
         # .orderBy(F.col('column_no__base').asc(), F.col('column_no__compare').asc())
-        .eC(True)
+        .eC(True, name=f'compare stats', lazy=False, add_time_to_name=True)
         # .select("column", "result", "column_no__base", "column_no__compare")
         # .show(truncate=False)
     )

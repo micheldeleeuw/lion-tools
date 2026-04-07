@@ -486,6 +486,9 @@ class Cockpit:
                 elif len(sources) > 1:
                     params["name"] = sources[0].split(".")[-1] + f" (+{len(sources)-1})"
 
+        if kwargs['add_time_to_name']:
+            params["name"] += " - " + datetime.now().strftime("%H:%M:%S")
+
         params["id"] = "_lion_tools_tmp_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         params["temp_view_name"] = params["id"] + "_view"
         params["html_file"] = str(
