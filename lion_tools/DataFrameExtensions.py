@@ -15,6 +15,12 @@ class DataFrameExtensions:
 
     @staticmethod
     def extend_dataframe(package: str = "pyspark.sql") -> None:
+        from .Cockpit import Cockpit
+        from .DataFrameDisplay import DataFrameDisplay
+        from .DataFrameExcel import DataFrameExcel
+        from .DataFrameGroup import DataFrameGroup
+        from .DataFrameSummary import DataFrameSummary
+        from .DataFrameTap import DataFrameTap
 
         allowable_packages = ["pyspark.sql", "pyspark.sql.connect.dataframe"]
         if package not in allowable_packages:
@@ -25,33 +31,33 @@ class DataFrameExtensions:
         DataFrame = importlib.import_module(package).DataFrame
         
         # Extend DataFrame with new methods
-        DataFrame.eCockpit = DataFrameExtensions.cockpit
-        DataFrame.eDisplay = DataFrameExtensions.display
+        DataFrame.eCockpit = Cockpit.to_cockpit
+        DataFrame.eCompareSummary = DataFrameSummary.compare_summary
+        DataFrame.eDisplay = DataFrameDisplay.display
         DataFrame.eExamples = DataFrameExtensions.examples
-        DataFrame.eExcel = DataFrameExtensions.excel
-        DataFrame.eExcelCockpit = DataFrameExtensions.excel_cockpit
-        DataFrame.eGroup = DataFrameExtensions.group
+        DataFrame.eExcel = DataFrameExcel.excel
+        DataFrame.eExcelCockpit = DataFrameExcel.excel_cockpit
+        DataFrame.eGroup = DataFrameGroup.group
         DataFrame.eName = DataFrameExtensions.name
         DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns
-        DataFrame.eTap = DataFrameExtensions.tap
-        DataFrame.eTapEnd = DataFrameExtensions.tap_end
-        DataFrame.eSetColors = DataFrameExtensions.set_colors
+        DataFrame.eTap = DataFrameTap.tap
+        DataFrame.eTapEnd = DataFrameTap.tap_end
+        DataFrame.eSetColors = DataFrameDisplay.set_colors
         DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns
         DataFrame.eRound = DataFrameExtensions.round
         DataFrame.eSections = DataFrameExtensions.sections
         DataFrame.eSort = DataFrameExtensions.sort
         DataFrame.eSources = DataFrameExtensions.sources
-        DataFrame.eSummary = DataFrameExtensions.summary
+        DataFrame.eSummary = DataFrameSummary.summary
         DataFrame.eTranspose = DataFrameExtensions.transpose
-        DataFrame.eTop = DataFrameExtensions.top
+        DataFrame.eTop = DataFrameSummary.top
 
         # Short aliases, pls don't extend these
-        DataFrame.eD = DataFrameExtensions.display
-        DataFrame.eC = DataFrameExtensions.cockpit
+        DataFrame.eD = DataFrameDisplay.display
+        DataFrame.eC = Cockpit.to_cockpit
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
-
 
     @staticmethod
     def examples(
@@ -103,11 +109,6 @@ class DataFrameExtensions:
         )
     
     @staticmethod
-    def set_colors(df, *color_rules: dict):
-        from .DataFrameDisplay import DataFrameDisplay
-        return DataFrameDisplay.set_colors(df, *color_rules)
-    
-    @staticmethod
     def remove_empty_columns(df: DataFrame) -> DataFrame:
         column_filling = df.selectExpr(*[f"min(if(`{col}` is null, 1, 0)) as `{col}`" for col in df.columns]).collect()[0].asDict()
         non_empty_columns = [col for col in df.columns if column_filling[col] == 0]
@@ -130,46 +131,6 @@ class DataFrameExtensions:
             col: F.round(F.col(col), precision) for col in columns
             for col in columns
         })
-
-
-    @staticmethod
-    def top(
-        df: DataFrame,
-        *by: str,
-        n: int = 10,
-        transpose: bool = False,
-    ):
-        from .DataFrameSummary import DataFrameSummarize
-
-        return DataFrameSummarize.top(df, *by, n=n, transpose=transpose)
-
-    @staticmethod
-    def summary(
-            df: DataFrame, 
-            *by: str,
-            top: int = 5, 
-            stats: list[str] = [
-                "approx_count_distinct",
-                "count_null",  "count_not_null", 
-                "min", "max", "avg", "sum",   
-            ],
-            round_decimals: int = 5
-        ) -> DataFrame:
-        from .DataFrameSummary import DataFrameSummary
-
-        return DataFrameSummary.summary(df, *by, top=top, stats=stats)
-
-    @staticmethod
-    def top(
-        df: DataFrame,
-        *by: str,
-        n: int = 10,
-        transpose: bool = False,
-    ):
-        from .DataFrameSummary import DataFrameSummarize
-
-        return DataFrameSummarize.top(df, *by, n=n, transpose=transpose)
-
 
     @staticmethod
     def transpose(
@@ -224,39 +185,6 @@ class DataFrameExtensions:
         )
 
         return transposed
-
-    @staticmethod
-    def summarize(
-            df: DataFrame, 
-            *by: str,
-            top: int = 5, 
-            stats: list[str] = [
-                "count_distinct",
-                "count_null",  "count_not_null", 
-                "min", "max", "avg", "sum",   
-            ],
-            round_decimals: int = 5
-        ) -> DataFrame:
-        from .DataFrameSummary import DataFrameSummarize
-
-        return DataFrameSummarize.summarize(df, *by, top=top, stats=stats)
-
-    def excel(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
-        from .DataFrameExcel import DataFrameExcel
-        
-        DataFrameExcel.to_excel(*([df] + list(dfs)), name=name)
-    
-        if passthrough:
-            return df
-
-    @staticmethod
-    def excel_cockpit(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
-        from .DataFrameExcel import DataFrameExcel
-        
-        DataFrameExcel.to_cockpit(*([df] + list(dfs)), name=name)
-    
-        if passthrough:
-            return df
 
     @staticmethod
     def sources(df: DataFrame) -> list:
@@ -348,7 +276,7 @@ class DataFrameExtensions:
         )
 
     @staticmethod
-    def name(_local_df: DataFrame) -> str:
+    def name(_df: DataFrame) -> str:
         # we go up max 5 levels to find a variable that holds the dataframe
 
         for locals in (
@@ -359,41 +287,13 @@ class DataFrameExtensions:
             inspect.currentframe().f_back.f_locals,
         ):
             # just return the first name where the value is the same dataframe
-            # note that we have use _local_df as the name of the parameter to avoid
+            # note that we have use _df as the name of the parameter to avoid
             # confusion with the actual dataframe name
             for name, value in locals.items():
-                if value is _local_df and name != "_local_df":
+                if value is _df and not name.startswith("_"):
                     return name
 
         return "unnamed"
-
-    @staticmethod
-    def display(df: DataFrame, *args, **kwargs) -> None | DataFrame:
-        from .DataFrameDisplay import DataFrameDisplay
-
-        return DataFrameDisplay.display(df, *args, **kwargs)
-
-    @staticmethod
-    def group(df: DataFrame, *args, **kwargs):
-        from .DataFrameGroup import DataFrameGroup
-
-        return DataFrameGroup(df, *args, **kwargs)
-
-    @staticmethod
-    def cockpit(_local_df: DataFrame, *args, **kwargs) -> None | DataFrame:
-        from .Cockpit import Cockpit
-
-        return Cockpit.to_cockpit(_local_df, *args, **kwargs)
-
-    @staticmethod
-    def tap(df: DataFrame, f: Callable[[DataFrame], None] = None, end_on_display: bool = True) -> DataFrame:
-        from .DataFrameTap import DataFrameTap
-        return DataFrameTap.tap(df, f, end_on_display)
-    
-    @staticmethod
-    def tap_end(df: DataFrame) -> DataFrame:
-        from .DataFrameTap import DataFrameTap
-        return DataFrameTap.tap_end()
 
     @staticmethod
     def normalize_columns(

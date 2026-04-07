@@ -12,6 +12,24 @@ import base64
 
 
 class DataFrameExcel:
+
+    @staticmethod
+    def excel(df, *dfs: DataFrame, name: str = None, passthrough: bool = False) -> None | DataFrame:
+        from .DataFrameExcel import DataFrameExcel
+        
+        DataFrameExcel.to_excel(*([df] + list(dfs)), name=name)
+    
+        if passthrough:
+            return df
+
+    @staticmethod
+    def excel_cockpit(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
+        from .DataFrameExcel import DataFrameExcel
+        
+        DataFrameExcel.to_cockpit(*([df] + list(dfs)), name=name)
+    
+        if passthrough:
+            return df
     
     @classmethod
     def examples(cls):

@@ -9,7 +9,11 @@ from .Tools import Tools
 
 class DataFrameGroup():
 
-    def __init__(self, df: DataFrame, *by: list[str], **kwargs):
+    @staticmethod
+    def group(df: DataFrame, *by: str, **kwargs) -> Self:
+        return DataFrameGroup(df, *by, **kwargs)
+
+    def __init__(self, df: DataFrame, *by: str, **kwargs):
         self.df = df
         self.columns = df.columns
 

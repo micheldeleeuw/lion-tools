@@ -449,8 +449,8 @@ class Cockpit:
             return False
 
     @staticmethod
-    def to_cockpit(_local_df, *args, **kwargs):
-        # Dataframe is name _local_df to be able to find the name of the dataframe
+    def to_cockpit(_df, *args, **kwargs):
+        # Dataframe is name __df to be able to find the name of the dataframe
         # by going up the stack and looking for a variable with the same value.
 
         # clean old stuff up before doing anything, to avoid filling up
@@ -470,17 +470,17 @@ class Cockpit:
         # as the cockpit will run in a different session, we need to validate and save the parameters
         # for the cockpit to pick up and do the actual display
         params = DataFrameDisplay.display_validate_parameters(
-            _local_df, *args, **kwargs
+            _df, *args, **kwargs
         )
 
         if not keep_page_length:
             del params["page_length"]
 
         if "name" not in params:
-            params["name"] = DataFrameExtensions.name(_local_df)
+            params["name"] = DataFrameExtensions.name(_df)
 
             if params["name"] == "unnamed":
-                sources = DataFrameExtensions.sources(_local_df)
+                sources = DataFrameExtensions.sources(_df)
                 if len(sources) == 1:
                     params["name"] = sources[0].split(".")[-1]
                 elif len(sources) > 1:
@@ -501,19 +501,19 @@ class Cockpit:
             "lazy" not in kwargs and Cockpit.is_lazy_supported()
         ):
             # create a global temp view for the dataframe, so the cockpit can access the data
-            _local_df.createOrReplaceGlobalTempView(params["temp_view_name"])
+            _df.createOrReplaceGlobalTempView(params["temp_view_name"])
         else:
             kwargs["display"] = False
             kwargs["passthrough"] = False
             kwargs["file_path"] = params["html_file"]
-            DataFrameDisplay.display(_local_df, **kwargs)
+            DataFrameDisplay.display(_df, **kwargs)
 
         # create the file that informs the Cockpit
         with open(params["json_file"], "w", encoding="utf-8") as f:
             f.write(json.dumps(params))
 
         if "passthrough" in params and params["passthrough"]:
-            return _local_df
+            return _df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap.tap_end()
 

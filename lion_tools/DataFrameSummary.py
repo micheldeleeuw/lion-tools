@@ -2,6 +2,10 @@ from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 
+# from lion_tools import DataFrameExtensions
+from .DataFrameDisplay import DataFrameDisplay
+
+
 class DataFrameSummary():
 
     @staticmethod
@@ -80,6 +84,9 @@ class DataFrameSummary():
                 )
             )
 
+        if not include_datatypes:
+            summary = summary.drop('datatype')
+
         return summary.orderBy(*by, 'column_no')
     
 
@@ -127,7 +134,139 @@ class DataFrameSummary():
             )
 
         return top.orderBy('column_no', *by)
+    
+    @staticmethod
+    def compare_summary(
+        _df1: DataFrame,
+        _df2: DataFrame,
+        *by: str,
+        stats: list[str] = [
+            "approx_count_distinct",
+            "count_null",  "count_not_null", 
+            "min", "max", "avg", "sum",   
+        ],
+        color_code_thresholds=[
+            ('>= 1.0', 'red'),
+            ('>= 0.01', 'yellow'),
+        ], 
+        round_decimals: int = 5,
+        ignore_missing_columns: bool = False,
+    ) -> DataFrame:
+        
+        from .DataFrameExtensions import DataFrameExtensions
+        
+        by = list(by)
+        common_columns = list(set(_df1.columns).intersection(set(_df2.columns)))
+        name1 = DataFrameExtensions.name(_df1)
+        name2 = DataFrameExtensions.name(_df2)
+        name1 = name1 if name1 != 'unnamed' else 'base'
+        name2 = name2 if name2 != 'unnamed' else 'compare'
+        assert isinstance(color_code_thresholds, list), "color_code_thresholds must be a list in the format [(condition, color_code), ...]"
 
+        if ignore_missing_columns:
+            _df1 = _df1.select(*common_columns)
+            _df2 = _df2.select(*common_columns)
+
+        missing_columns_1 = list(set(_df2.columns) - set(_df1.columns))
+        missing_columns_2 = list(set(_df1.columns) - set(_df2.columns))
+
+        summary1 = DataFrameSummary.summary(_df1, *by, stats=stats, round_decimals=round_decimals, top=0)
+        summary2 = DataFrameSummary.summary(_df2, *by, stats=stats, round_decimals=round_decimals, top=0)
+
+        comparison = (
+            summary1
+            .withColumn('_in_summary1', F.lit(True))
+            .alias('summary1')
+            .join(
+                summary2
+                .withColumn('_in_summary2', F.lit(True))
+                .alias('summary2'),
+                [summary1[col].eqNullSafe(summary2[col]) for col in by + ['column']],
+                'full_outer'
+            )
+            # In code below we calculate the differences between the two summaries, for nummeric values we
+            # calculate the relative difference, for string, boolean, date and timestamp values we check
+            # if they are the same or not, if not relative difference is set to 100%, if they are the 
+            # same it is set to 0%. When values are missing in one of the summaries, we set the difference
+            # to 100% to indicate a complete difference.
+            .select(
+                *[F.coalesce(F.col(f"summary1.{col}"), F.col(f"summary2.{col}")).alias(col) for col in by + ['column']],
+                *[
+                    F.col("summary1.datatype").alias(f'datatype__{name1}'),
+                    F.col("summary2.datatype").alias(f'datatype__{name2}'),
+                    F.expr('if(summary1.datatype <=> summary2.datatype, 0.0, 100.0) as datatype__diff_perc'),
+                ],
+                *sum([
+                    [
+                        F.col(f"summary1.{stat}").alias(f"{stat}__{name1}"),
+                        F.col(f"summary2.{stat}").alias(f"{stat}__{name2}"),
+                        F.expr(f"""
+                            case
+                               when ('{stat}' = 'min' or '{stat}' = 'max') and
+                                    (summary1.datatype in ('string', 'boolean', 'date', 'timestamp')
+                                     or summary2.datatype in ('string', 'boolean', 'date', 'timestamp'))
+                               then if(summary1.{stat} <=> summary2.{stat}, 0.0, 100.0)
+                               when summary1.{stat} <=> summary2.{stat}
+                               then 0.0
+                               when summary1.{stat} is null or summary2.{stat} is null
+                               then 100.0
+                               else
+                                    round(
+                                        100 *
+                                        (
+                                            cast(summary1.{stat} as double) - 
+                                            cast(summary2.{stat} as double)
+                                        ) / 
+                                        nullif(cast(summary1.{stat} as double), 0.0),
+                                        {round_decimals}
+                                    )
+                            end as {stat}__diff_perc
+                        """)
+                    ]
+                    for stat in stats
+                ], [])
+            )
+            # single column with the conclusion if statistics are equal
+            .transform(
+                lambda df: df.withColumn(
+                    'result',
+                    F.expr(
+                        'case when ' + ' and '.join([
+                            f"{stat}__diff_perc = 0.0" for stat in stats
+                        ] + [f"datatype__diff_perc = 0.0"]) + 
+                        ' then "" else "≠" end'
+                    )
+                )
+                .select(
+                    *by, 'column', 'result', 
+                    *[col for col in df.columns if col not in by + ['column', 'result']]
+                )
+            )
+            # set the colors based on the tresholds provided
+            .transform(
+                DataFrameDisplay.set_colors, 
+                *[
+                    {
+                        'column': "result",
+                        'condition': " or ".join([f"{stat}__diff_perc {condition}" for stat in stats]),
+                        'color_code': color_code,
+                    }
+                    for condition, color_code in color_code_thresholds
+                ],
+                *[
+                    {
+                        'column': f"{stat}__diff_perc",
+                        'condition': f"{stat}__diff_perc {condition}",
+                        'color_code': color_code,
+                    }
+                    for stat in stats
+                    for condition, color_code in color_code_thresholds
+                ],
+            )
+            
+        )
+        
+        return comparison.orderBy(*by, 'column')
 
     
 

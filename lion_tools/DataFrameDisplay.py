@@ -46,6 +46,12 @@ class DataFrameDisplay():
 
     @staticmethod
     def set_colors(df, *color_rules: dict):
+        if len(color_rules) == 0:
+            raise ValueError("At least one color rule must be provided")
+        
+        if isinstance(color_rules[0], list):
+            raise ValueError("Color rules should be provided as separate arguments, not as a list.")
+        
         assert all(isinstance(rule, dict) for rule in color_rules), "color_rules must be a list of dictionaries"
         allowed_keys = {'column', 'columns', 'color_code', 'style_code', 'condition'}
         cols = df.columns
