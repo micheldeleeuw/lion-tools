@@ -190,12 +190,15 @@ class DataFrameSummary():
             # same it is set to 0%. When values are missing in one of the summaries, we set the difference
             # to 100% to indicate a complete difference.
             .select(
-                *[F.coalesce(F.col(f"summary1.{col}"), F.col(f"summary2.{col}")).alias(col) for col in by + ['column']],
+                F.col("summary1.column_no").alias(f'column_no__{name1}'),
+                F.col("summary2.column_no").alias(f'column_no__{name2}'),
                 *[
-                    F.col("summary1.datatype").alias(f'datatype__{name1}'),
-                    F.col("summary2.datatype").alias(f'datatype__{name2}'),
-                    F.expr('if(summary1.datatype <=> summary2.datatype, 0.0, 100.0) as datatype__diff_perc'),
+                    F.coalesce(F.col(f"summary1.{col}"), F.col(f"summary2.{col}")).alias(col)
+                    for col in by + ['column']
                 ],
+                F.col("summary1.datatype").alias(f'datatype__{name1}'),
+                F.col("summary2.datatype").alias(f'datatype__{name2}'),
+                F.expr('if(summary1.datatype <=> summary2.datatype, 0.0, 100.0) as datatype__diff_perc'),
                 *sum([
                     [
                         F.col(f"summary1.{stat}").alias(f"{stat}__{name1}"),
@@ -238,7 +241,7 @@ class DataFrameSummary():
                     )
                 )
                 .select(
-                    *by, 'column', 'result', 
+                    *by, F.col(f'column_no__{name1}').alias('column_no'), 'column', 'result', 
                     *[col for col in df.columns if col not in by + ['column', 'result']]
                 )
             )
@@ -263,10 +266,15 @@ class DataFrameSummary():
                     for condition, color_code in color_code_thresholds
                 ],
             )
-            
+            .orderBy(
+                *by, 
+                F.col(f'column_no__{name1}').asc_nulls_last(),
+                F.col(f'column_no__{name2}').asc_nulls_last(),
+            )
+            .withColumn('_rownum', F.monotonically_increasing_id())
+            .drop(f'column_no__{name1}', f'column_no__{name2}')
         )
         
-        return comparison.orderBy(*by, 'column')
+        return comparison
 
-    
 

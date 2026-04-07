@@ -262,7 +262,9 @@ class DataFrameExtensions:
                 col_expr = F.expr(col_expr)
 
             if descending and include_sort:
-                col_expr = col_expr.desc()
+                col_expr = col_expr.desc_nulls_last()
+            else:
+                col_expr = col_expr.asc_nulls_last()
 
             # put the modified expression back
             col_exprs[i] = col_expr

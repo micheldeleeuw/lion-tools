@@ -499,7 +499,7 @@ class DataFrameDisplay():
         cols = [col for col in all_cols if col not in ('_rownum', '_totals_type', '_color_style')]
         dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type', '_color_style')]
         has_rownum = '_rownum' in all_cols
-        has_colors = '_color_style' in all_cols
+        # has_colors = '_color_style' in all_cols
         nummeric_columns = [
             i for i, (col, dtype) in enumerate(dtypes)
             if Tools.check_data_type(dtype, 'num')
@@ -512,18 +512,16 @@ class DataFrameDisplay():
         if 'sort' in params:
             sort_by = DataFrameExtensions.transform_column_expressions(df, *params['sort'])
             df = df.withColumn('_rownum', F.row_number().over(W.orderBy(*sort_by)))
-            df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')            
-            ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
+            df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')
         elif has_rownum:
             df = df.filter(F.col('_rownum') < params['n'] + 1).orderBy('_rownum')            
-            ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         else:
             # pick random rows and add a dummy rownum for the datatable
-            df = df.limit(params['n']).withColumn('_rownum', F.lit(0))
-            ordering = "ordering: true"
+            df = df.limit(params['n']).withColumn('_rownum', F.monotonically_increasing_id())
             
         # rownum to last position
         df = df.selectExpr('* except(_rownum)', '_rownum')
+        ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
         df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df, all_cols, cols, dtypes)
         columns_popup = str(list([
             html.escape(

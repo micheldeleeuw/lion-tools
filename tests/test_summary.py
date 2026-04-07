@@ -77,6 +77,9 @@ def test_summary_2(spark):
             ignore_missing_columns=False,
             round_decimals=2,
         )
-        .eC()
+        # .orderBy(F.col('column_no__base').asc(), F.col('column_no__compare').asc())
+        .eC(True)
+        # .select("column", "result", "column_no__base", "column_no__compare")
+        # .show(truncate=False)
     )
 
