@@ -183,6 +183,8 @@ class DataFrameDisplay():
             'color_rules',
             'pretty_headers',
             'format_totals',
+            'column_grouping',
+            'column_grouping_split_pattern',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -282,11 +284,23 @@ class DataFrameDisplay():
         if 'pretty_headers' in kwargs:
             if not isinstance(kwargs['pretty_headers'], bool):
                 raise Exception("pretty_headers must be a boolean value")
+            
+        if 'column_grouping' in kwargs:
+            if not isinstance(kwargs['column_grouping'], bool):
+                raise Exception("column_grouping must be a boolean value")
+            
+        if 'column_grouping_split_pattern' in kwargs:
+            if not isinstance(kwargs['column_grouping_split_pattern'], str):
+                raise Exception("column_grouping_split_pattern must be a string value")
+        elif 'column_grouping' in kwargs and kwargs['column_grouping'] is False:
+            kwargs['column_grouping_split_pattern'] = 'thispatternshouldnotbeinthecolumnname'
+        else:
+            kwargs['column_grouping_split_pattern'] = '__'
 
         return kwargs
         
     @staticmethod
-    def data_to_html_table(df_collected, cols, pretty_headers=False):
+    def data_to_html_table(df_collected, cols, pretty_headers=False, column_grouping=True):
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
@@ -327,7 +341,7 @@ class DataFrameDisplay():
         html_table = f"""
             <table id="mainTable" class="display" style="width:100%">
                 <thead>
-                    <{table_header}
+                    {table_header}
                 </thead>
                 <tbody>
                     {table_body}
@@ -339,8 +353,6 @@ class DataFrameDisplay():
     
     @staticmethod
     def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None):
-        # print(type(data))
-
         if isinstance(data, Row):
             # Convert Row to a dictionary and handle it as a dict
             return DataFrameDisplay.cast_to_expandable_html(
@@ -499,6 +511,32 @@ class DataFrameDisplay():
         return df_collected, stats
 
     @staticmethod
+    def get_headers_and_page_length_correction(cols, pretty_headers, column_grouping_split_pattern = '__'):
+        # If column grouping is enabled we add an additional row in the header containing the group name.
+        # The group name is derived from the column name by taking the part before the first occurrence of a split pattern. 
+        # Note that the page length needs to be corrected to account for multi row headers.
+        # Pretty headers are basically just a cosmetic change to make the headers more readable by replacing underscores with
+        # spaces and capitalizing words.
+
+        row_count = max([len(col.split(pattern)) for col in cols for pattern in split_patterns])
+        headers = 
+
+        print('Debug row_count:', row_count)
+        
+        
+        if pretty_headers:
+            headers = [col.replace('_', ' ').title() for col in cols]
+        else:
+            headers = cols
+
+        page_length_correction = 0
+        if column_grouping:
+            # we add an extra header row for the column groups, so we need to correct the page length to account for this
+            page_length_correction += 1
+
+        return headers, page_length_correction
+    
+    @staticmethod
     def display(df, *args, **kwargs):
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
 
@@ -519,6 +557,7 @@ class DataFrameDisplay():
         ]
         pretty_headers = params['pretty_headers'] if 'pretty_headers' in params else False
 
+        # We add a row number to the dataframe to enable proper sorting and pagination in the datatable in javascript.
         # If sorting is requested, we do this the real way, with a rownum
         # if not requested but rownum is already present we use that
         # otherswise we just pick the first n rows and add a dummy rownum for the datatable
@@ -529,12 +568,15 @@ class DataFrameDisplay():
         elif has_rownum:
             df = df.filter(F.col('_rownum') < params['n'] + 1).orderBy('_rownum')            
         else:
-            # pick random rows and add a dummy rownum for the datatable
+            # pick random rows and add a dummy rownum for the datatable. Note that if the dataframe is already 
+            # sorted this will pick the top n rows
             df = df.limit(params['n']).withColumn('_rownum', F.monotonically_increasing_id())
             
         # rownum to last position
         df = df.selectExpr('* except(_rownum)', '_rownum')
         ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
+
+        # collect the data
         df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df, all_cols, cols, dtypes)
         columns_popup = str(list([
             html.escape(
@@ -554,6 +596,7 @@ class DataFrameDisplay():
             if i > 0:
                 col_defs_number_format += ',\n            '
             col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
+
         col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format
         
         if df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
@@ -561,7 +604,13 @@ class DataFrameDisplay():
         else:
             max_width = str(df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
 
-        _options = sorted([5, 50, params['page_length']])
+        headers, page_length_correction = DataFrameDisplay.get_headers_and_page_length_correction(cols, pretty_headers, column_grouping_split_pattern)
+
+        # print(headers, page_length_correction)
+
+        page_length = params['page_length'] - page_length_correction
+
+        _options = sorted([5, 50, page_length])
         _options = list(dict.fromkeys(_options))
         length_menu = str([[*_options, -1], [*_options, "All"]])
 
@@ -571,14 +620,14 @@ class DataFrameDisplay():
 
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, df.columns, pretty_headers))
+        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, df.columns, pretty_headers, column_grouping))
         html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
         html_content = html_content.replace('{col_defs_rownum}', cols_defs_rownum)
         html_content = html_content.replace('{ordering}', ordering)
         html_content = html_content.replace('{max_width}', max_width)
-        html_content = html_content.replace('{page_length}', str(params['page_length']))
+        html_content = html_content.replace('{page_length}', str(page_length))
         html_content = html_content.replace('{length_menu}', length_menu)
 
         if 'file_path' in params:
@@ -586,7 +635,7 @@ class DataFrameDisplay():
             with open(params['file_path'], 'w', encoding='utf-8') as f:
                 f.write(html_content)
 
-        max_height = str(int(min(df_statistics['__total__']['rows'], params['page_length']) * 25 + 178)) + 'px'
+        max_height = str(int(min(df_statistics['__total__']['rows'], page_length) * 25 + 178)) + 'px'
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         iframe_html = f"""
             <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
