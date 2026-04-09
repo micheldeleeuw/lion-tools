@@ -1,6 +1,7 @@
 import pathlib
 import decimal
 import html
+from pprint import pprint
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window as W
 from datetime import datetime
@@ -11,7 +12,7 @@ from .DataFrameTap import DataFrameTap
 from .Tools import Tools
 from pyspark.sql import Row
 from itertools import groupby
-
+import re
 
 class DataFrameDisplay():
     color_codes_colors = [
@@ -186,6 +187,7 @@ class DataFrameDisplay():
             'format_totals',
             'column_grouping',
             'column_grouping_split_pattern',
+            'percentage_columns_patterns',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -293,7 +295,10 @@ class DataFrameDisplay():
         if 'column_grouping_split_pattern' in kwargs:
             if not isinstance(kwargs['column_grouping_split_pattern'], str):
                 raise Exception("column_grouping_split_pattern must be a string value")
-
+            
+        if 'percentage_columns_pattern' in kwargs:
+            assert isinstance(kwargs['percentage_columns_pattern'], str), "percentage_columns_pattern must be a string value representing a regex pattern to identify percentage columns"
+        
         return kwargs
         
     @staticmethod
@@ -570,13 +575,31 @@ class DataFrameDisplay():
             # make just the single row
             header_length = 1
             uneven_columns = []
-            headers = [
+            headers = [[
                 [1, col] if not pretty_headers else [1, col.replace('_', ' ').title()]
                 for col in cols
-            ]
+            ]]
 
         return headers, header_length, uneven_columns
     
+    @staticmethod
+    def col_defs_str(cols_defs):
+        col_defs_str = ''
+        for key, value in cols_defs.items():
+            if key == 'rownum':
+                col_defs_str += f"{{ targets: {value}, visible: false,  searchable: false}},\n"
+            elif key == 'alignment_right':
+                col_defs_str += f"{{ targets: {value}, className: 'dt-right' }},\n"
+            elif key == 'number_format':
+                for decimals, cols in value.items():
+                    col_defs_str += f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }},\n"
+            elif key == 'percentage_format':
+                col_defs_str += f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? data + '%' : data; }} }},\n"
+            elif key == 'grouped_columns':
+                col_defs_str += f"{{ targets: {value}, className: 'grouped_column' }},\n"
+
+        return col_defs_str
+
     @staticmethod
     def display(df, *args, **kwargs):
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
@@ -599,6 +622,7 @@ class DataFrameDisplay():
         pretty_headers = params['pretty_headers'] if 'pretty_headers' in params else False
         column_grouping = params['column_grouping'] if 'column_grouping' in params else True
         column_grouping_split_pattern = params['column_grouping_split_pattern'] if 'column_grouping_split_pattern' in params else '__'
+        percentage_columns_pattern = params['percentage_columns_pattern'] if 'percentage_columns_pattern' in params else r'(_perc|%)$'
 
         # We add a row number to the dataframe to enable proper sorting and pagination in the datatable in javascript.
         # If sorting is requested, we do this the real way, with a rownum
@@ -630,17 +654,27 @@ class DataFrameDisplay():
             for col, dtype in dtypes
         ]))
 
-        cols_defs_rownum = f"{{ targets: [{len(cols)}], visible: false,  searchable: false}}"
-        col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns + [len(cols)])}, className: 'dt-right' }}'''
-        col_defs_number_format = ''
+        cols_defs = {}
+        # cols_defs_rownum = f"{{ targets: [{len(cols)}], visible: false,  searchable: false}}" # remove
+        cols_defs['rownum'] = [len(cols)]
+        # col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns + [len(cols)])}, className: 'dt-right' }}''' # remove
+        cols_defs['alignment_right'] = nummeric_columns + [len(cols)]
+        # col_defs_number_format = ''
+        cols_defs['number_format'] = {}
         for i, col in enumerate(nummeric_columns):
-            col_name = cols[col]
-            decimals = df_statistics[col_name]['decimals']
-            if i > 0:
-                col_defs_number_format += ',\n            '
-            col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}"
+            decimals = df_statistics[cols[col]]['decimals']
+            # if i > 0: # remove
+            #     col_defs_number_format += ',\n            ' # remove
+            # col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}" # remove
+            cols_defs['number_format'].setdefault(decimals, [])
+            cols_defs['number_format'][decimals].append(col)
 
-        col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format
+        # col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format # remove
+        # col_defs_percentage = "{ targets: " + str([
+        #     i for i, col in enumerate(cols) if re.search(percentage_columns_pattern, col)
+        # ]) + ",  render: function (data, type, row) { return type === 'display' ? data + '%' : data; } }" # remove
+
+        cols_defs['percentage_format'] = [i for i, col in enumerate(cols) if re.search(percentage_columns_pattern, col)]
         
         if df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
             max_width = '600px'
@@ -649,7 +683,8 @@ class DataFrameDisplay():
 
         headers, header_length, uneven_columns = DataFrameDisplay.get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern)
         page_length = params['page_length'] - header_length + 1
-
+        cols_defs['grouped_columns'] = uneven_columns
+        # col_defs_grouped_columns = "{ targets: " + str(uneven_columns) + ",  className: 'grouped_column'}"
         _options = sorted([5, 50, page_length])
         _options = list(dict.fromkeys(_options))
         length_menu = str([[*_options, -1], [*_options, "All"]])
@@ -657,10 +692,6 @@ class DataFrameDisplay():
         if header_length > 1:
             # don't strip the rows, strip the columns
             other_options += ", stripeClasses: []"
-            col_defs_grouped_columns = "{ targets: " + str(uneven_columns) + ",  className: 'grouped_column'}"
-        else:
-            # strip the rows, which is the default, so don't overwrite stripeClasses
-            col_defs_grouped_columns = ""
 
         # Load template using relative path from this file's location
         with open(pathlib.Path(__file__).parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
@@ -670,10 +701,7 @@ class DataFrameDisplay():
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
         html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns))
         html_content = html_content.replace('{columns}', columns_popup)
-        html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
-        html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
-        html_content = html_content.replace('{col_defs_rownum}', cols_defs_rownum)
-        html_content = html_content.replace('{col_defs_grouped_columns}', col_defs_grouped_columns)
+        html_content = html_content.replace('{col_defs}', DataFrameDisplay.col_defs_str(cols_defs))        
         html_content = html_content.replace('{other_options}', other_options)
         html_content = html_content.replace('{max_width}', max_width)
         html_content = html_content.replace('{page_length}', str(page_length))

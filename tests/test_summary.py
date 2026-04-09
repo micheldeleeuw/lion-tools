@@ -77,45 +77,9 @@ def test_summary_2(spark):
             ignore_missing_columns=False,
             round_decimals=2,
         )
-        .select(
-            "some_str",
-            "column",
-            "result",
-            "datatype__base",
-            "datatype__compare",
-            "datatype__diff_perc",
-            "min__base",
-            "min__compare",
-            "min__diff_perc",
-            "max__base",
-            "max__compare",
-            "max__diff_perc",
-            "sum__base",
-            "sum__compare",
-            "sum__diff_perc",
-            "avg__base",
-            "avg__compare",
-            "avg__diff_perc",
-            "avg_null__base",
-            "avg_null__compare",
-            "avg_null__diff_perc",
-            "count_null__base",
-            "count_null__compare",
-            "count_null__diff_perc",
-            "count_not_null__compare",
-            "count_not_null__diff_perc",
-            "count_distinct__base",
-            "count_distinct__compare",
-            "count_distinct__diff_perc",
-            "approx_count_distinct__base",
-            "column_no",
-            "approx_count_distinct__compare",
-            "approx_count_distinct__diff_perc",
-            "count_not_null__base",
-        )
         # .orderBy(F.col('column_no__base').asc(), F.col('column_no__compare').asc())
         # .eC(True, name=f'compare stats', lazy=False, add_time_to_name=True)
-        .eD(display=False, file_path='/Users/micheldeleeuw/dev/lion-tools/output/test_header2.html', pretty_headers=True)
+        .eD(display=False, file_path='/Users/micheldeleeuw/dev/lion-tools/output/test_header2.html', pretty_headers=True, column_grouping=True)
         # .select("column", "result", "column_no__base", "column_no__compare")
         # .show(truncate=False)
     )

@@ -208,14 +208,18 @@ $(document).ready(function() {
         paging: true,
         searching: true,
         info: true,
+        {other_options},
         pageLength: {page_length},
         lengthMenu: {length_menu},
         scrollX: true,
         select: true,
         keys: true,
-        {other_options},
         columnDefs: [
-            {col_defs}
+            {col_defs_alignment_right},
+            {col_defs_number_format},
+            {col_defs_grouped_columns},
+            {col_defs_rownum},
+            {col_defs_percentage}
         ],
     });
     
