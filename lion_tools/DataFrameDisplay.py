@@ -587,18 +587,43 @@ class DataFrameDisplay():
         col_defs_str = ''
         for key, value in cols_defs.items():
             if key == 'rownum':
-                col_defs_str += f"{{ targets: {value}, visible: false,  searchable: false}},\n"
+                col_defs_str += f"\n            {{ targets: {value}, visible: false,  searchable: false }},"
             elif key == 'alignment_right':
-                col_defs_str += f"{{ targets: {value}, className: 'dt-right' }},\n"
+                col_defs_str += f"\n            {{ targets: {value}, className: 'dt-right' }},"
+            elif key == 'grouped_columns':
+                col_defs_str += f"\n            {{ targets: {value}, className: 'grouped_column' }},"
             elif key == 'number_format':
                 for decimals, cols in value.items():
-                    col_defs_str += f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }},\n"
+                    col_defs_str += f"\n            {{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '&nbsp;' ) }},"
             elif key == 'percentage_format':
-                col_defs_str += f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? data + '%' : data; }} }},\n"
-            elif key == 'grouped_columns':
-                col_defs_str += f"{{ targets: {value}, className: 'grouped_column' }},\n"
+                col_defs_str += f"\n            {{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? data + '%' : data; }} }},"
 
         return col_defs_str
+    
+        # columnDefs: [
+        #     // 1. Visibility and Searchability
+        #     { targets: [34], visible: false, searchable: false },
+
+        #     // 2. Class Names (DataTables merges these automatically, so overlaps are fine here)
+        #     { targets: [1, 6, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34], className: 'dt-right' },
+        #     { targets: [4, 5, 6, 10, 11, 12, 16, 17, 18, 22, 23, 24, 28, 29, 30], className: 'grouped_column' },
+
+        #     // 3. Render: 0 decimals, NO percent
+        #     { targets: [1, 22, 23, 25, 26, 28, 29, 31, 32], render: $.fn.dataTable.render.number( ',', '.', 0, '&nbsp;', '&nbsp;' ) },
+
+        #     // 4. Render: 0 decimals, WITH percent
+        #     { targets: [6, 9, 12, 24], render: $.fn.dataTable.render.number( ',', '.', 0, '&nbsp;', '%&nbsp;' ) },
+
+        #     // 5. Render: 2 decimals, NO percent
+        #     { targets: [13, 14, 16, 17, 19, 20], render: $.fn.dataTable.render.number( ',', '.', 2, '&nbsp;', '&nbsp;' ) },
+
+        #     // 6. Render: 2 decimals, WITH percent
+        #     { targets: [15, 18, 21, 30, 33], render: $.fn.dataTable.render.number( ',', '.', 2, '&nbsp;', '%&nbsp;' ) },
+
+        #     // 7. Render: 1 decimal, WITH percent (Column 27 is the only 1-decimal column, and it needs a %)
+        #     { targets: [27], render: $.fn.dataTable.render.number( ',', '.', 1, '&nbsp;', '%&nbsp;' ) }
+        # ],    });
+
 
     @staticmethod
     def display(df, *args, **kwargs):
