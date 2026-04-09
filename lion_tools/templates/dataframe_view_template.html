@@ -12,6 +12,21 @@
         margin: 15px;
         background: #f0f0f0;
     }
+
+    /* support of multirow headers */
+    table.dataTable thead tr:first-child th {
+        border-bottom: none !important;
+        text-align: center !important;
+        padding-bottom: 2px !important;
+    }
+    table.dataTable thead tr:not(:first-child) th {
+        padding-top: 2px !important;
+    }
+    .grouped_column {
+        background-color: #f4f4f4 !important;
+    }
+
+    /* Main table settings */
     #mainTable {
         width: 100%;
         background: white;
@@ -192,7 +207,7 @@ $(document).ready(function() {
         paging: true,
         searching: true,
         info: true,
-        {ordering},
+        {other_options},
         pageLength: {page_length},
         lengthMenu: {length_menu},
         scrollX: true,
@@ -201,6 +216,7 @@ $(document).ready(function() {
         columnDefs: [
             {col_defs_alignment_right},
             {col_defs_number_format},
+            {col_defs_grouped_columns},
             {col_defs_rownum}
         ],
     });

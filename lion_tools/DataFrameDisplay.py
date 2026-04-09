@@ -10,6 +10,7 @@ from .DataFrameExtensions import DataFrameExtensions
 from .DataFrameTap import DataFrameTap
 from .Tools import Tools
 from pyspark.sql import Row
+from itertools import groupby
 
 
 class DataFrameDisplay():
@@ -300,8 +301,31 @@ class DataFrameDisplay():
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
+        headers_ext = [
+            [
+                i,
+                'single' if i==0 and len(headers) == 1
+                else 'last' if i == len(headers) - 1
+                else 'non_last', 
+                header_row
+            ]
+            for i, header_row in enumerate(headers)
+        ]
+
         # table header
-        table_header = '<tr>' + ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers]) + '</tr>'
+        table_header = "\n                    ".join(
+            '<tr>' + 
+                ''.join([
+                    f'<th>{html.escape(str(header))}</th>' if header_type in ('last', 'single')
+                    else f'<th>{html.escape(str(header))}</th>' if colspan == 1 and i % 2 == 0
+                    else f'<th class="grouped_column">{html.escape(str(header))}</th>' if colspan == 1 and i % 2 == 1
+                    else f'<th colspan="{colspan}">{html.escape(str(header))}</th>' if i % 2 == 0
+                    else f'<th colspan="{colspan}" class="grouped_column">{html.escape(str(header))}</th>'
+                    for i, (colspan, header) in enumerate(header_row)
+                ]) +
+            '</tr>'
+            for i, header_type, header_row in headers_ext    
+        )
 
         # table body
         table_body = ''
@@ -429,6 +453,7 @@ class DataFrameDisplay():
         </details>
         """
 
+    @staticmethod
     def remove_unnecessary_sub_totals(df_collected):
         # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
         group_record_count = 0
@@ -506,32 +531,51 @@ class DataFrameDisplay():
         return df_collected, stats
 
     @staticmethod
-    def get_headers_and_page_length_correction(cols, pretty_headers, column_grouping, column_grouping_split_pattern):
+    def get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern):
         # If column grouping is enabled we add an additional row in the header containing the group name.
         # The group name is derived from the column name by taking the part before the first occurrence of a split pattern. 
         # Note that the page length needs to be corrected to account for multi row headers.
         # Pretty headers are basically just a cosmetic change to make the headers more readable by replacing underscores with
         # spaces and capitalizing words.
 
-        headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
+        header_length = max([len(col.split(column_grouping_split_pattern)) for col in cols])
 
-        row_count = max([len(col.split(column_grouping_split_pattern)) for col in cols])
-        # headers = 
+        if column_grouping and header_length > 1:
+            split_cols = [col.split(column_grouping_split_pattern) for col in cols]
+            split_cols = [
+                split_col if not pretty_headers else [split_col_.replace('_', ' ').title() for split_col_ in split_col]
+                for split_col in split_cols
+            ]
+            # pad the arrays with empty string
+            split_cols = [[' '] * (header_length - len(split_col)) + split_col for split_col in split_cols]
+            # transpose the matrix
+            header_rows = list(map(list, zip(*split_cols)))
+            # make single titles with count of the number columns the title must span
+            headers = [
+                [
+                    [len(list(group)), label]
+                    for label, group in groupby(header_row)
+                ] 
+                for header_row in header_rows
+            ]
+            uneven_columns = []
+            i = 0
+            for j, col in enumerate(headers[-2]):
+                if j % 2 == 1:
+                    for k in range(col[0]):
+                        uneven_columns.append(i + k)
+                i += col[0]
 
-        print('Debug row_count:', row_count)
-        
-        
-        # if pretty_headers:
-        #     headers = [col.replace('_', ' ').title() for col in cols]
-        # else:
-        #     headers = cols
+        else:
+            # make just the single row
+            header_length = 1
+            uneven_columns = []
+            headers = [
+                [1, col] if not pretty_headers else [1, col.replace('_', ' ').title()]
+                for col in cols
+            ]
 
-        page_length_correction = 0
-        # if column_grouping:
-        #     # we add an extra header row for the column groups, so we need to correct the page length to account for this
-        #     page_length_correction += 1
-
-        return headers, page_length_correction
+        return headers, header_length, uneven_columns
     
     @staticmethod
     def display(df, *args, **kwargs):
@@ -571,10 +615,10 @@ class DataFrameDisplay():
             # sorted this will pick the top n rows
             df = df.limit(params['n']).withColumn('_rownum', F.monotonically_increasing_id())
             
-        # rownum to last position
+        # rownum to last position and let datatables dor the sort
         df = df.selectExpr('* except(_rownum)', '_rownum')
-        ordering = f"order: [[{len(cols)}, 'asc']], ordering: true"
-
+        other_options = f"""order: [[{len(cols)}, 'asc']], ordering: true"""
+        
         # collect the data
         df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df, all_cols, cols, dtypes)
         columns_popup = str(list([
@@ -603,15 +647,20 @@ class DataFrameDisplay():
         else:
             max_width = str(df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
 
-        headers, page_length_correction = DataFrameDisplay.get_headers_and_page_length_correction(cols, pretty_headers, column_grouping, column_grouping_split_pattern)
-
-        # print(headers, page_length_correction)
-
-        page_length = params['page_length'] - page_length_correction
+        headers, header_length, uneven_columns = DataFrameDisplay.get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern)
+        page_length = params['page_length'] - header_length + 1
 
         _options = sorted([5, 50, page_length])
         _options = list(dict.fromkeys(_options))
         length_menu = str([[*_options, -1], [*_options, "All"]])
+
+        if header_length > 1:
+            # don't strip the rows, strip the columns
+            other_options += ", stripeClasses: []"
+            col_defs_grouped_columns = "{ targets: " + str(uneven_columns) + ",  className: 'grouped_column'}"
+        else:
+            # strip the rows, which is the default, so don't overwrite stripeClasses
+            col_defs_grouped_columns = ""
 
         # Load template using relative path from this file's location
         with open(pathlib.Path(__file__).parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
@@ -624,7 +673,8 @@ class DataFrameDisplay():
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
         html_content = html_content.replace('{col_defs_rownum}', cols_defs_rownum)
-        html_content = html_content.replace('{ordering}', ordering)
+        html_content = html_content.replace('{col_defs_grouped_columns}', col_defs_grouped_columns)
+        html_content = html_content.replace('{other_options}', other_options)
         html_content = html_content.replace('{max_width}', max_width)
         html_content = html_content.replace('{page_length}', str(page_length))
         html_content = html_content.replace('{length_menu}', length_menu)
