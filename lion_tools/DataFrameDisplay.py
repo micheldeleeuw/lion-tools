@@ -292,20 +292,15 @@ class DataFrameDisplay():
         if 'column_grouping_split_pattern' in kwargs:
             if not isinstance(kwargs['column_grouping_split_pattern'], str):
                 raise Exception("column_grouping_split_pattern must be a string value")
-        elif 'column_grouping' in kwargs and kwargs['column_grouping'] is False:
-            kwargs['column_grouping_split_pattern'] = 'thispatternshouldnotbeinthecolumnname'
-        else:
-            kwargs['column_grouping_split_pattern'] = '__'
 
         return kwargs
         
     @staticmethod
-    def data_to_html_table(df_collected, cols, pretty_headers=False, column_grouping=True):
+    def data_to_html_table(df_collected, headers, cols):
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
         # table header
-        headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
         table_header = '<tr>' + ''.join([f'<th>{html.escape(str(header))}</th>' for header in headers]) + '</tr>'
 
         # table body
@@ -511,28 +506,30 @@ class DataFrameDisplay():
         return df_collected, stats
 
     @staticmethod
-    def get_headers_and_page_length_correction(cols, pretty_headers, column_grouping_split_pattern = '__'):
+    def get_headers_and_page_length_correction(cols, pretty_headers, column_grouping, column_grouping_split_pattern):
         # If column grouping is enabled we add an additional row in the header containing the group name.
         # The group name is derived from the column name by taking the part before the first occurrence of a split pattern. 
         # Note that the page length needs to be corrected to account for multi row headers.
         # Pretty headers are basically just a cosmetic change to make the headers more readable by replacing underscores with
         # spaces and capitalizing words.
 
-        row_count = max([len(col.split(pattern)) for col in cols for pattern in split_patterns])
-        headers = 
+        headers = [col if not pretty_headers else col.replace('_', ' ').title() for col in cols]
+
+        row_count = max([len(col.split(column_grouping_split_pattern)) for col in cols])
+        # headers = 
 
         print('Debug row_count:', row_count)
         
         
-        if pretty_headers:
-            headers = [col.replace('_', ' ').title() for col in cols]
-        else:
-            headers = cols
+        # if pretty_headers:
+        #     headers = [col.replace('_', ' ').title() for col in cols]
+        # else:
+        #     headers = cols
 
         page_length_correction = 0
-        if column_grouping:
-            # we add an extra header row for the column groups, so we need to correct the page length to account for this
-            page_length_correction += 1
+        # if column_grouping:
+        #     # we add an extra header row for the column groups, so we need to correct the page length to account for this
+        #     page_length_correction += 1
 
         return headers, page_length_correction
     
@@ -556,6 +553,8 @@ class DataFrameDisplay():
             if Tools.check_data_type(dtype, 'num')
         ]
         pretty_headers = params['pretty_headers'] if 'pretty_headers' in params else False
+        column_grouping = params['column_grouping'] if 'column_grouping' in params else True
+        column_grouping_split_pattern = params['column_grouping_split_pattern'] if 'column_grouping_split_pattern' in params else '__'
 
         # We add a row number to the dataframe to enable proper sorting and pagination in the datatable in javascript.
         # If sorting is requested, we do this the real way, with a rownum
@@ -604,7 +603,7 @@ class DataFrameDisplay():
         else:
             max_width = str(df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
 
-        headers, page_length_correction = DataFrameDisplay.get_headers_and_page_length_correction(cols, pretty_headers, column_grouping_split_pattern)
+        headers, page_length_correction = DataFrameDisplay.get_headers_and_page_length_correction(cols, pretty_headers, column_grouping, column_grouping_split_pattern)
 
         # print(headers, page_length_correction)
 
@@ -620,7 +619,7 @@ class DataFrameDisplay():
 
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, df.columns, pretty_headers, column_grouping))
+        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns))
         html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs_alignment_right}', col_defs_alignment_right)        
         html_content = html_content.replace('{col_defs_number_format}', col_defs_number_format)
