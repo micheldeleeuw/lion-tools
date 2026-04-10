@@ -633,7 +633,7 @@ class DataFrameDisplay():
             df = DataFrameDisplay.set_colors(df, *params['color_rules'])
 
         if "_totals_type" in df.columns and 'format_totals' in params and params['format_totals']:
-            df = DataFrameExtensions.set_colors(df, dict(condition='_totals_type >= 3', style_code='italic'))
+            df = DataFrameDisplay.set_colors(df, dict(condition='_totals_type >= 3', style_code='italic'))
 
         all_cols = df.columns
         cols = [col for col in all_cols if col not in ('_rownum', '_totals_type', '_color_style')]
