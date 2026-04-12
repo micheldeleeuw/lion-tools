@@ -2,6 +2,7 @@ import pathlib
 import decimal
 import html
 from pprint import pprint
+from sys import prefix
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window as W
 from datetime import datetime
@@ -583,48 +584,55 @@ class DataFrameDisplay():
         return headers, header_length, uneven_columns
     
     @staticmethod
-    def col_defs_str(cols_defs):
-        col_defs_str = ''
+    def columns_definitions(cols, nummeric_columns, percentage_columns_pattern, df_statistics, uneven_columns):
+        cols_defs = {}
+        cols_defs['rownum'] = [len(cols)]
+        cols_defs['alignment_right'] = nummeric_columns + [len(cols)]
+        cols_defs['grouped_columns'] = uneven_columns
+
+        for i, col in enumerate(cols):
+            if i in nummeric_columns and re.search(percentage_columns_pattern, col):
+                # nummeric + %
+                decimals = df_statistics[col]['decimals']
+                cols_defs.setdefault('number_format%', {})
+                cols_defs['number_format%'].setdefault(decimals, [])
+                cols_defs['number_format%'][decimals].append(i)
+            elif i in nummeric_columns:
+                # nummeric
+                decimals = df_statistics[col]['decimals']
+                cols_defs.setdefault('number_format', {})
+                cols_defs['number_format'].setdefault(decimals, [])
+                cols_defs['number_format'][decimals].append(i)
+            elif re.search(percentage_columns_pattern, col):
+                # not nummeric + %
+                cols_defs.setdefault('string_format%', [])
+                cols_defs['string_format%'].append(i)
+            else:
+                # not nummeric
+                cols_defs.setdefault('string_format', [])
+                cols_defs['string_format'].append(i)
+
+        col_defs_str = []
         for key, value in cols_defs.items():
             if key == 'rownum':
-                col_defs_str += f"\n            {{ targets: {value}, visible: false,  searchable: false }},"
+                col_defs_str.append(f"{{ targets: {value}, visible: false,  searchable: false }},")
             elif key == 'alignment_right':
-                col_defs_str += f"\n            {{ targets: {value}, className: 'dt-right' }},"
+                col_defs_str.append(f"{{ targets: {value}, className: 'dt-right' }},")
             elif key == 'grouped_columns':
-                col_defs_str += f"\n            {{ targets: {value}, className: 'grouped_column' }},"
+                col_defs_str.append(f"{{ targets: {value}, className: 'grouped_column' }},")
+            elif key == 'number_format%':
+                for decimals, cols in value.items():
+                    col_defs_str.append(f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '%&nbsp;' ) }},")
             elif key == 'number_format':
                 for decimals, cols in value.items():
-                    col_defs_str += f"\n            {{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '&nbsp;' ) }},"
-            elif key == 'percentage_format':
-                col_defs_str += f"\n            {{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? data + '%' : data; }} }},"
+                    col_defs_str.append(f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '&nbsp;' ) }},")
+            elif key == 'string_format%':
+                col_defs_str.append(f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? '&nbsp;' + data + '%&nbsp;' : data; }} }},")
+            elif key == 'string_format':
+                col_defs_str.append(f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? '&nbsp;' + data + '&nbsp;' : data; }} }},")
 
-        return col_defs_str
+        return  '\n            '.join(col_defs_str)
     
-        # columnDefs: [
-        #     // 1. Visibility and Searchability
-        #     { targets: [34], visible: false, searchable: false },
-
-        #     // 2. Class Names (DataTables merges these automatically, so overlaps are fine here)
-        #     { targets: [1, 6, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34], className: 'dt-right' },
-        #     { targets: [4, 5, 6, 10, 11, 12, 16, 17, 18, 22, 23, 24, 28, 29, 30], className: 'grouped_column' },
-
-        #     // 3. Render: 0 decimals, NO percent
-        #     { targets: [1, 22, 23, 25, 26, 28, 29, 31, 32], render: $.fn.dataTable.render.number( ',', '.', 0, '&nbsp;', '&nbsp;' ) },
-
-        #     // 4. Render: 0 decimals, WITH percent
-        #     { targets: [6, 9, 12, 24], render: $.fn.dataTable.render.number( ',', '.', 0, '&nbsp;', '%&nbsp;' ) },
-
-        #     // 5. Render: 2 decimals, NO percent
-        #     { targets: [13, 14, 16, 17, 19, 20], render: $.fn.dataTable.render.number( ',', '.', 2, '&nbsp;', '&nbsp;' ) },
-
-        #     // 6. Render: 2 decimals, WITH percent
-        #     { targets: [15, 18, 21, 30, 33], render: $.fn.dataTable.render.number( ',', '.', 2, '&nbsp;', '%&nbsp;' ) },
-
-        #     // 7. Render: 1 decimal, WITH percent (Column 27 is the only 1-decimal column, and it needs a %)
-        #     { targets: [27], render: $.fn.dataTable.render.number( ',', '.', 1, '&nbsp;', '%&nbsp;' ) }
-        # ],    });
-
-
     @staticmethod
     def display(df, *args, **kwargs):
         params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
@@ -679,28 +687,6 @@ class DataFrameDisplay():
             for col, dtype in dtypes
         ]))
 
-        cols_defs = {}
-        # cols_defs_rownum = f"{{ targets: [{len(cols)}], visible: false,  searchable: false}}" # remove
-        cols_defs['rownum'] = [len(cols)]
-        # col_defs_alignment_right = f'''{{ targets: {str(nummeric_columns + [len(cols)])}, className: 'dt-right' }}''' # remove
-        cols_defs['alignment_right'] = nummeric_columns + [len(cols)]
-        # col_defs_number_format = ''
-        cols_defs['number_format'] = {}
-        for i, col in enumerate(nummeric_columns):
-            decimals = df_statistics[cols[col]]['decimals']
-            # if i > 0: # remove
-            #     col_defs_number_format += ',\n            ' # remove
-            # col_defs_number_format += f"{{ targets: [{col}], render: $.fn.dataTable.render.number( ',', '.', {decimals}, '', '&nbsp;&nbsp;' ) }}" # remove
-            cols_defs['number_format'].setdefault(decimals, [])
-            cols_defs['number_format'][decimals].append(col)
-
-        # col_defs_number_format = '{}' if col_defs_number_format == '' else col_defs_number_format # remove
-        # col_defs_percentage = "{ targets: " + str([
-        #     i for i, col in enumerate(cols) if re.search(percentage_columns_pattern, col)
-        # ]) + ",  render: function (data, type, row) { return type === 'display' ? data + '%' : data; } }" # remove
-
-        cols_defs['percentage_format'] = [i for i, col in enumerate(cols) if re.search(percentage_columns_pattern, col)]
-        
         if df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
             max_width = '600px'
         else:
@@ -708,7 +694,6 @@ class DataFrameDisplay():
 
         headers, header_length, uneven_columns = DataFrameDisplay.get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern)
         page_length = params['page_length'] - header_length + 1
-        cols_defs['grouped_columns'] = uneven_columns
         # col_defs_grouped_columns = "{ targets: " + str(uneven_columns) + ",  className: 'grouped_column'}"
         _options = sorted([5, 50, page_length])
         _options = list(dict.fromkeys(_options))
@@ -722,11 +707,13 @@ class DataFrameDisplay():
         with open(pathlib.Path(__file__).parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
             html_content = f.read()
 
+        column_definitions = DataFrameDisplay.columns_definitions(cols, nummeric_columns, percentage_columns_pattern, df_statistics, uneven_columns)
+
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
         html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns))
         html_content = html_content.replace('{columns}', columns_popup)
-        html_content = html_content.replace('{col_defs}', DataFrameDisplay.col_defs_str(cols_defs))        
+        html_content = html_content.replace('{col_defs}', column_definitions)
         html_content = html_content.replace('{other_options}', other_options)
         html_content = html_content.replace('{max_width}', max_width)
         html_content = html_content.replace('{page_length}', str(page_length))

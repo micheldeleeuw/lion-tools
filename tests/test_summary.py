@@ -79,7 +79,7 @@ def test_summary_2(spark):
         )
         # .orderBy(F.col('column_no__base').asc(), F.col('column_no__compare').asc())
         # .eC(True, name=f'compare stats', lazy=False, add_time_to_name=True)
-        .eD(display=False, file_path='/Users/micheldeleeuw/dev/lion-tools/output/test_header2.html', pretty_headers=True, column_grouping=True)
+        .eD(display=False, file_path='/Users/micheldeleeuw/Development/lion-tools/output/test_header2.html', pretty_headers=True, column_grouping=True)
         # .select("column", "result", "column_no__base", "column_no__compare")
         # .show(truncate=False)
     )
