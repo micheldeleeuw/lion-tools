@@ -5,8 +5,16 @@ import datetime
 class DataFrameTap():
     tapped = None
 
+    @staticmethod
+    def tap(df: DataFrame, f: Callable[[DataFrame], None] = None, end_on_display: bool = True) -> DataFrame:
+        return DataFrameTap._tap(df, f, end_on_display)
+    
+    @staticmethod
+    def tap_end(df: DataFrame) -> DataFrame:
+        return DataFrameTap._tap_end()
+
     @classmethod
-    def tap(cls, df: DataFrame, f: Callable[[DataFrame], None] = None, end_on_display: bool = True) -> DataFrame:
+    def _tap(cls, df: DataFrame, f: Callable[[DataFrame], None] = None, end_on_display: bool = True) -> DataFrame:
         """
         Taps can be inline or block (out-of-line).
 
@@ -30,7 +38,7 @@ class DataFrameTap():
         return df
 
     @classmethod
-    def tap_end(cls) -> DataFrame:
+    def _tap_end(cls) -> DataFrame:
         if cls.tapped is None:
             raise ValueError("No tap active.")
     
