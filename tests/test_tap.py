@@ -12,15 +12,15 @@ def test_tap(spark, movies, alice_bob):
 
 def test_tap_no_active_tap(spark):
     with pytest.raises(ValueError):
-        DataFrameTap.tap_end()
+        DataFrameTap._tap_end()
 
 def test_tap_end_on_display(spark,movies):
     assert movies.eTap().limit(3).eD().count() == movies.count()
     assert isinstance(movies.eTap(end_on_display=False).limit(3).eD(), type(None))
-    DataFrameTap.tap_end()
+    DataFrameTap._tap_end()
     
     with pytest.raises(ValueError):
-        DataFrameTap.tap_end()
+        DataFrameTap._tap_end()
     
 def test_tab_inline(spark, alice_bob):
     def check_columns(df):

@@ -518,5 +518,5 @@ class Cockpit:
         if "passthrough" in params and params["passthrough"]:
             return _df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
-            return DataFrameTap.tap_end()
+            return DataFrameTap._tap_end()
 
