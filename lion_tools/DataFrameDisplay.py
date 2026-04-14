@@ -622,14 +622,21 @@ class DataFrameDisplay():
                 col_defs_str.append(f"{{ targets: {value}, className: 'grouped_column' }},")
             elif key == 'number_format%':
                 for decimals, cols in value.items():
-                    col_defs_str.append(f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '%&nbsp;' ) }},")
+                    col_defs_str.append(
+                        f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '%&nbsp;' ) }},"
+                    )
             elif key == 'number_format':
                 for decimals, cols in value.items():
-                    col_defs_str.append(f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '&nbsp;' ) }},")
+                    col_defs_str.append(
+                        f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '&nbsp;' ) }},"
+                    )
             elif key == 'string_format%':
-                col_defs_str.append(f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? '&nbsp;' + data + '%&nbsp;' : data; }} }},")
+                col_defs_str.append(
+                    f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' && data !== '' ? '&nbsp;' + data + '%&nbsp;' : data; }} }},"
+                )
             elif key == 'string_format':
-                col_defs_str.append(f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' ? '&nbsp;' + data + '&nbsp;' : data; }} }},")
+                col_defs_str.append(
+                    f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' && data !== '' ? '&nbsp;' + data + '&nbsp;' : data; }} }},")
 
         return  '\n            '.join(col_defs_str)
     
