@@ -77,13 +77,8 @@ def test_summary_2(spark):
             ignore_missing_columns=False,
             round_decimals=2,
         )
-        # .orderBy(F.col('column_no__base').asc(), F.col('column_no__compare').asc())
-        # .eC(True, name=f'compare stats', lazy=False, add_time_to_name=True)
-        # .eTap(lambda df: df.select("some_str", "column_no", "result", "min__base", "min__compare", "min__diff_perc").show(truncate=False))
         .eSections('some_str')
-        # .eTap(lambda df: df.select("some_str", "column_no", "result", "min__base", "min__compare", "min__diff_perc").show(truncate=False))
-        .eD(display=False, file_path='/Users/micheldeleeuw/dev/lion-tools/output/test_header3.html', pretty_headers=True, column_grouping=False)
-        # .select("column", "result", "column_no__base", "column_no__compare")
+        .eD(display=False, file_path='/Users/micheldeleeuw/dev/lion-tools/output/test_header3.html', pretty_headers=False, column_grouping=False)
         # .show(truncate=False)
     )
 

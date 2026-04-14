@@ -217,6 +217,7 @@ class DataFrameDisplay():
             'column_grouping',
             'column_grouping_split_pattern',
             'percentage_columns_patterns',
+            'compact',
         ]
         
         if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
@@ -327,11 +328,17 @@ class DataFrameDisplay():
             
         if 'percentage_columns_pattern' in kwargs:
             assert isinstance(kwargs['percentage_columns_pattern'], str), "percentage_columns_pattern must be a string value representing a regex pattern to identify percentage columns"
+
+        if 'compact' in kwargs:
+            if not isinstance(kwargs['compact'], bool):
+                raise Exception("compact must be a boolean value")
+        else:
+            kwargs['compact'] = False
         
         return kwargs
         
     @staticmethod
-    def data_to_html_table(df_collected, headers, cols):
+    def data_to_html_table(df_collected, headers, cols, compact=False):
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
@@ -382,7 +389,7 @@ class DataFrameDisplay():
                             style_str += f"{style_code} "
 
                 # value
-                value = DataFrameDisplay.cast_to_expandable_html(row[col])
+                value = DataFrameDisplay.cast_to_expandable_html(row[col], compact=compact)
                 if style_str != '':
                     table_body += f'<td class="{style_str.strip()}">{value}</td>'
                 else:
@@ -405,12 +412,13 @@ class DataFrameDisplay():
         return html_table
     
     @staticmethod
-    def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None):
+    def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None, compact=False):
         if isinstance(data, Row):
             # Convert Row to a dictionary and handle it as a dict
             return DataFrameDisplay.cast_to_expandable_html(
                 data.asDict(), 
                 add_quotes_when_needed=True,
+                compact=compact,
                 # preview_prefix='Row(', 
                 # preview_postfix=')'
             )
@@ -419,7 +427,7 @@ class DataFrameDisplay():
         elif isinstance(data, list):
             # Create a single-line preview of the list
             preview = ", ".join(
-                DataFrameDisplay.to_string(x, add_quotes_when_needed=True)
+                DataFrameDisplay.to_string(x, add_quotes_when_needed=True, compact=compact)
                 for x in data
             )
 
@@ -428,13 +436,13 @@ class DataFrameDisplay():
                 (isinstance(data[0], Row) or isinstance(data[0], dict) or isinstance(data[0], list))
             ):
                 expanded_items = [
-                    DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                    DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True, compact=compact)
                     for item in data
                 ]
                 multi_line = "".join(expanded_items)
             else:
                 expanded_items = [
-                    "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                    "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True, compact=compact)
                     for item in data
                 ]
                 multi_line = "<br>".join(expanded_items)
@@ -444,8 +452,8 @@ class DataFrameDisplay():
 
         # Handle Dictionaries (Optional, but useful for complex data)
         elif isinstance(data, dict):
-            preview = ", ".join(f"{k}: {DataFrameDisplay.to_string(v, add_quotes_when_needed=True)}" for k, v in data.items())
-            expanded_items = [f"<b>{k}:</b> {DataFrameDisplay.cast_to_expandable_html(v, add_quotes_when_needed=True)}" for k, v in data.items()]
+            preview = ", ".join(f"{k}: {DataFrameDisplay.to_string(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items())
+            expanded_items = [f"<b>{k}:</b> {DataFrameDisplay.cast_to_expandable_html(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items()]
             multi_line = "<br>".join(expanded_items)
 
             return DataFrameDisplay.expandable_html(
@@ -457,17 +465,17 @@ class DataFrameDisplay():
             
         # Handle basic data types (strings, ints, floats, etc.)
         else:
-            return DataFrameDisplay.to_string(data, add_quotes_when_needed=add_quotes_when_needed)
+            return DataFrameDisplay.to_string(data, add_quotes_when_needed=add_quotes_when_needed, compact=compact)
         
     @staticmethod
-    def to_string(value, add_quotes_when_needed=False):
+    def to_string(value, add_quotes_when_needed=False, compact=False):
         if add_quotes_when_needed and isinstance(value, str):
             return f"'{html.escape(value)}'"
         elif add_quotes_when_needed and value is None:
             return 'null'
         elif value is None:
             return ''
-        elif isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
+        elif compact and isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
             value = html.escape(value)
             return value[0:5] + "...." + value[-5:]
         else:
@@ -565,7 +573,7 @@ class DataFrameDisplay():
         return df_collected, stats
 
     @staticmethod
-    def get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern):
+    def get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern, compact=False):
         # If column grouping is enabled we add an additional row in the header containing the group name.
         # The group name is derived from the column name by taking the part before the first occurrence of a split pattern. 
         # Note that the page length needs to be corrected to account for multi row headers.
@@ -691,6 +699,7 @@ class DataFrameDisplay():
         column_grouping = params['column_grouping'] if 'column_grouping' in params else True
         column_grouping_split_pattern = params['column_grouping_split_pattern'] if 'column_grouping_split_pattern' in params else '__'
         percentage_columns_pattern = params['percentage_columns_pattern'] if 'percentage_columns_pattern' in params else r'(_perc|%)$'
+        compact = params['compact']
 
         # We add a row number to the dataframe to enable proper sorting and pagination in the datatable in javascript.
         # If sorting is requested, we do this the real way, with a rownum
@@ -727,7 +736,7 @@ class DataFrameDisplay():
         else:
             max_width = str(df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
 
-        headers, header_length, uneven_columns = DataFrameDisplay.get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern)
+        headers, header_length, uneven_columns = DataFrameDisplay.get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern, compact)
         page_length = params['page_length'] - header_length + 1
         # col_defs_grouped_columns = "{ targets: " + str(uneven_columns) + ",  className: 'grouped_column'}"
         _options = sorted([5, 50, page_length])
@@ -746,7 +755,7 @@ class DataFrameDisplay():
 
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns))
+        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns, compact))
         html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs}', column_definitions)
         html_content = html_content.replace('{other_options}', other_options)
