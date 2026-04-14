@@ -57,7 +57,8 @@ class DataFrameDisplay():
         
         assert all(isinstance(rule, dict) for rule in color_rules), "color_rules must be a list of dictionaries"
         allowed_keys = {'column', 'columns', 'color_code', 'style_code', 'condition'}
-        cols = df.columns
+        all_cols = [col for col in df.columns]
+        cols = [col for col in all_cols if col not in ('_totals_type', '_color_style')]
 
         for i, rule in enumerate(color_rules):
             assert all(key in allowed_keys for key in rule.keys()), (
@@ -120,6 +121,14 @@ class DataFrameDisplay():
         return (
             df
             # get the colors
+            # step 0: create column _color_style_existing to be able to keep already defined colors/styles
+            # when multiple set_colors are used in the same chain
+            .withColumn(
+                '_color_style_existing',
+                F.col('_color_style')
+                if '_color_style' in all_cols
+                else F.array().cast('array<struct<column:string,color_code:string,style_code:string>>')
+            )
             # step 1: create an array of colors and an array of styles
             # for each rule that applies to a column
             .withColumns({
@@ -150,6 +159,24 @@ class DataFrameDisplay():
                     F.try_element_at(F.array_compact(F.col(f"_{col}_style_code")), F.lit(1))
                 for col in cols
             })
+            # step 3, if no color is set and there is an existing color/style keep it, otherwise set to null
+            .withColumns({
+                f"_{col}_color_code": 
+                    F.when(
+                        F.col(f"_{col}_color_code").isNull() & (F.size(F.col('_color_style_existing')) > 0), 
+                        F.expr(f"try_element_at(filter(_color_style_existing, x -> x.column = '{col}' and x.color_code is not null), 1).color_code")
+                    ).otherwise(F.col(f"_{col}_color_code"))
+                for col in cols
+            })
+            .withColumns({
+                f"_{col}_style_code": 
+                    F.when(
+                        F.col(f"_{col}_style_code").isNull() & (F.size(F.col('_color_style_existing')) > 0), 
+                        F.expr(f"try_element_at(filter(_color_style_existing, x -> x.column = '{col}' and x.style_code is not null), 1).style_code")
+                    ).otherwise(F.col(f"_{col}_style_code"))
+                for col in cols
+            })
+            # step 4, compact the color/styles to the single column _color_style
             .withColumn(
                 '_color_style', 
                 F.array(*[
@@ -162,7 +189,8 @@ class DataFrameDisplay():
             )
             .drop(
                 *[f"_{col}_color_code" for col in cols],
-                *[f"_{col}_style_code" for col in cols]
+                *[f"_{col}_style_code" for col in cols],
+                '_color_style_existing',
             )
         )
 
