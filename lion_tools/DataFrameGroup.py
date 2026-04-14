@@ -32,13 +32,13 @@ class DataFrameGroup():
             if Tools.check_data_type(dtype[1], 'num')
         ]
         self.add_rownum = kwargs.get("add_rownum", False)
+        self.round = kwargs.get("round", 8)
 
         self.pivot_column = None
         self.totals_by = []
         self.sections = False
         self.sub_totals = False
         self.grand_total = False
-        self.round = False
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -49,10 +49,10 @@ class DataFrameGroup():
     
     @staticmethod
     def single_aggregation_functions() -> list[str]:
-        return (
+        return [
             "min", "max", "sum", "avg", "avg_null", "count", "count_distinct", "approx_count_distinct",
             "count_null", "count_not_null", "first", "last", "collect_set", "collect_list",
-        )
+        ]
     
     def pivot(self, column: str) -> Self:
         assert self.by_strings != ['*'], "Pivoting is not supported when grouping by all columns."
