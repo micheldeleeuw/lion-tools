@@ -330,15 +330,25 @@ class DataFrameDisplay():
             assert isinstance(kwargs['percentage_columns_pattern'], str), "percentage_columns_pattern must be a string value representing a regex pattern to identify percentage columns"
 
         if 'compact' in kwargs:
-            if not isinstance(kwargs['compact'], bool):
-                raise Exception("compact must be a boolean value")
+            if isinstance(kwargs['compact'], bool):
+                kwargs['compact'] = 2 if kwargs['compact'] else 1
+            elif isinstance(kwargs['compact'], int):
+                assert kwargs['compact'] in (1, 2, 3), "If compact is an integer it must be 1, 2 or 3"
+            else:
+                raise Exception("compact must be a boolean or integer value (1-3)")
         else:
-            kwargs['compact'] = False
+            kwargs['compact'] = 1
         
         return kwargs
+    
+    @staticmethod
+    def compact_header(col, value, compact):
+        # todo: this is not yet used but the idea is to have an option to also compact the headers if they are too long,
+        # similar to how we compact values in the cells.
+        pass
         
     @staticmethod
-    def data_to_html_table(df_collected, headers, cols, compact=False):
+    def data_to_html_table(df_collected, headers, cols, compact, df_statistics):
         # note we don't use tabulate here as we need to build the table body with additional functionality
         cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
@@ -412,7 +422,7 @@ class DataFrameDisplay():
         return html_table
     
     @staticmethod
-    def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None, compact=False):
+    def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None, compact=1):
         if isinstance(data, Row):
             # Convert Row to a dictionary and handle it as a dict
             return DataFrameDisplay.cast_to_expandable_html(
@@ -468,14 +478,14 @@ class DataFrameDisplay():
             return DataFrameDisplay.to_string(data, add_quotes_when_needed=add_quotes_when_needed, compact=compact)
         
     @staticmethod
-    def to_string(value, add_quotes_when_needed=False, compact=False):
+    def to_string(value, add_quotes_when_needed=False, compact=1):
         if add_quotes_when_needed and isinstance(value, str):
             return f"'{html.escape(value)}'"
         elif add_quotes_when_needed and value is None:
             return 'null'
         elif value is None:
             return ''
-        elif compact and isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
+        elif compact > 1 and isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
             value = html.escape(value)
             return value[0:5] + "...." + value[-5:]
         else:
@@ -573,7 +583,7 @@ class DataFrameDisplay():
         return df_collected, stats
 
     @staticmethod
-    def get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern, compact=False):
+    def get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern, compact=1):
         # If column grouping is enabled we add an additional row in the header containing the group name.
         # The group name is derived from the column name by taking the part before the first occurrence of a split pattern. 
         # Note that the page length needs to be corrected to account for multi row headers.
@@ -755,7 +765,7 @@ class DataFrameDisplay():
 
         # create html
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns, compact))
+        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns, compact, df_statistics))
         html_content = html_content.replace('{columns}', columns_popup)
         html_content = html_content.replace('{col_defs}', column_definitions)
         html_content = html_content.replace('{other_options}', other_options)
