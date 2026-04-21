@@ -7,6 +7,13 @@ from IPython.display import display as ipython_display
 class Tools():
 
     @staticmethod
+    def col_name(col) -> str:
+        """Extract column name compatible with both classic Spark and Spark Connect."""
+        if hasattr(col, '_jc'):
+            return col._jc.toString()
+        return col._expr.name()
+
+    @staticmethod
     def check_data_type(data_type: str, needed_type: str):
         match needed_type:
             case "num":
