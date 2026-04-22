@@ -121,6 +121,7 @@ class DataFrameGroup():
 
     def _get_aggregates(self) -> DataFrame:
         from pyspark.sql.group import GroupedData
+        from pyspark.sql.connect.group import GroupedData as GroupedDataConnect
 
         def _apply_pivot(grouped_df):
             if self.pivot_column:
@@ -128,7 +129,9 @@ class DataFrameGroup():
             else:
                 return grouped_df
 
+        # TODO: find a better way to apply pivot without monkey patching internal Spark classes
         GroupedData._apply_pivot = _apply_pivot
+        GroupedDataConnect._apply_pivot = _apply_pivot
 
         if self.by_strings == ['*']:
             result = self.df.withColumn("_totals_type", F.lit(1))
@@ -136,6 +139,7 @@ class DataFrameGroup():
             result = (
                 self.df
                 .groupBy(*self.by)
+                .transformWithState
                 ._apply_pivot()
                 .agg(*self.aggs)
                 .withColumn("_totals_type", F.lit(2))
