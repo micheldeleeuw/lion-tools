@@ -4,7 +4,6 @@ import html
 from pprint import pprint
 from sys import prefix
 import pyspark.sql.functions as F
-from pyspark.sql import DataFrame
 from pyspark.sql.window import Window as W
 from datetime import datetime
 from IPython.display import HTML as display_HTML
@@ -17,9 +16,6 @@ from itertools import groupby
 import re
 
 class DataFrameDisplay():
-
-    # all defaults for the display and disply to cockpit functions are ajustable
-    # the are defined here to be overwritten by the user
     color_codes_colors = [
         # Grays
         "slate", "gray", "zinc", "neutral", "stone",
@@ -48,318 +44,8 @@ class DataFrameDisplay():
         'antialiased', 'subpixel-antialiased',
     ]
 
-    defaults = dict(
-        name = None,                 # name of the display, used for the tab name in the cockpit
-        passthrough = False,         # should the dataframe be returned for chaining after display?
-        compact = 1,                 # 1-3, should the display be compacted to make row less wide?
-        add_time_to_name = False,    # should time be added to the name of the display??
-        n = 1001,                    # number of rows tot diplay
-        p = 15,                      # number of rows per page
-        sort = None,                 # column(s) to sort by before display, (list of) string or integers
-        display = True,              # should the dataframe be displayed at all?
-        max_table_bytes = 200000,    # 500000, the maximum size of the table in bytes that will be displayed
-        lazy = True,                 # should the cockpit perform the display action?
-        color_rules = [],            # list of dicts with rules to color the cells
-        pretty_headers = False,      # should the headers be prettified?
-        format_totals = True,        # should the totals rows be formatted with a different style to make them recognizable?
-        column_grouping = True,      # should columns be grouped when they have a common prefix separated
-        column_grouping_split_pattern = '__',       # pattern to split column names into column groups
-        percentage_columns_pattern = r'(_perc|%)$', # regex pattern to identify percentage columns for proper formatting
-    )
-
-    @staticmethod
-    def display(
-        df: DataFrame, 
-        name: str = None,
-        passthrough: bool = None,
-        compact: int = None,
-        add_time_to_name: bool = None,
-        n: int = None,
-        p: int = None,
-        file_path: str = None,
-        sort: list = None,
-        display: bool = None,
-        lazy: bool = None,
-        color_rules: list[dict] = None,
-        pretty_headers: bool = None,
-        format_totals: bool = None,
-        column_grouping: bool = None,
-        column_grouping_split_pattern: str = None,
-        percentage_columns_pattern: str = None,
-     ):
-        
-        DataFrameDisplay(
-            df=df, 
-            name=name,
-            passthrough=passthrough,
-            compact=compact,
-            add_time_to_name=add_time_to_name,
-            n=n,
-            p=p,
-            file_path=file_path,
-            sort=sort,
-            display=display,
-            lazy=lazy,
-            color_rules=color_rules,
-            pretty_headers=pretty_headers,
-            format_totals=format_totals,
-            column_grouping=column_grouping,
-            column_grouping_split_pattern=column_grouping_split_pattern,
-            percentage_columns_pattern=percentage_columns_pattern,
-        )
-     
-    def __init__(
-        self,
-        df: DataFrame,
-        name: str = None,
-        passthrough: bool = None,
-        compact: int = None,
-        add_time_to_name: bool = None,
-        n: int = None,
-        p: int = None,
-        file_path: str = None,
-        sort: list = None,
-        display: bool = None,
-        max_table_bytes: int = None,
-        lazy: bool = None,
-        color_rules: list[dict] = None,
-        pretty_headers: bool = None,
-        format_totals: bool = None,
-        column_grouping: bool = None,
-        column_grouping_split_pattern: str = None,
-        percentage_columns_pattern: str = None,
-    ):
-
-        # set instance variables and apply defaults from class defaults
-        self.df = df
-        self.name = name
-        self.passthrough = passthrough or DataFrameDisplay.defaults['passthrough']
-        self.compact = compact or DataFrameDisplay.defaults['compact']
-        self.add_time_to_name = add_time_to_name or DataFrameDisplay.defaults['add_time_to_name']
-        self.n = n or DataFrameDisplay.defaults['n']
-        self.p = p or DataFrameDisplay.defaults['p']
-        self.file_path = file_path
-        self.sort = sort or DataFrameDisplay.defaults['sort']
-        self.display = display or DataFrameDisplay.defaults['display']
-        self.max_table_bytes = max_table_bytes or DataFrameDisplay.defaults['max_table_bytes']
-        self.lazy = lazy or DataFrameDisplay.defaults['lazy']
-        self.color_rules = color_rules or DataFrameDisplay.defaults['color_rules']
-        self.pretty_headers = pretty_headers or DataFrameDisplay.defaults['pretty_headers']
-        self.format_totals = format_totals or DataFrameDisplay.defaults['format_totals']
-        self.column_grouping = column_grouping or DataFrameDisplay.defaults['column_grouping']
-        self.column_grouping_split_pattern = column_grouping_split_pattern or DataFrameDisplay.defaults['column_grouping_split_pattern']
-        self.percentage_columns_pattern = percentage_columns_pattern or DataFrameDisplay.defaults['percentage_columns_pattern']
-
-        # allow overloading
-        self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
-        self.color_rules = [self.color_rules] if self.color_rules and not isinstance(self.color_rules, list) else (
-            self.color_rules)
-
-        # validate
-        assert 'pyspark.sql' in str(type(self.df)) or 'DataFrame' in str(type(self.df))
-        assert isinstance(self.name, str) or self.name is None
-        assert isinstance(self.passthrough, bool)
-        assert isinstance(self.compact, int) and self.compact in (1, 2, 3)
-        assert isinstance(self.add_time_to_name, bool)
-        assert isinstance(self.n, int) and self.n > 0 and self.n <= 100000
-        assert isinstance(self.p, int) and self.p > 0 and self.p <= 100000
-        assert isinstance(self.file_path, str) or self.file_path is None
-        assert isinstance(self.sort, list) or self.sort is None
-        assert isinstance(self.display, bool)
-        assert isinstance(self.max_table_bytes, int) and self.max_table_bytes > 0 and self.max_table_bytes <= 10000000
-        assert isinstance(self.lazy, bool)
-        assert isinstance(self.color_rules, list)
-        assert isinstance(self.pretty_headers, bool)
-        assert isinstance(self.format_totals, bool)
-        assert isinstance(self.column_grouping, bool)
-        assert isinstance(self.column_grouping_split_pattern, str)
-        assert isinstance(self.percentage_columns_pattern, str)
-
-        if self.color_rules:
-            assert all(isinstance(rule, dict) for rule in self.color_rules)
-            self.df = DataFrameDisplay.set_colors(self.df, *self.color_rules)
-
-        if self.format_totals and "_totals_type" in self.df.columns:
-            self.df = DataFrameDisplay.set_colors(
-                self.df, 
-                dict(condition='_totals_type >= 3', style_code='italic')
-            )
-
-        self.get_data()
-        self.administration()
-        self.collect_data_and_stats()
-        self.further_limit_data_by_table_bytes()
-        self.set_columns_popup()
-        self.set_headers()
-        self.set_length_and_with()
-        self.set_other_options()
-        self.set_column_definitions()
-        self.data_to_html_table()
-        self.apply_to_template()
-
-        if self.file_path:
-            self.save_to_file()
-
-        if self.display:
-            self.put_in_iframe()
-            display(display_HTML(self.iframe_html))
-
-        if self.passthrough:
-            return self.df 
-        elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
-            return DataFrameTap._tap_end()
-
-
-    def administration(self):
-        # define some variables that are needed down the road
-        self.all_dtypes = self.df.dtypes
-        self.dtypes = [
-            dtype for dtype in self.all_dtypes
-            if dtype[0] not in ('_rownum', '_totals_type', '_color_style')
-        ]
-        self.all_cols = [dtype[0] for dtype in self.all_dtypes]
-        self.cols = [dtype[0] for dtype in self.dtypes]
-        self.nummeric_columns = [
-            i for i, (col, dtype) in enumerate(self.dtypes)
-            if Tools.check_data_type(dtype, 'num')
-        ]
-        self.stat_cols = [
-            col for col in self.all_cols
-            if col not in ('_totals_type', '_color_style')
-        ]
-        self.stat_dtypes = [
-            dtype for dtype in self.all_dtypes
-            if dtype[0] in self.stat_cols
-        ]
-
-    def collect_data_and_stats(self):  
-        self.stats = {
-            col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)}
-            for col, dtype in self.stat_dtypes
-        }
-
-        self.df_collected = self.df.collect()
-
-        if '_totals_type' in self.all_cols:
-            self.remove_unnecessary_sub_totals()
-
-        for row in self.df_collected:
-            for col in self.stat_cols:
-                value = row[col]
-                if value is not None:
-                    length = len(str(value))
-                    self.stats[col]['length'] = max(self.stats[col]['length'], length)
-                    self.stats[col]['total'] = self.stats[col]['total'] + length
-                    if (
-                        (isinstance(value, float) or isinstance(value, decimal.Decimal)) and
-                        str(value).split('.')[-1] != '0'
-                    ):
-                        self.stats[col]['decimals'] = max(
-                            self.stats[col]['decimals'], 
-                            len(str(value).split('.')[-1])
-                        )
-
-        self.stats['__total__'] = {
-            'rows': len(self.df_collected), 
-            'columns': len(self.stat_cols), 
-            'width': sum([self.stats[col]['length'] for col in self.stat_cols]),
-            'avg_width': sum([self.stats[col]['total'] for col in self.stat_cols]) / len(self.df_collected) if len(self.df_collected) > 0 else 0,
-            'width_with_header': sum([max(self.stats[col]['length'], self.stats[col]['header_length']) for col in self.stat_cols]),
-            'size_limit': False,
-        }
-
-    def further_limit_data_by_table_bytes(self):
-        # if the total (byte) size of the data is large we limited the number of rows to avoid browser performance issues
-        if self.stats['__total__']['avg_width'] * self.stats['__total__']['rows'] > self.max_table_bytes and len(self.df_collected) > 1:
-            new_n = int(self.max_table_bytes / self.stats['__total__']['avg_width'])
-            self.df_collected = self.df_collected[:new_n]
-            self.stats['__total__']['size_limit'] = True
-            self.stats['__total__']['rows'] = new_n
-
-    def get_data(self):
-        # We add a row number to the dataframe to enable proper sorting and pagination in the datatable in javascript.
-        # If sorting is requested, we do sort and get a monotonically increasing id as rownum
-        # if not requested but rownum is already present we use that
-        # otherswise we just pick the first n rows and add a dummy rownum for DataTable.
-        if self.sort:
-            sort_by = DataFrameExtensions.transform_column_expressions(self.df, *self.sort)
-            self.df = self.df.orderBy(sort_by).withColumn('_rownum', F.monotonically_increasing_id())
-            self.df = self.df.filter(F.col('_rownum') <= self.n).orderBy('_rownum')
-        elif '_rownum' in self.df.columns:
-            self.df = self.df.filter(F.col('_rownum') < self.n + 1).orderBy('_rownum')            
-        else:
-            # pick random rows and add a dummy rownum for DataTable. Note that if the dataframe is already 
-            # sorted this will pick the top n rows
-            self.df = self.df.limit(self.n).withColumn('_rownum', F.monotonically_increasing_id())
-
-        # rownum to last position
-        self.df = self.df.selectExpr('* except(_rownum)', '_rownum')
-
-    def set_columns_popup(self):
-        # collect the data
-        self.columns_popup = str(list([
-            html.escape(
-                col + '---(' + dtype + ')'
-                if len(dtype) <= 25
-                else col + '---(' + dtype[0:22] + '...)'
-            )
-            for col, dtype in self.dtypes
-        ]))
-
-    def set_length_and_with(self):
-        if self.df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
-            max_width = '600px'
-        else:
-            max_width = str(self.df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
-
-        self.page_length = self.page_length - self.header_length + 1
-    
-    def set_other_options(self):
-        self.other_options = f"""order: [[{len(self.cols)}, 'asc']], ordering: true"""
-        _options = sorted([5, 50, self.page_length])
-        _options = list(dict.fromkeys(_options))
-        self.length_menu = str([[*_options, -1], [*_options, "All"]])
-
-        if self.header_length > 1:
-            # don't strip the rows, strip the columns
-            self.other_options += ", stripeClasses: []"
-
-    def apply_to_template(self):
-        # Load template using relative path from this file's location
-        with open(pathlib.Path(__file__).parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
-            html_content = f.read()
-
-        # create html
-        html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
-        html_content = html_content.replace('{main_table}', self.html_table)
-        html_content = html_content.replace('{columns}', self.columns_popup)
-        html_content = html_content.replace('{col_defs}', self.column_definitions)
-        html_content = html_content.replace('{other_options}', self.other_options)
-        html_content = html_content.replace('{max_width}', self.max_width)
-        html_content = html_content.replace('{page_length}', str(self.page_length))
-        html_content = html_content.replace('{length_menu}', self.length_menu)
-        
-        self.html_content = html_content
-
-    def save_to_file(self):
-        # save to file
-        with open(self.file_path, 'w', encoding='utf-8') as f:
-            f.write(self.html_content)
-
-    def put_in_iframe(self):
-        max_height = str(int(min(self.df_statistics['__total__']['rows'], self.page_length) * 25 + 178)) + 'px'
-        
-        # Wrap in an iframe with srcdoc to enable proper JavaScript execution
-        self.iframe_html = f"""
-            <iframe srcdoc='{self.html_content.replace("'", "&apos;")}' 
-                    width='99.9%' 
-                    height='{max_height}px'
-                    margin='0'
-                    frameborder='0'
-                    sandbox='allow-scripts allow-same-origin'
-                    style='border: 1px solid #ddd; overflow-y: hidden; overflow-x: auto; display: block;'>
-            </iframe>
-        """       
+    # max_table_bytes = 500000
+    max_table_bytes = 200000
 
     @staticmethod
     def set_colors(df, *color_rules: dict):
@@ -508,24 +194,173 @@ class DataFrameDisplay():
             )
         )
 
-    def compact_header(self):
+    @staticmethod
+    def display_validate_parameters(df, *args, **kwargs):
+        if not ('pyspark.sql' in str(type(df)) and 'DataFrame' in str(type(df))):
+            raise Exception("This method can only be used on a pyspark DataFrame")
+
+        valid_keys = [
+            'name',
+            'add_time_to_name',
+            'n',
+            'passthrough',
+            'file_path',
+            'sort',
+            'p',
+            'page_length',
+            'display',
+            'lazy',
+            'allow_additional_parameters',
+            'color_rules',
+            'pretty_headers',
+            'format_totals',
+            'column_grouping',
+            'column_grouping_split_pattern',
+            'percentage_columns_patterns',
+            'compact',
+        ]
+        
+        if 'allow_additional_parameters' in kwargs and kwargs['allow_additional_parameters']:
+            valid_keys = list(set(valid_keys + list(kwargs.keys())))
+
+        for key in kwargs:
+            # note p is an alias for page_length
+            assert key in valid_keys, "Unknown parameter: {}".format(key)
+                
+        # this is nasty but allows for positional arguments which is really helpful for the user
+        for val in args:
+            if isinstance(val, bool) and 'passthrough' not in kwargs:
+                kwargs['passthrough'] = val
+            elif isinstance(val, int) and 'n' not in kwargs:
+                kwargs['n'] = val
+            elif isinstance(val, str) and 'name' not in kwargs:
+                kwargs['name'] = val
+            else:
+                raise Exception("Unknown positional argument: {}".format(val))
+
+        if 'display' not in kwargs:
+            kwargs['display'] = True
+        else:
+            assert isinstance(kwargs['display'], bool), "display must be a boolean value"
+
+        if 'add_time_to_name' in kwargs:
+            if not isinstance(kwargs['add_time_to_name'], bool):
+                raise Exception("add_time_to_name must be a boolean value")
+        else:
+            kwargs['add_time_to_name'] = False
+                    
+        if 'name' in kwargs:
+            if not isinstance(kwargs['name'], str):
+                raise Exception("name must be a string")
+
+        if 'n' in kwargs:
+            if not isinstance(kwargs['n'], int) or kwargs['n'] < 1 or kwargs['n'] > 100000:
+                raise Exception("n must be an integer between 1 and 100.000")
+        else:
+            kwargs['n'] = 1001 # max 1.001 rows is standard
+
+        if 'passthrough' in kwargs:
+            if not isinstance(kwargs['passthrough'], bool):
+                raise Exception("passthrough must be a boolean value")
+        else:
+            kwargs['passthrough'] = False
+
+        if 'file_path' in kwargs:
+            if not isinstance(kwargs['file_path'], str):
+                raise Exception(f"file_path must be a string, not {type(kwargs['file_path'])}")
+            
+        if 'sort' in kwargs:
+            if not isinstance(kwargs['sort'], list):
+                kwargs['sort'] = [kwargs['sort']]
+
+            assert all([
+                isinstance(i, (str, int))
+                for i in kwargs['sort']
+            ]), "sort values must be strings or integers"
+
+        if 'p' in kwargs and 'page_length' not in kwargs:
+            kwargs['page_length'] = kwargs['p']
+            del kwargs['p']
+
+        if 'page_length' in kwargs:
+            assert (
+                isinstance(kwargs['page_length'], int) and kwargs['page_length'] > 0 and kwargs['page_length'] <= 1000000
+            ), "page_length must be a positive integer between 1 and 100.000"
+        else:
+            kwargs['page_length'] = 15
+
+        if 'display' in kwargs:
+            if not isinstance(kwargs['display'], bool):
+                raise Exception("display must be a boolean value")
+        else:
+            kwargs['display'] = True
+
+        if 'lazy' in kwargs:
+            if not isinstance(kwargs['lazy'], bool):
+                raise Exception("lazy must be a boolean value")
+        else:
+            kwargs['lazy'] = True
+
+        if 'format_totals' in kwargs:
+            if not isinstance(kwargs['format_totals'], bool):
+                raise Exception("format_totals must be a boolean value")
+        else:
+            kwargs['format_totals'] = True
+
+        if 'color_rules' in kwargs:
+            if isinstance(kwargs['color_rules'], dict):
+                kwargs['color_rules'] = [kwargs['color_rules']]
+                
+            if not isinstance(kwargs['color_rules'], list):
+                raise Exception("color_rules must be a list of dictionaries")
+            
+        if 'pretty_headers' in kwargs:
+            if not isinstance(kwargs['pretty_headers'], bool):
+                raise Exception("pretty_headers must be a boolean value")
+            
+        if 'column_grouping' in kwargs:
+            if not isinstance(kwargs['column_grouping'], bool):
+                raise Exception("column_grouping must be a boolean value")
+            
+        if 'column_grouping_split_pattern' in kwargs:
+            if not isinstance(kwargs['column_grouping_split_pattern'], str):
+                raise Exception("column_grouping_split_pattern must be a string value")
+            
+        if 'percentage_columns_pattern' in kwargs:
+            assert isinstance(kwargs['percentage_columns_pattern'], str), "percentage_columns_pattern must be a string value representing a regex pattern to identify percentage columns"
+
+        if 'compact' in kwargs:
+            if isinstance(kwargs['compact'], bool):
+                kwargs['compact'] = 2 if kwargs['compact'] else 1
+            elif isinstance(kwargs['compact'], int):
+                assert kwargs['compact'] in (1, 2, 3), "If compact is an integer it must be 1, 2 or 3"
+            else:
+                raise Exception("compact must be a boolean or integer value (1-3)")
+        else:
+            kwargs['compact'] = 1
+        
+        return kwargs
+    
+    @staticmethod
+    def compact_header(col, value, compact):
         # todo: this is not yet used but the idea is to have an option to also compact the headers if they are too long,
         # similar to how we compact values in the cells.
         pass
         
-    def data_to_html_table(self):
+    @staticmethod
+    def data_to_html_table(df_collected, headers, cols, compact, df_statistics):
         # note we don't use tabulate here as we need to build the table body with additional functionality
-        cols = [col for col in self.cols if col not in ('_totals_type', '_color_style')]
+        cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
 
         headers_ext = [
             [
                 i,
-                'single' if i==0 and len(self.headers) == 1
-                else 'last' if i == len(self.headers) - 1
+                'single' if i==0 and len(headers) == 1
+                else 'last' if i == len(headers) - 1
                 else 'non_last', 
                 header_row
             ]
-            for i, header_row in enumerate(self.headers)
+            for i, header_row in enumerate(headers)
         ]
 
         # table header
@@ -545,7 +380,7 @@ class DataFrameDisplay():
 
         # table body
         table_body = ''
-        for row in self.df_collected:
+        for row in df_collected:
             table_body += '<tr>'
             for col in cols:
                 # style
@@ -564,7 +399,7 @@ class DataFrameDisplay():
                             style_str += f"{style_code} "
 
                 # value
-                value = DataFrameDisplay.cast_to_expandable_html(row[col])
+                value = DataFrameDisplay.cast_to_expandable_html(row[col], compact=compact)
                 if style_str != '':
                     table_body += f'<td class="{style_str.strip()}">{value}</td>'
                 else:
@@ -573,7 +408,7 @@ class DataFrameDisplay():
                 
 
         # bring it together
-        self.html_table = f"""
+        html_table = f"""
             <table id="mainTable" class="display" style="width:100%">
                 <thead>
                     {table_header}
@@ -583,13 +418,17 @@ class DataFrameDisplay():
                 </tbody>
             </table>
         """
+
+        return html_table
     
-    def cast_to_expandable_html(self, data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None):
+    @staticmethod
+    def cast_to_expandable_html(data, add_quotes_when_needed=False, preview_prefix=None, preview_postfix=None, compact=1):
         if isinstance(data, Row):
             # Convert Row to a dictionary and handle it as a dict
-            return self.cast_to_expandable_html(
+            return DataFrameDisplay.cast_to_expandable_html(
                 data.asDict(), 
                 add_quotes_when_needed=True,
+                compact=compact,
                 # preview_prefix='Row(', 
                 # preview_postfix=')'
             )
@@ -598,7 +437,7 @@ class DataFrameDisplay():
         elif isinstance(data, list):
             # Create a single-line preview of the list
             preview = ", ".join(
-                self.to_string(x, add_quotes_when_needed=True)
+                DataFrameDisplay.to_string(x, add_quotes_when_needed=True, compact=compact)
                 for x in data
             )
 
@@ -607,7 +446,7 @@ class DataFrameDisplay():
                 (isinstance(data[0], Row) or isinstance(data[0], dict) or isinstance(data[0], list))
             ):
                 expanded_items = [
-                    self.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                    DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True, compact=compact)
                     for item in data
                 ]
                 multi_line = "".join(expanded_items)
@@ -618,16 +457,16 @@ class DataFrameDisplay():
                 ]
                 multi_line = "<br>".join(expanded_items)
             
-            return self.expandable_html(preview, multi_line, preview_prefix='[', preview_postfix=']')
+            return DataFrameDisplay.expandable_html(preview, multi_line, preview_prefix='[', preview_postfix=']')
 
 
         # Handle Dictionaries (Optional, but useful for complex data)
         elif isinstance(data, dict):
-            preview = ", ".join(f"{k}: {self.to_string(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items())
-            expanded_items = [f"<b>{k}:</b> {self.cast_to_expandable_html(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items()]
+            preview = ", ".join(f"{k}: {DataFrameDisplay.to_string(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items())
+            expanded_items = [f"<b>{k}:</b> {DataFrameDisplay.cast_to_expandable_html(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items()]
             multi_line = "<br>".join(expanded_items)
 
-            return self.expandable_html(
+            return DataFrameDisplay.expandable_html(
                 preview, 
                 multi_line, 
                 preview_prefix=preview_prefix if preview_prefix else '{', 
@@ -636,24 +475,24 @@ class DataFrameDisplay():
             
         # Handle basic data types (strings, ints, floats, etc.)
         else:
-            return self.to_string(data, add_quotes_when_needed=add_quotes_when_needed)
+            return DataFrameDisplay.to_string(data, add_quotes_when_needed=add_quotes_when_needed, compact=compact)
         
-    def to_string(self, value, add_quotes_when_needed=False):
+    @staticmethod
+    def to_string(value, add_quotes_when_needed=False, compact=1):
         if add_quotes_when_needed and isinstance(value, str):
             return f"'{html.escape(value)}'"
         elif add_quotes_when_needed and value is None:
             return 'null'
         elif value is None:
             return ''
-        elif (
-            self.compact > 1 and isinstance(value, str) and len(value) == 32 and 
-            all(c in '0123456789abcdefABCDEF' for c in value)):
+        elif compact > 1 and isinstance(value, str) and len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value):
             value = html.escape(value)
             return value[0:5] + "...." + value[-5:]
         else:
             return html.escape(str(value))
 
-    def expandable_html(self, preview, multi_line, preview_prefix, preview_postfix, max_preview_length=60):
+    @staticmethod
+    def expandable_html(preview, multi_line, preview_prefix, preview_postfix, max_preview_length=60):
         if len(preview) > max_preview_length:
             preview = preview[:max_preview_length - 3] + "..."
         
@@ -666,13 +505,14 @@ class DataFrameDisplay():
         </details>
         """
 
-    def remove_unnecessary_sub_totals(self):
+    @staticmethod
+    def remove_unnecessary_sub_totals(df_collected):
         # Unnecessary sub-totals are sub totals where there only is one record feeding the sub total.
         group_record_count = 0
         df_collected_new = []
-        df_collected_len =len(self.df_collected)
+        df_collected_len =len(df_collected)
 
-        for rownum, row in enumerate(self.df_collected):
+        for rownum, row in enumerate(df_collected):
             if row['_totals_type'] <= 2: 
                 # regular rows
                 group_record_count += 1
@@ -684,7 +524,7 @@ class DataFrameDisplay():
                 row['_totals_type'] == 4 and 
                 group_record_count <= 1 and 
                 (
-                    ((rownum + 2) < df_collected_len and self.df_collected[rownum + 2]['_totals_type'] > 2) or
+                    ((rownum + 2) < df_collected_len and df_collected[rownum + 2]['_totals_type'] > 2) or
                     (rownum + 2) >= df_collected_len
                 )
             ):
@@ -701,75 +541,115 @@ class DataFrameDisplay():
             if row['_totals_type'] == 4: 
                 group_record_count = 0
 
-        self.df_collected = df_collected_new
+        return df_collected_new                    
 
-    def set_headers(self):
+    @staticmethod
+    def collect_data_and_stats(df, all_cols, cols, dtypes):
+        cols = df.columns
+        stat_cols = [col for col in cols if col not in ('_totals_type', '_color_style')]
+        dtypes = df.dtypes
+        df_collected = df.collect()
+        stats = {col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)} for col, dtype in dtypes if col in stat_cols}
+
+        if '_totals_type' in all_cols:
+            df_collected = DataFrameDisplay.remove_unnecessary_sub_totals(df_collected)
+
+        for row in df_collected:
+            for col in stat_cols:
+                value = row[col]
+                if value is not None:
+                    length = len(str(value))
+                    stats[col]['length'] = max(stats[col]['length'], length)
+                    stats[col]['total'] = stats[col]['total'] + length
+                    if (isinstance(value, float) or isinstance(value, decimal.Decimal)) and str(value).split('.')[-1] != '0':
+                        stats[col]['decimals'] = max(stats[col]['decimals'], len(str(value).split('.')[-1]))
+
+        stats['__total__'] = {
+            'rows': len(df_collected), 
+            'columns': len(stat_cols), 
+            'width': sum([stats[col]['length'] for col in stat_cols]),
+            'avg_width': sum([stats[col]['total'] for col in stat_cols]) / len(df_collected) if len(df_collected) > 0 else 0,
+            'width_with_header': sum([max(stats[col]['length'], stats[col]['header_length']) for col in stat_cols]),
+            'size_limit': False,
+        }
+
+        # if the total (byte) size of the data is large we limited the number of rows to avoid browser performance issues
+        if stats['__total__']['avg_width'] * stats['__total__']['rows'] > DataFrameDisplay.max_table_bytes and len(df_collected) > 1:
+            new_n = int(DataFrameDisplay.max_table_bytes / stats['__total__']['avg_width'])
+            df_collected = df_collected[:new_n]
+            stats['__total__']['size_limit'] = True
+            stats['__total__']['rows'] = new_n
+        
+        return df_collected, stats
+
+    @staticmethod
+    def get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern, compact=1):
         # If column grouping is enabled we add an additional row in the header containing the group name.
         # The group name is derived from the column name by taking the part before the first occurrence of a split pattern. 
         # Note that the page length needs to be corrected to account for multi row headers.
         # Pretty headers are basically just a cosmetic change to make the headers more readable by replacing underscores with
         # spaces and capitalizing words.
 
-        self.header_length = max([
-            len(col.split(self.column_grouping_split_pattern))
-            for col in self.cols
-        ])
+        header_length = max([len(col.split(column_grouping_split_pattern)) for col in cols])
 
-        if self.column_grouping and self.header_length > 1:
-            split_cols = [col.split(self.column_grouping_split_pattern) for col in self.cols]
+        if column_grouping and header_length > 1:
+            split_cols = [col.split(column_grouping_split_pattern) for col in cols]
             split_cols = [
-                split_col if not self.pretty_headers else [split_col_.replace('_', ' ').title() for split_col_ in split_col]
+                split_col if not pretty_headers else [split_col_.replace('_', ' ').title() for split_col_ in split_col]
                 for split_col in split_cols
             ]
             # pad the arrays with empty string
-            split_cols = [[' '] * (self.header_length - len(split_col)) + split_col for split_col in split_cols]
+            split_cols = [[' '] * (header_length - len(split_col)) + split_col for split_col in split_cols]
             # transpose the matrix
             header_rows = list(map(list, zip(*split_cols)))
             # make single titles with count of the number columns the title must span
-            self.headers = [
+            headers = [
                 [
                     [len(list(group)), label]
                     for label, group in groupby(header_row)
                 ] 
                 for header_row in header_rows
             ]
-            self.uneven_columns = []
+            uneven_columns = []
             i = 0
-            for j, col in enumerate(self.headers[-2]):
+            for j, col in enumerate(headers[-2]):
                 if j % 2 == 1:
                     for k in range(col[0]):
-                        self.uneven_columns.append(i + k)
+                        uneven_columns.append(i + k)
                 i += col[0]
 
         else:
             # make just the single row
-            self.header_length = 1
-            self.uneven_columns = []
-            self.headers = [[
-                [1, col] if not self.pretty_headers else [1, col.replace('_', ' ').title()]
-                for col in self.cols
+            header_length = 1
+            uneven_columns = []
+            headers = [[
+                [1, col] if not pretty_headers else [1, col.replace('_', ' ').title()]
+                for col in cols
             ]]
 
-    def set_column_definitions(self):
+        return headers, header_length, uneven_columns
+    
+    @staticmethod
+    def columns_definitions(cols, nummeric_columns, percentage_columns_pattern, df_statistics, uneven_columns):
         cols_defs = {}
-        cols_defs['rownum'] = [len(self.cols)]
-        cols_defs['alignment_right'] = self.nummeric_columns + [len(self.cols)]
-        cols_defs['grouped_columns'] = self.uneven_columns
+        cols_defs['rownum'] = [len(cols)]
+        cols_defs['alignment_right'] = nummeric_columns + [len(cols)]
+        cols_defs['grouped_columns'] = uneven_columns
 
-        for i, col in enumerate(self.cols):
-            if i in self.nummeric_columns and re.search(self.percentage_columns_pattern, col):
+        for i, col in enumerate(cols):
+            if i in nummeric_columns and re.search(percentage_columns_pattern, col):
                 # nummeric + %
-                decimals = self.df_statistics[col]['decimals']
+                decimals = df_statistics[col]['decimals']
                 cols_defs.setdefault('number_format%', {})
                 cols_defs['number_format%'].setdefault(decimals, [])
                 cols_defs['number_format%'][decimals].append(i)
-            elif i in self.nummeric_columns:
+            elif i in nummeric_columns:
                 # nummeric
-                decimals = self.df_statistics[col]['decimals']
+                decimals = df_statistics[col]['decimals']
                 cols_defs.setdefault('number_format', {})
                 cols_defs['number_format'].setdefault(decimals, [])
                 cols_defs['number_format'][decimals].append(i)
-            elif re.search(self.percentage_columns_pattern, col):
+            elif re.search(percentage_columns_pattern, col):
                 # not nummeric + %
                 cols_defs.setdefault('string_format%', [])
                 cols_defs['string_format%'].append(i)
@@ -804,5 +684,117 @@ class DataFrameDisplay():
                 col_defs_str.append(
                     f"{{ targets: {value},  render: function (data, type, row) {{ return type === 'display' && data !== '' ? '&nbsp;' + data + '&nbsp;' : data; }} }},")
 
-        self.column_definitions = '\n            '.join(col_defs_str)
+        return  '\n            '.join(col_defs_str)
     
+    @staticmethod
+    def display(df, *args, **kwargs):
+        params = DataFrameDisplay.display_validate_parameters(df, *args, **kwargs)
+
+        if 'color_rules' in params:
+            df = DataFrameDisplay.set_colors(df, *params['color_rules'])
+
+        if "_totals_type" in df.columns and 'format_totals' in params and params['format_totals']:
+            df = DataFrameDisplay.set_colors(df, dict(condition='_totals_type >= 3', style_code='italic'))
+
+        all_cols = df.columns
+        cols = [col for col in all_cols if col not in ('_rownum', '_totals_type', '_color_style')]
+        dtypes = [dtype for dtype in df.dtypes if dtype[0] not in ('_rownum', '_totals_type', '_color_style')]
+        has_rownum = '_rownum' in all_cols
+        # has_colors = '_color_style' in all_cols
+        nummeric_columns = [
+            i for i, (col, dtype) in enumerate(dtypes)
+            if Tools.check_data_type(dtype, 'num')
+        ]
+        pretty_headers = params['pretty_headers'] if 'pretty_headers' in params else False
+        column_grouping = params['column_grouping'] if 'column_grouping' in params else True
+        column_grouping_split_pattern = params['column_grouping_split_pattern'] if 'column_grouping_split_pattern' in params else '__'
+        percentage_columns_pattern = params['percentage_columns_pattern'] if 'percentage_columns_pattern' in params else r'(_perc|%)$'
+        compact = params['compact']
+
+        # We add a row number to the dataframe to enable proper sorting and pagination in the datatable in javascript.
+        # If sorting is requested, we do this the real way, with a rownum
+        # if not requested but rownum is already present we use that
+        # otherswise we just pick the first n rows and add a dummy rownum for the datatable
+        if 'sort' in params:
+            sort_by = DataFrameExtensions.transform_column_expressions(df, *params['sort'])
+            df = df.withColumn('_rownum', F.row_number().over(W.orderBy(*sort_by)))
+            df = df.filter(F.col('_rownum') <= params['n']).orderBy('_rownum')
+        elif has_rownum:
+            df = df.filter(F.col('_rownum') < params['n'] + 1).orderBy('_rownum')            
+        else:
+            # pick random rows and add a dummy rownum for the datatable. Note that if the dataframe is already 
+            # sorted this will pick the top n rows
+            df = df.limit(params['n']).withColumn('_rownum', F.monotonically_increasing_id())
+            
+        # rownum to last position and let datatables dor the sort
+        df = df.selectExpr('* except(_rownum)', '_rownum')
+        other_options = f"""order: [[{len(cols)}, 'asc']], ordering: true"""
+        
+        # collect the data
+        df_collected, df_statistics = DataFrameDisplay.collect_data_and_stats(df, all_cols, cols, dtypes)
+        columns_popup = str(list([
+            html.escape(
+                col + '---(' + dtype + ')'
+                if len(dtype) <= 25
+                else col + '---(' + dtype[0:22] + '...)'
+            )
+            for col, dtype in dtypes
+        ]))
+
+        if df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
+            max_width = '600px'
+        else:
+            max_width = str(df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
+
+        headers, header_length, uneven_columns = DataFrameDisplay.get_headers(cols, pretty_headers, column_grouping, column_grouping_split_pattern, compact)
+        page_length = params['page_length'] - header_length + 1
+        # col_defs_grouped_columns = "{ targets: " + str(uneven_columns) + ",  className: 'grouped_column'}"
+        _options = sorted([5, 50, page_length])
+        _options = list(dict.fromkeys(_options))
+        length_menu = str([[*_options, -1], [*_options, "All"]])
+
+        if header_length > 1:
+            # don't strip the rows, strip the columns
+            other_options += ", stripeClasses: []"
+
+        # Load template using relative path from this file's location
+        with open(pathlib.Path(__file__).parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        column_definitions = DataFrameDisplay.columns_definitions(cols, nummeric_columns, percentage_columns_pattern, df_statistics, uneven_columns)
+
+        # create html
+        html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
+        html_content = html_content.replace('{main_table}', DataFrameDisplay.data_to_html_table(df_collected, headers, df.columns, compact, df_statistics))
+        html_content = html_content.replace('{columns}', columns_popup)
+        html_content = html_content.replace('{col_defs}', column_definitions)
+        html_content = html_content.replace('{other_options}', other_options)
+        html_content = html_content.replace('{max_width}', max_width)
+        html_content = html_content.replace('{page_length}', str(page_length))
+        html_content = html_content.replace('{length_menu}', length_menu)
+
+        if 'file_path' in params:
+            # save to file
+            with open(params['file_path'], 'w', encoding='utf-8') as f:
+                f.write(html_content)
+
+        max_height = str(int(min(df_statistics['__total__']['rows'], page_length) * 25 + 178)) + 'px'
+        # Wrap in an iframe with srcdoc to enable proper JavaScript execution
+        iframe_html = f"""
+            <iframe srcdoc='{html_content.replace("'", "&apos;")}' 
+                    width='99.9%' 
+                    height='{max_height}px'
+                    margin='0'
+                    frameborder='0'
+                    sandbox='allow-scripts allow-same-origin'
+                    style='border: 1px solid #ddd; overflow-y: hidden; overflow-x: auto; display: block;'>
+            </iframe>
+        """            
+
+        if params['display']:
+            display(display_HTML(iframe_html))
+        
+        if params['passthrough']:
+            return df
+        elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
+            return DataFrameTap._tap_end()
