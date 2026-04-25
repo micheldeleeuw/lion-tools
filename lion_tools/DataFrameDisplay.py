@@ -51,7 +51,7 @@ class DataFrameDisplay():
     defaults = dict(
         name = None,                 # name of the display, used for the tab name in the cockpit
         passthrough = False,         # should the dataframe be returned for chaining after display?
-        compact = 1,                 # 1-3, should the display be compacted to make row less wide?
+        compact = 0,                 # 1-3, should the display be compacted to make row less wide?
         add_time_to_name = False,    # should time be added to the name of the display??
         n = 1001,                    # number of rows tot diplay
         p = 15,                      # number of rows per page
@@ -306,7 +306,7 @@ class DataFrameDisplay():
         assert 'pyspark.sql' in str(type(self.df)) or 'DataFrame' in str(type(self.df))
         assert isinstance(self.name, str) or self.name is None
         assert isinstance(self.passthrough, bool)
-        assert isinstance(self.compact, int) and self.compact in (1, 2, 3)
+        assert isinstance(self.compact, int) and self.compact in (0, 1)
         assert isinstance(self.add_time_to_name, bool)
         assert isinstance(self.n, int) and self.n > 0 and self.n <= 100000
         assert isinstance(self.p, int) and self.p > 0 and self.p <= 100000
@@ -614,7 +614,7 @@ class DataFrameDisplay():
                 multi_line = "".join(expanded_items)
             else:
                 expanded_items = [
-                    "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True, compact=compact)
+                    "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
                     for item in data
                 ]
                 multi_line = "<br>".join(expanded_items)
@@ -624,8 +624,8 @@ class DataFrameDisplay():
 
         # Handle Dictionaries (Optional, but useful for complex data)
         elif isinstance(data, dict):
-            preview = ", ".join(f"{k}: {self.to_string(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items())
-            expanded_items = [f"<b>{k}:</b> {self.cast_to_expandable_html(v, add_quotes_when_needed=True, compact=compact)}" for k, v in data.items()]
+            preview = ", ".join(f"{k}: {self.to_string(v, add_quotes_when_needed=True)}" for k, v in data.items())
+            expanded_items = [f"<b>{k}:</b> {self.cast_to_expandable_html(v, add_quotes_when_needed=True)}" for k, v in data.items()]
             multi_line = "<br>".join(expanded_items)
 
             return self.expandable_html(
@@ -647,8 +647,9 @@ class DataFrameDisplay():
         elif value is None:
             return ''
         elif (
-            self.compact > 1 and isinstance(value, str) and len(value) == 32 and 
-            all(c in '0123456789abcdefABCDEF' for c in value)):
+            self.compact > 0 and isinstance(value, str) and len(value) == 32 and 
+                all(c in '0123456789abcdefABCDEF' for c in value)
+            ):
             value = html.escape(value)
             return value[0:5] + "...." + value[-5:]
         else:
