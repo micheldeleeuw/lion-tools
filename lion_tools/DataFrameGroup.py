@@ -23,7 +23,7 @@ class DataFrameGroup():
             self.sort_by = []
         else:
             self.by = DataFrameExtensions.transform_column_expressions(df, *by, include_sort=False)
-            self.by_strings = [col._jc.toString() for col in self.by]
+            self.by_strings = [Tools.col_name(col) for col in self.by]
             self.sort_by = [(i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1) for i, col in enumerate(by)]
             
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
@@ -100,7 +100,7 @@ class DataFrameGroup():
             self.result = (
                 self.result
                 .withColumns({
-                    col._jc.toString(): F.expr(f"if(_totals_type not in (3), `{col._jc.toString()}`, null)")
+                    Tools.col_name(col): F.expr(f"if(_totals_type not in (3), `{Tools.col_name(col)}`, null)")
                     for col in self.totals_by
                 })
                 .withColumns({
@@ -121,6 +121,7 @@ class DataFrameGroup():
 
     def _get_aggregates(self) -> DataFrame:
         from pyspark.sql.group import GroupedData
+        from pyspark.sql.connect.group import GroupedData as GroupedDataConnect
 
         def _apply_pivot(grouped_df):
             if self.pivot_column:
@@ -128,7 +129,9 @@ class DataFrameGroup():
             else:
                 return grouped_df
 
+        # TODO: find a better way to apply pivot without monkey patching internal Spark classes
         GroupedData._apply_pivot = _apply_pivot
+        GroupedDataConnect._apply_pivot = _apply_pivot
 
         if self.by_strings == ['*']:
             result = self.df.withColumn("_totals_type", F.lit(1))
@@ -136,6 +139,7 @@ class DataFrameGroup():
             result = (
                 self.df
                 .groupBy(*self.by)
+                .transformWithState
                 ._apply_pivot()
                 .agg(*self.aggs)
                 .withColumn("_totals_type", F.lit(2))
@@ -244,8 +248,7 @@ class DataFrameGroup():
 
         aggs = sorted(aggs, key=lambda x: x[0] * 100000 + x[2] * 1000 + x[1])
         aggs = [agg[3] for agg in aggs]
-
-        aggs = [agg if isinstance(agg, Column) else F.expr(agg) for agg in aggs]
+        aggs = [agg if str(type(agg)).find(".Column") > 0 else F.expr(agg) for agg in aggs]
         self.aggs = aggs
 
     def totals(
@@ -264,7 +267,7 @@ class DataFrameGroup():
         assert not (by == [] and grand_total is False
             ), "Grand total is only option when no by variables are provided."
         assert self.by_strings == ['*'] or all(
-            col._jc.toString() in self.by_strings for col in by
+            Tools.col_name(col) in self.by_strings for col in by
         ), (f"All by variables must be part of the grouping variables. Available grouping variables: {self.by_strings}.")
 
         if by == []:
