@@ -5,6 +5,7 @@ from pyspark.sql import Column
 import pyspark.sql.functions as F
 import pyspark.sql.window as W
 from typing import Self
+from functools import reduce
 from .Tools import Tools
 
 class DataFrameGroup():
@@ -120,73 +121,45 @@ class DataFrameGroup():
         
 
     def _get_aggregates(self) -> DataFrame:
-        from pyspark.sql.group import GroupedData
-        from pyspark.sql.connect.group import GroupedData as GroupedDataConnect
-
-        def _apply_pivot(grouped_df):
-            if self.pivot_column:
-                return grouped_df.pivot(self.pivot_column)
+        def apply_grouping(by, aggs, totals_type):
+            if by is None:
+                # group by all columns is what we defined as no grouping at all
+                agg = self.df
+            elif aggs is None:
+                agg = self.df.select(*by).distinct()
+            elif self.pivot_column:
+                agg = self.df.groupBy(*by).pivot(self.pivot_column).agg(*aggs)
             else:
-                return grouped_df
+                agg = self.df.groupBy(*by).agg(*aggs)
+            
+            return agg.withColumn("_totals_type", F.expr(totals_type))
 
-        # TODO: find a better way to apply pivot without monkey patching internal Spark classes
-        GroupedData._apply_pivot = _apply_pivot
-        GroupedDataConnect._apply_pivot = _apply_pivot
+        # the result is build up by unioning the different levels of aggregation.
+        result = []
 
+        # regular aggregation
         if self.by_strings == ['*']:
-            result = self.df.withColumn("_totals_type", F.lit(1))
+            result.append(apply_grouping(None, None, "1"))
         else:
-            result = (
-                self.df
-                .groupBy(*self.by)
-                .transformWithState
-                ._apply_pivot()
-                .agg(*self.aggs)
-                .withColumn("_totals_type", F.lit(2))
-            )
+            result.append(apply_grouping(self.by, self.aggs, "2"))
 
+        # sub totals, sections and grand total
         if self.sub_totals:
-            result = (
-                result
-                .unionByName(
-                    self.df
-                    .groupBy(*self.totals_by)
-                    ._apply_pivot()
-                    .agg(*self.aggs)
-                    .withColumn("_totals_type", F.expr("explode(array(3, 4))")),
-                    allowMissingColumns=True,
-                )
-            )
+            result.append(apply_grouping(self.totals_by, self.aggs, "explode(array(3, 4))"))
 
         if self.sections:
-            result = (
-                result
-                .unionByName(
-                    self.df
-                    .select(*self.totals_by)
-                    .distinct()
-                    .withColumn("_totals_type", F.lit(5)),
-                    allowMissingColumns=True,
-                )
-            )
+            result.append(apply_grouping(self.totals_by, None, "5"))
 
         if self.grand_total:
-            result = (
-                result
-                .unionByName(
-                    self.df
-                    .groupBy()
-                    ._apply_pivot()
-                    .agg(*self.aggs)
-                    .withColumn("_totals_type", F.lit(9)),
-                    allowMissingColumns=True,
-                )
-            )
+            result.append(apply_grouping([], self.aggs, "9"))
+        
+        # union all result together
+        result_df = reduce(lambda x, y: x.unionByName(y, allowMissingColumns=True), result)
 
         if not self.round is False:
-            result = DataFrameExtensions.round(result, self.round)
+            result_df = DataFrameExtensions.round(result_df, self.round)
 
-        self.result = result
+        self.result = result_df
         
     def _rebuild_aggregates(self) -> None:
         """
