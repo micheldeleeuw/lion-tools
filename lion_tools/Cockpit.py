@@ -1,5 +1,6 @@
 from email import message
 from pprint import pprint
+from unicodedata import name
 from .settings import LION_TOOLS_PATH, LION_TOOLS_COCKPIT_PATH
 from .settings import cleanup_old_files, cleanup_temp_views
 from .DataFrameDisplay import DataFrameDisplay
@@ -16,6 +17,7 @@ import ipywidgets as widgets
 from .get_or_create_spark import get_or_create_spark
 from collections import deque
 from .Tools import Tools
+from pyspark.sql import DataFrame
 
 class Cockpit:
     """
@@ -449,73 +451,93 @@ class Cockpit:
             return False
 
     @staticmethod
-    def to_cockpit(_df, *args, **kwargs):
-        # Dataframe is name __df to be able to find the name of the dataframe
-        # by going up the stack and looking for a variable with the same value.
-
+    def to_cockpit(
+        _df: DataFrame,                     # Dataframe name is _df to be able to find the name of the dataframe
+        name: str = None,
+        passthrough: bool = None,
+        compact: int = None,
+        add_time_to_name: bool = None,
+        n: int = None,
+        p: int = None,
+        sort: list = None,
+        lazy: bool = None,
+        color_rules: list[dict] = None,
+        pretty_headers: bool = None,
+        format_totals: bool = None,
+        column_grouping: bool = None,
+        column_grouping_split_pattern: str = None,
+        percentage_columns_pattern: str = None,
+    ):
+        
         # clean old stuff up before doing anything, to avoid filling up
         # the temp directory and global temp view namespace
         cleanup_old_files()
         cleanup_temp_views()
 
-        # validate parameters and set defaults
-        if "file_path" in kwargs:
-            raise Exception(
-                "file_path parameter is not supported in display_in_cockpit, use display instead."
-            )
-        
-        # we want the cockpit to determine the page length unless it is explicitly set
-        keep_page_length = kwargs.get("p") or kwargs.get("page_length") 
+        # check the parameters that are additional to the DataFrameDisplay parameters
+        assert isinstance(name, str) or name is None
+        assert isinstance(add_time_to_name, bool) or add_time_to_name is None
+        assert isinstance(lazy, bool) or lazy is None
 
-        # as the cockpit will run in a different session, we need to validate and save the parameters
-        # for the cockpit to pick up and do the actual display
-        params = DataFrameDisplay.display_validate_parameters(
-            _df, *args, **kwargs
-        )
+        name = name or DataFrameDisplay.defaults['name']
+        add_time_to_name = add_time_to_name or DataFrameDisplay.defaults['add_time_to_name']
+        id = "_lion_tools_tmp_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
-        if not keep_page_length:
-            del params["page_length"]
+        if name is None:
+            name = DataFrameExtensions.name(_df)
 
-        if "name" not in params:
-            params["name"] = DataFrameExtensions.name(_df)
-
-            if params["name"] == "unnamed":
+            if name == "unnamed":
                 sources = DataFrameExtensions.sources(_df)
                 if len(sources) == 1:
-                    params["name"] = sources[0].split(".")[-1]
+                    name = sources[0].split(".")[-1]
                 elif len(sources) > 1:
-                    params["name"] = sources[0].split(".")[-1] + f" (+{len(sources)-1})"
+                    name = sources[0].split(".")[-1] + f" (+{len(sources)-1})"
 
-        if params['add_time_to_name']:
-            params["name"] += " - " + datetime.now().strftime("%H:%M:%S")
+        if add_time_to_name:
+            name += " (" + datetime.now().strftime("%H:%M:%S") + ")"
 
-        params["id"] = "_lion_tools_tmp_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        params["temp_view_name"] = params["id"] + "_view"
-        params["html_file"] = str(
-            LION_TOOLS_COCKPIT_PATH.joinpath(params["id"] + ".html")
-        )
-        params["json_file"] = str(
-            LION_TOOLS_COCKPIT_PATH.joinpath(params["id"] + ".json")
-        )
+        # save the parameters needed to display the dataframe in the cockpit
+        params_display = {
+            "df": _df,
+            "passthrough": passthrough,
+            "compact": compact,
+            "n": n,
+            "p": p,
+            "sort": sort,
+            "color_rules": color_rules,
+            "pretty_headers": pretty_headers,
+            "format_totals": format_totals,
+            "column_grouping": column_grouping,
+            "column_grouping_split_pattern": column_grouping_split_pattern,
+            "percentage_columns_pattern": percentage_columns_pattern,
+        }
+        params_cockpit = {
+            "name": name,
+            "id": id,
+            "temp_view_name": id + "_view",
+            "html_file": str(LION_TOOLS_COCKPIT_PATH.joinpath(id + ".html")),
+            "json_file": str(LION_TOOLS_COCKPIT_PATH.joinpath(id + ".json")),
+        }
+        params_display_non_lazy = {
+            "display": False,
+            "passthrough": False,
+            "file_path": params_cockpit["html_file"]
+        }
 
         # if not running in lazy mode, we create the html in the session and send it to the cockpit,
         # otherwise we just send the parameters and let the cockpit do the html creation work
-        if ("lazy" in kwargs and kwargs["lazy"]) or (
-            "lazy" not in kwargs and Cockpit.is_lazy_supported()
-        ):
+        if lazy and Cockpit.is_lazy_supported():
             # create a global temp view for the dataframe, so the cockpit can access the data
-            _df.createOrReplaceGlobalTempView(params["temp_view_name"])
+            _df.createOrReplaceGlobalTempView(params_cockpit["temp_view_name"])
         else:
-            kwargs["display"] = False
-            kwargs["passthrough"] = False
-            kwargs["file_path"] = params["html_file"]
-            DataFrameDisplay.display(_df, **kwargs)
+            params = params_display | params_display | params_display_non_lazy
+            DataFrameDisplay(**params)
 
         # create the file that informs the Cockpit
-        with open(params["json_file"], "w", encoding="utf-8") as f:
-            f.write(json.dumps(params))
+        with open(params_cockpit["json_file"], "w", encoding="utf-8") as f:
+            f.write(json.dumps(params_cockpit))
 
-        if "passthrough" in params and params["passthrough"]:
+        if passthrough:
             return _df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap._tap_end()

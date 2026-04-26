@@ -121,7 +121,7 @@ class DataFrameGroup():
         
 
     def _get_aggregates(self) -> DataFrame:
-        def apply_grouping(by, aggs, totals_type):
+        def apply_grouping(by, aggs, totals_type) -> DataFrame:
             if by is None:
                 # group by all columns is what we defined as no grouping at all
                 agg = self.df

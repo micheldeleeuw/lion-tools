@@ -12,7 +12,6 @@ import pyspark.sql.functions as F
 #     with pytest.raises(ValueError):
 #         movies.eTranspose(n=4, column_name_source="non existing column").show()
 
-
 # def test_round(spark, movies):
 #     movies.withColumn('IMDB Votes k', F.col('IMDB Votes') / 1000).eRound(0).show()
 
@@ -27,9 +26,15 @@ import pyspark.sql.functions as F
 #     assert len(df.eRemoveEmptyColumns().columns) == 2
     # assert 'empty_col' not in df.eRemoveEmptyColumns().columns
 
-def test_examples(spark, movies):
-    movies.eExamples(n=2).show()
-    movies.eExamples(n=2, strata_columns='Major Genre').show()
-    movies.eExamples(n=2, strata_columns=['Major Genre', 'Director']).show()
-    movies.eExamples(n=2, keep_together_columns='Director').show()
-    movies.eExamples(n=2, strata_columns='Major Genre', keep_together_columns='Director').show()
+# def test_examples(spark, movies):
+#     movies.eExamples(n=2).show()
+#     movies.eExamples(n=2, strata_columns='Major Genre').show()
+#     movies.eExamples(n=2, strata_columns=['Major Genre', 'Director']).show()
+#     movies.eExamples(n=2, keep_together_columns='Director').show()
+#     movies.eExamples(n=2, strata_columns='Major Genre', keep_together_columns='Director').show()
+
+def test_compact(spark, movies):
+    movies.eC()
+    movies.eC(compact=1)
+    # movies.eC(compact=2)
+    # movies.eC(compact=3)

@@ -55,57 +55,52 @@ class DataFrameDisplay():
         add_time_to_name = False,    # should time be added to the name of the display??
         n = 1001,                    # number of rows tot diplay
         p = 15,                      # number of rows per page
+        file_path = None,            # save the display to the file path
         sort = None,                 # column(s) to sort by before display, (list of) string or integers
-        display = True,              # should the dataframe be displayed at all?
         max_table_bytes = 200000,    # 500000, the maximum size of the table in bytes that will be displayed
-        lazy = True,                 # should the cockpit perform the display action?
+        lazy = True,                 # should cockpit displays be lazy?
         color_rules = [],            # list of dicts with rules to color the cells
         pretty_headers = False,      # should the headers be prettified?
         format_totals = True,        # should the totals rows be formatted with a different style to make them recognizable?
         column_grouping = True,      # should columns be grouped when they have a common prefix separated
         column_grouping_split_pattern = '__',       # pattern to split column names into column groups
         percentage_columns_pattern = r'(_perc|%)$', # regex pattern to identify percentage columns for proper formatting
+        display = True,              # whether to display the table (set to False for debugging)
     )
 
     @staticmethod
     def display(
         df: DataFrame, 
-        name: str = None,
         passthrough: bool = None,
         compact: int = None,
-        add_time_to_name: bool = None,
         n: int = None,
         p: int = None,
         file_path: str = None,
         sort: list = None,
-        display: bool = None,
-        lazy: bool = None,
         color_rules: list[dict] = None,
         pretty_headers: bool = None,
         format_totals: bool = None,
         column_grouping: bool = None,
         column_grouping_split_pattern: str = None,
         percentage_columns_pattern: str = None,
+        display: bool = None,
      ):
         
         DataFrameDisplay(
             df=df, 
-            name=name,
             passthrough=passthrough,
             compact=compact,
-            add_time_to_name=add_time_to_name,
             n=n,
             p=p,
             file_path=file_path,
             sort=sort,
-            display=display,
-            lazy=lazy,
             color_rules=color_rules,
             pretty_headers=pretty_headers,
             format_totals=format_totals,
             column_grouping=column_grouping,
             column_grouping_split_pattern=column_grouping_split_pattern,
             percentage_columns_pattern=percentage_columns_pattern,
+            display=display,
         )
 
     @staticmethod
@@ -258,44 +253,38 @@ class DataFrameDisplay():
     def __init__(
         self,
         df: DataFrame,
-        name: str = None,
         passthrough: bool = None,
         compact: int = None,
-        add_time_to_name: bool = None,
         n: int = None,
         p: int = None,
         file_path: str = None,
         sort: list = None,
-        display: bool = None,
         max_table_bytes: int = None,
-        lazy: bool = None,
         color_rules: list[dict] = None,
         pretty_headers: bool = None,
         format_totals: bool = None,
         column_grouping: bool = None,
         column_grouping_split_pattern: str = None,
         percentage_columns_pattern: str = None,
+        display: bool = None,
     ):
 
         # set instance variables and apply defaults from class defaults
         self.df = df
-        self.name = name
         self.passthrough = passthrough or DataFrameDisplay.defaults['passthrough']
         self.compact = compact or DataFrameDisplay.defaults['compact']
-        self.add_time_to_name = add_time_to_name or DataFrameDisplay.defaults['add_time_to_name']
         self.n = n or DataFrameDisplay.defaults['n']
         self.p = p or DataFrameDisplay.defaults['p']
-        self.file_path = file_path
+        self.file_path = file_path or DataFrameDisplay.defaults['file_path']
         self.sort = sort or DataFrameDisplay.defaults['sort']
-        self.display = display or DataFrameDisplay.defaults['display']
         self.max_table_bytes = max_table_bytes or DataFrameDisplay.defaults['max_table_bytes']
-        self.lazy = lazy or DataFrameDisplay.defaults['lazy']
         self.color_rules = color_rules or DataFrameDisplay.defaults['color_rules']
         self.pretty_headers = pretty_headers or DataFrameDisplay.defaults['pretty_headers']
         self.format_totals = format_totals or DataFrameDisplay.defaults['format_totals']
         self.column_grouping = column_grouping or DataFrameDisplay.defaults['column_grouping']
         self.column_grouping_split_pattern = column_grouping_split_pattern or DataFrameDisplay.defaults['column_grouping_split_pattern']
         self.percentage_columns_pattern = percentage_columns_pattern or DataFrameDisplay.defaults['percentage_columns_pattern']
+        self.display = display or DataFrameDisplay.defaults['display']
 
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
@@ -304,17 +293,14 @@ class DataFrameDisplay():
 
         # validate
         assert 'pyspark.sql' in str(type(self.df)) or 'DataFrame' in str(type(self.df))
-        assert isinstance(self.name, str) or self.name is None
         assert isinstance(self.passthrough, bool)
         assert isinstance(self.compact, int) and self.compact in (0, 1)
-        assert isinstance(self.add_time_to_name, bool)
         assert isinstance(self.n, int) and self.n > 0 and self.n <= 100000
         assert isinstance(self.p, int) and self.p > 0 and self.p <= 100000
         assert isinstance(self.file_path, str) or self.file_path is None
         assert isinstance(self.sort, list) or self.sort is None
         assert isinstance(self.display, bool)
         assert isinstance(self.max_table_bytes, int) and self.max_table_bytes > 0 and self.max_table_bytes <= 10000000
-        assert isinstance(self.lazy, bool)
         assert isinstance(self.color_rules, list)
         assert isinstance(self.pretty_headers, bool)
         assert isinstance(self.format_totals, bool)
