@@ -70,6 +70,7 @@ class DataFrameDisplay():
     )
 
     new_line_placeholder = '___NEW_LINE___'
+    nbsp_placeholder = '___NBSP___'
 
     @staticmethod
     def set_defaults(**kwargs):
@@ -111,7 +112,7 @@ class DataFrameDisplay():
             column_grouping_split_pattern=column_grouping_split_pattern,
             percentage_columns_pattern=percentage_columns_pattern,
             display=display,
-        )
+        ).serve_out()
 
     @staticmethod
     def set_colors(df, *color_rules: dict):
@@ -341,6 +342,7 @@ class DataFrameDisplay():
         self.data_to_html_table()
         self.apply_to_template()
 
+    def serve_out(self):
         if self.file_path:
             self.save_to_file()
 
@@ -348,7 +350,7 @@ class DataFrameDisplay():
             self._display()
 
         if self.passthrough:
-            return self.df 
+            return self.df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap._tap_end()
 
@@ -491,7 +493,7 @@ class DataFrameDisplay():
         _options = list(dict.fromkeys(_options))
         self.length_menu = str([[*_options, -1], [*_options, "All"]])
 
-        if self.header_length > 1:
+        if self.stripe == 'columns':
             # don't strip the rows, strip the columns
             self.other_options += ", stripeClasses: []"
 
@@ -544,20 +546,34 @@ class DataFrameDisplay():
         return text[:best_index], text[best_index + 1:]
 
     def compact_headers(self):
-        if self.compact == 1:
+        if self.compact == 1 and self.stripe == 'rows':
+            # TODO: also allow for stripe == 'columns'
             # last bottom line of the headers will be wrapped into 2 lines when the
             # header is longer then the maximum width of the data in that column.
-            bhr = len(self.headers) - 1 # bottom header rows
-
+            bottom_header_row = self.headers[-1]
+            additional_header_row = []
+            splitted_header = False
+            
             for i, (col, dtype) in enumerate(self.dtypes):
-                header = self.headers[bhr][i][1]
+                header = bottom_header_row[i][1]
+                additional_header_row.append([1, ""])
                 if len(header) > self.df_statistics[col].get('display_length', 0):
                     splitted = self.split_near_middle(header)
-                    new_header = self.new_line_placeholder.join(splitted) if splitted[1] != '' else header
-                    self.headers[bhr][i][1] = new_header
+                    if splitted[1] != '':
+                        splitted_header = True
+                        additional_header_row[i][1] = (splitted[0] + self.nbsp_placeholder + self.nbsp_placeholder 
+                            + self.nbsp_placeholder + self.nbsp_placeholder)
+                        bottom_header_row[i][1] = splitted[1] 
 
+            if splitted_header:
+                self.headers = self.headers[:-1] + [additional_header_row] + [bottom_header_row]
+                
     def escape(self,text):
-        return html.escape(text).replace(self.new_line_placeholder, '<br>')
+        return (
+            html.escape(text)
+            .replace(self.new_line_placeholder, '<br>')
+            .replace(self.nbsp_placeholder, '&nbsp;')
+        )
         
     def data_to_html_table(self):
         # note we don't use tabulate here as we need to build the table body with additional functionality
@@ -565,7 +581,8 @@ class DataFrameDisplay():
         headers_ext = [
             [
                 i,
-                'single' if i==0 and len(self.headers) == 1
+                'row_stripped' if self.stripe == 'rows'
+                else 'single' if i==0 and len(self.headers) == 1
                 else 'last' if i == len(self.headers) - 1
                 else 'non_last', 
                 header_row
@@ -577,7 +594,7 @@ class DataFrameDisplay():
         table_header = "\n                    ".join(
             '<tr>' + 
                 ''.join([
-                    f'<th>{self.escape(str(header))}</th>' if header_type in ('last', 'single')
+                    f'<th>{self.escape(str(header))}</th>' if header_type in ('last', 'single', 'row_stripped')
                     else f'<th>{self.escape(str(header))}</th>' if colspan == 1 and i % 2 == 0
                     else f'<th class="grouped_column">{self.escape(str(header))}</th>' if colspan == 1 and i % 2 == 1
                     else f'<th colspan="{colspan}">{self.escape(str(header))}</th>' if i % 2 == 0
@@ -762,6 +779,7 @@ class DataFrameDisplay():
         ])
 
         if self.column_grouping and self.header_length > 1:
+            self.stripe = 'columns'
             split_cols = [col.split(self.column_grouping_split_pattern) for col in self.cols]
             split_cols = [
                 split_col if not self.pretty_headers else [split_col_.replace('_', ' ').title() for split_col_ in split_col]
@@ -789,6 +807,7 @@ class DataFrameDisplay():
 
         else:
             # make just the single row
+            self.stripe = 'rows'
             self.header_length = 1
             self.uneven_columns = []
             self.headers = [[

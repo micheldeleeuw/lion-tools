@@ -78,7 +78,12 @@ def test_summary_2(spark):
             round_decimals=2,
         )
         .eSections('some_str')
-        .eD(display=False, file_path='/Users/micheldeleeuw/Development/lion-tools/output/test_header3.html', pretty_headers=False, column_grouping=False)
+        .eD(
+            display=False, 
+            file_path='/Users/micheldeleeuw/Development/lion-tools/output/test_header3.html', 
+            pretty_headers=False, 
+            column_grouping=True,
+        )
         # .show(truncate=False)
     )
 

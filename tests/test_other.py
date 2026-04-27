@@ -51,5 +51,8 @@ def test_compact(spark, movies):
     # movies.eC(name='compactmr 0')
     movies.eC(compact=1, name ='compactmr 1')
 
+    movies.eD(display=False, compact=1, file_path='/Users/micheldeleeuw/Development/lion-tools/output/test_header3.html', pretty_headers=False, column_grouping=False)
+
+
     # movies.eC(compact=2, name='compact 2')
     # movies.eC(compact=3, name='compact 3'

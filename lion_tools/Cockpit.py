@@ -531,7 +531,7 @@ class Cockpit:
             _df.createOrReplaceGlobalTempView(params_cockpit["temp_view_name"])
         else:
             params = params_display | params_display | params_display_non_lazy
-            DataFrameDisplay(**params)
+            DataFrameDisplay(**params).serve_out()
 
         # create the file that informs the Cockpit
         with open(params_cockpit["json_file"], "w", encoding="utf-8") as f:
