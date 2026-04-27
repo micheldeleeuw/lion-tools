@@ -15,6 +15,7 @@ from .Tools import Tools
 from pyspark.sql import Row
 from itertools import groupby
 import re
+import math
 
 class DataFrameDisplay():
 
@@ -67,6 +68,15 @@ class DataFrameDisplay():
         percentage_columns_pattern = r'(_perc|%)$', # regex pattern to identify percentage columns for proper formatting
         display = True,              # whether to display the table (set to False for debugging)
     )
+
+    new_line_placeholder = '___NEW_LINE___'
+
+    @staticmethod
+    def set_defaults(**kwargs):
+        for key, value in kwargs.items():
+            if key not in DataFrameDisplay.defaults:
+                raise ValueError(f"Invalid default option: {key}")
+            DataFrameDisplay.defaults[key] = value
 
     @staticmethod
     def display(
@@ -271,20 +281,20 @@ class DataFrameDisplay():
 
         # set instance variables and apply defaults from class defaults
         self.df = df
-        self.passthrough = passthrough or DataFrameDisplay.defaults['passthrough']
-        self.compact = compact or DataFrameDisplay.defaults['compact']
-        self.n = n or DataFrameDisplay.defaults['n']
-        self.p = p or DataFrameDisplay.defaults['p']
-        self.file_path = file_path or DataFrameDisplay.defaults['file_path']
-        self.sort = sort or DataFrameDisplay.defaults['sort']
-        self.max_table_bytes = max_table_bytes or DataFrameDisplay.defaults['max_table_bytes']
-        self.color_rules = color_rules or DataFrameDisplay.defaults['color_rules']
-        self.pretty_headers = pretty_headers or DataFrameDisplay.defaults['pretty_headers']
-        self.format_totals = format_totals or DataFrameDisplay.defaults['format_totals']
-        self.column_grouping = column_grouping or DataFrameDisplay.defaults['column_grouping']
-        self.column_grouping_split_pattern = column_grouping_split_pattern or DataFrameDisplay.defaults['column_grouping_split_pattern']
-        self.percentage_columns_pattern = percentage_columns_pattern or DataFrameDisplay.defaults['percentage_columns_pattern']
-        self.display = display or DataFrameDisplay.defaults['display']
+        self.passthrough = passthrough if passthrough is not None else DataFrameDisplay.defaults['passthrough']
+        self.compact = compact if compact is not None else DataFrameDisplay.defaults['compact']
+        self.n = n if n is not None else DataFrameDisplay.defaults['n']
+        self.p = p if p is not None else DataFrameDisplay.defaults['p']
+        self.file_path = file_path if file_path is not None else DataFrameDisplay.defaults['file_path']
+        self.sort = sort if sort is not None else DataFrameDisplay.defaults['sort']
+        self.max_table_bytes = max_table_bytes if max_table_bytes is not None else DataFrameDisplay.defaults['max_table_bytes']
+        self.color_rules = color_rules if color_rules is not None else DataFrameDisplay.defaults['color_rules']
+        self.pretty_headers = pretty_headers if pretty_headers is not None else DataFrameDisplay.defaults['pretty_headers']
+        self.format_totals = format_totals if format_totals is not None else DataFrameDisplay.defaults['format_totals']
+        self.column_grouping = column_grouping if column_grouping is not None else DataFrameDisplay.defaults['column_grouping']
+        self.column_grouping_split_pattern = column_grouping_split_pattern if column_grouping_split_pattern is not None else DataFrameDisplay.defaults['column_grouping_split_pattern']
+        self.percentage_columns_pattern = percentage_columns_pattern if percentage_columns_pattern is not None else DataFrameDisplay.defaults['percentage_columns_pattern']
+        self.display = display if display is not None else DataFrameDisplay.defaults['display']
 
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
@@ -318,15 +328,16 @@ class DataFrameDisplay():
                 dict(condition='_totals_type >= 3', style_code='italic')
             )
 
-        self.get_data()
-        self.administration()
+        self.prepare_data_with_rownum()
+        self.gather_column_information()
         self.collect_data_and_stats()
         self.further_limit_data_by_table_bytes()
         self.set_columns_popup()
         self.set_headers()
-        self.set_length_and_with()
+        self.set_length_and_width()
         self.set_other_options()
         self.set_column_definitions()
+        self.compact_headers()
         self.data_to_html_table()
         self.apply_to_template()
 
@@ -345,19 +356,30 @@ class DataFrameDisplay():
         self.put_in_iframe()
         display(display_HTML(self.iframe_html))
 
-    def administration(self):
+    def gather_column_information(self):
         # define some variables that are needed down the road
         self.all_dtypes = self.df.dtypes
+        self.all_cols = [dtype[0] for dtype in self.all_dtypes]
+
         self.dtypes = [
             dtype for dtype in self.all_dtypes
             if dtype[0] not in ('_rownum', '_totals_type', '_color_style')
         ]
-        self.all_cols = [dtype[0] for dtype in self.all_dtypes]
         self.cols = [dtype[0] for dtype in self.dtypes]
-        self.nummeric_columns = [
+        
+        self.nummeric_columns_indexes = [
             i for i, (col, dtype) in enumerate(self.dtypes)
             if Tools.check_data_type(dtype, 'num')
         ]
+        self.nummeric_columns = [
+            col for i, (col, dtype) in enumerate(self.dtypes)
+            if Tools.check_data_type(dtype, 'num')
+        ]
+        self.integer_columns = [
+            col for i, (col, dtype) in enumerate(self.dtypes)
+            if Tools.check_data_type(dtype, 'num_int')
+        ]
+        
         self.table_cols = [
             col for col in self.all_cols
             if col not in ('_totals_type', '_color_style')
@@ -369,7 +391,14 @@ class DataFrameDisplay():
 
     def collect_data_and_stats(self):  
         self.df_statistics = {
-            col: {'type': dtype, 'length': 1, 'total': 0, 'decimals': 0, 'header_length': len(col)}
+            col: {
+                'type': dtype, 
+                'length': 1, 
+                'total': 0, 
+                'decimals': 0,
+                'max_int_length': 0,
+                'header_length': len(col)
+            }
             for col, dtype in self.table_dtypes
         }
 
@@ -385,8 +414,15 @@ class DataFrameDisplay():
                     length = len(str(value))
                     self.df_statistics[col]['length'] = max(self.df_statistics[col]['length'], length)
                     self.df_statistics[col]['total'] = self.df_statistics[col]['total'] + length
+                    if col in self.nummeric_columns:
+                         self.df_statistics[col]['max_int_length'] = max(
+                             self.df_statistics[col]['max_int_length'], 
+                             len(str(int(value)))
+                         )
                     if (
-                        (isinstance(value, float) or isinstance(value, decimal.Decimal)) and
+
+                        col in self.nummeric_columns and 
+                        col not in self.integer_columns and 
                         str(value).split('.')[-1] != '0'
                     ):
                         self.df_statistics[col]['decimals'] = max(
@@ -411,7 +447,7 @@ class DataFrameDisplay():
             self.df_statistics['__total__']['size_limit'] = True
             self.df_statistics['__total__']['rows'] = new_n
 
-    def get_data(self):
+    def prepare_data_with_rownum(self):
         # We add a row number to the dataframe to enable proper sorting and pagination in the datatable in javascript.
         # If sorting is requested, we do sort and get a monotonically increasing id as rownum
         # if not requested but rownum is already present we use that
@@ -441,7 +477,7 @@ class DataFrameDisplay():
             for col, dtype in self.dtypes
         ]))
 
-    def set_length_and_with(self):
+    def set_length_and_width(self):
         if self.df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
             self.max_width = '600px'
         else:
@@ -496,10 +532,32 @@ class DataFrameDisplay():
             </iframe>
         """       
 
-    def compact_header(self):
-        # todo: this is not yet used but the idea is to have an option to also compact the headers if they are too long,
-        # similar to how we compact values in the cells.
-        pass
+    @staticmethod
+    def split_near_middle(text):
+        delimiters = {' ', '_'}
+        valid_indices = [i for i, char in enumerate(text) if char in delimiters]
+        if not valid_indices:
+            return text, ""
+        mid_point = len(text) / 2.0
+        best_index = min(valid_indices, key=lambda x: abs(x - mid_point))
+        
+        return text[:best_index], text[best_index + 1:]
+
+    def compact_headers(self):
+        if self.compact == 1:
+            # last bottom line of the headers will be wrapped into 2 lines when the
+            # header is longer then the maximum width of the data in that column.
+            bhr = len(self.headers) - 1 # bottom header rows
+
+            for i, (col, dtype) in enumerate(self.dtypes):
+                header = self.headers[bhr][i][1]
+                if len(header) > self.df_statistics[col].get('display_length', 0):
+                    splitted = self.split_near_middle(header)
+                    new_header = self.new_line_placeholder.join(splitted) if splitted[1] != '' else header
+                    self.headers[bhr][i][1] = new_header
+
+    def escape(self,text):
+        return html.escape(text).replace(self.new_line_placeholder, '<br>')
         
     def data_to_html_table(self):
         # note we don't use tabulate here as we need to build the table body with additional functionality
@@ -519,11 +577,11 @@ class DataFrameDisplay():
         table_header = "\n                    ".join(
             '<tr>' + 
                 ''.join([
-                    f'<th>{html.escape(str(header))}</th>' if header_type in ('last', 'single')
-                    else f'<th>{html.escape(str(header))}</th>' if colspan == 1 and i % 2 == 0
-                    else f'<th class="grouped_column">{html.escape(str(header))}</th>' if colspan == 1 and i % 2 == 1
-                    else f'<th colspan="{colspan}">{html.escape(str(header))}</th>' if i % 2 == 0
-                    else f'<th colspan="{colspan}" class="grouped_column">{html.escape(str(header))}</th>'
+                    f'<th>{self.escape(str(header))}</th>' if header_type in ('last', 'single')
+                    else f'<th>{self.escape(str(header))}</th>' if colspan == 1 and i % 2 == 0
+                    else f'<th class="grouped_column">{self.escape(str(header))}</th>' if colspan == 1 and i % 2 == 1
+                    else f'<th colspan="{colspan}">{self.escape(str(header))}</th>' if i % 2 == 0
+                    else f'<th colspan="{colspan}" class="grouped_column">{self.escape(str(header))}</th>'
                     for i, (colspan, header) in enumerate(header_row)
                 ]) +
             '</tr>'
@@ -600,7 +658,7 @@ class DataFrameDisplay():
                 multi_line = "".join(expanded_items)
             else:
                 expanded_items = [
-                    "- " + DataFrameDisplay.cast_to_expandable_html(item, add_quotes_when_needed=True)
+                    "- " + self.cast_to_expandable_html(item, add_quotes_when_needed=True)
                     for item in data
                 ]
                 multi_line = "<br>".join(expanded_items)
@@ -738,33 +796,52 @@ class DataFrameDisplay():
                 for col in self.cols
             ]]
 
+    @staticmethod
+    def count_separators(max_int_length):
+        # Convert to string and strip the negative sign if present
+        return (max_int_length - 1) // 3
+
     def set_column_definitions(self):
         cols_defs = {}
         cols_defs['rownum'] = [len(self.cols)]
-        cols_defs['alignment_right'] = self.nummeric_columns + [len(self.cols)]
+        cols_defs['alignment_right'] = self.nummeric_columns_indexes + [len(self.cols)]
         cols_defs['grouped_columns'] = self.uneven_columns
 
         for i, col in enumerate(self.cols):
-            if i in self.nummeric_columns and re.search(self.percentage_columns_pattern, col):
+            if i in self.nummeric_columns_indexes and re.search(self.percentage_columns_pattern, col):
                 # nummeric + %
                 decimals = self.df_statistics[col]['decimals']
                 cols_defs.setdefault('number_format%', {})
                 cols_defs['number_format%'].setdefault(decimals, [])
                 cols_defs['number_format%'][decimals].append(i)
-            elif i in self.nummeric_columns:
+                self.df_statistics[col]['display_length'] = (
+                    self.df_statistics[col]['max_int_length'] + # digits before the decimal point
+                    DataFrameDisplay.count_separators(self.df_statistics[col]['max_int_length']) +  # separators
+                    self.df_statistics[col]['decimals'] +  # decimals
+                    2  # percentage sign + decimal point
+                )
+            elif i in self.nummeric_columns_indexes:
                 # nummeric
                 decimals = self.df_statistics[col]['decimals']
                 cols_defs.setdefault('number_format', {})
                 cols_defs['number_format'].setdefault(decimals, [])
                 cols_defs['number_format'][decimals].append(i)
+                self.df_statistics[col]['display_length'] = (
+                    self.df_statistics[col]['max_int_length'] + # digits before the decimal point
+                    DataFrameDisplay.count_separators(self.df_statistics[col]['max_int_length']) +  # separators
+                    self.df_statistics[col]['decimals'] +  # decimals
+                    (1 if self.df_statistics[col]['decimals'] > 0 else 0)  # decimal point
+                )
             elif re.search(self.percentage_columns_pattern, col):
                 # not nummeric + %
                 cols_defs.setdefault('string_format%', [])
                 cols_defs['string_format%'].append(i)
+                self.df_statistics[col]['display_length'] = self.df_statistics[col]['length'] + 1
             else:
                 # not nummeric
                 cols_defs.setdefault('string_format', [])
                 cols_defs['string_format'].append(i)
+                self.df_statistics[col]['display_length'] = self.df_statistics[col]['length']
 
         col_defs_str = []
         for key, value in cols_defs.items():

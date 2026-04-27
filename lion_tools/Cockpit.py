@@ -479,8 +479,8 @@ class Cockpit:
         assert isinstance(add_time_to_name, bool) or add_time_to_name is None
         assert isinstance(lazy, bool) or lazy is None
 
-        name = name or DataFrameDisplay.defaults['name']
-        add_time_to_name = add_time_to_name or DataFrameDisplay.defaults['add_time_to_name']
+        name = name if name is not None else DataFrameDisplay.defaults['name']
+        add_time_to_name = add_time_to_name if add_time_to_name is not None else DataFrameDisplay.defaults['add_time_to_name']
         id = "_lion_tools_tmp_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
         if name is None:
@@ -541,4 +541,3 @@ class Cockpit:
             return _df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap._tap_end()
-
