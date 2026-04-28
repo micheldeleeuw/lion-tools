@@ -93,9 +93,12 @@ class DataFrameGroup():
             sort_by = DataFrameExtensions.transform_column_expressions(self.result, *self.sort_by)
             self.result = (
                 self.result
-                .withColumn("_rownum", F.row_number().over(W.Window.orderBy(
-                    F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
-                ))
+                # to be confirmed in test that new code works
+                # .withColumn("_rownum", F.row_number().over(W.Window.orderBy(
+                    # F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
+                # ))
+                .orderBy(F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
+                .withColumn("_rownum", F.monotonically_increasing_id())
             )
 
             self.result = (
