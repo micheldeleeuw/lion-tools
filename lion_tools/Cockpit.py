@@ -352,8 +352,8 @@ class Cockpit:
         It will continuously check for new display requests and update the cockpit accordingly.
         """
 
-        page_length = int(size * 3) if page_length is None else page_length
-        log_length = int(size * 2.5) if log_length is None else log_length
+        page_length = int(size * 3.5) if page_length is None else page_length
+        log_length = int(size * 1.5) if log_length is None else log_length
         
         assert 0.05 <= timeout <= 1440, "timeout must be between 0.05 and 1440 minutes."
         assert 1 <= tabs <= 20, "tabs must be between 1 and 20."
