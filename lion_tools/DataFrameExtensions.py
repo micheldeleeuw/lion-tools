@@ -190,6 +190,7 @@ class DataFrameExtensions:
     def sources(df: DataFrame) -> list:
         """
         Investigate a dataframe and return all tables that source it.
+        Works on both classic Spark and Spark Connect.
         """
 
         def _loop_plan(value):
@@ -200,29 +201,45 @@ class DataFrameExtensions:
                 if "table" in value.keys() and "database" in value.keys():
                     if "catalog" in value.keys():
                         identified_sources.append(
-                            value["catalog"]
-                            + "."
-                            + value["database"]
-                            + "."
-                            + value["table"]
+                            value["catalog"] + "." + value["database"] + "." + value["table"]
                         )
                     else:
                         identified_sources.append(
                             value["database"] + "." + value["table"]
                         )
-
-                for value_key, value_value in value.items():
+                for value_value in value.values():
                     _loop_plan(value_value)
 
         identified_sources = []
-        _loop_plan(json.loads(df._jdf.queryExecution().analyzed().prettyJson()))
 
-        _identified_sources = []
+        if hasattr(df, "_jdf"):
+            # Classic Spark — JVM analyzed plan as JSON
+            _loop_plan(json.loads(df._jdf.queryExecution().analyzed().prettyJson()))
+        else:
+            # Spark Connect — use the analyze RPC to get the analyzed plan as text,
+            # then extract fully-qualified table identifiers from Relation nodes.
+            session = df.sparkSession
+            analyzed_text = session._client._analyze(
+                method="explain",
+                plan=df._plan.to_proto(session._client),
+                explain_mode="extended",
+            ).explain_string
+
+            # Match e.g. `Relation catalog.database.table[...] ...`
+            # or `UnresolvedRelation [catalog, database, table], ...`
+            for match in re.finditer(
+                r"(?:Relation|UnresolvedRelation)\s+\[?([\w\-.]+(?:,\s*[\w\-.]+){1,2})\]?",
+                analyzed_text,
+            ):
+                parts = [p.strip() for p in match.group(1).replace(",", ".").split(".")]
+                identified_sources.append(".".join(parts))
+
+        # de-duplicate while preserving order
+        seen = []
         for source in identified_sources:
-            if source not in _identified_sources:
-                _identified_sources.append(source)
-
-        return _identified_sources
+            if source not in seen:
+                seen.append(source)
+        return seen
 
     @staticmethod
     def transform_column_expressions(df: DataFrame, *col_exprs, **kwargs) -> list:
