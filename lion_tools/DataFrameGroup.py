@@ -9,6 +9,7 @@ from functools import reduce
 from .Tools import Tools
 
 class DataFrameGroup():
+    pivot_separator = "___pivot___"
 
     @staticmethod
     def group(df: DataFrame, *by: str, **kwargs) -> Self:
@@ -55,12 +56,15 @@ class DataFrameGroup():
             "count_null", "count_not_null", "first", "last", "collect_set", "collect_list",
         ]
     
-    def pivot(self, column: str) -> Self:
+    def pivot(self, column: str, pivot_type: str = 'grouped') -> Self:
         assert self.by_strings != ['*'], "Pivoting is not supported when grouping by all columns."
         assert column in self.columns, f"Pivot column must be one of the columns in the DataFrame. Available columns: {self.columns}."
         assert column not in self.by_strings, f"Pivot column cannot be one of the grouping columns."
+        assert pivot_type in ['grouped', 'default']
         
         self.pivot_column = column
+        self.pivot_type = pivot_type
+
         return self
 
     def agg(self, *aggs: str, **kwargs) -> DataFrame:
@@ -84,11 +88,41 @@ class DataFrameGroup():
 
         self._rebuild_aggregates()
         self._get_aggregates()
+        self._rename_pivot_columns()
         self._sort_result()
 
         return self.result
+    
+    def _rename_pivot_columns(self) -> None:
+        if self.pivot_column and self.pivot_type == 'grouped':
+            result_columns = self.result.columns
+            if len([col for col in result_columns if col.endswith(self.pivot_separator)]) > 0:
+                # only one column got pivotted, so we can just rename it to the pivot column value
+                self.result = self.result.withColumnsRenamed({
+                    col: col.replace(f"{self.pivot_separator}", "")
+                    for col in result_columns if col.endswith(self.pivot_separator)
+                })
+            else:
+                # multiple columns got pivotted, so rename and rearrange the column names to have the pivot value at the end of the column name
+                # Especially handy for grouped display
+                pivot_values = []
+                column_names = []
+                for col in [col for col in result_columns if col.find(self.pivot_separator) >= 0]:
+                    column_name, pivot_value = col.split(self.pivot_separator + '_') # additional _ comes from the regular pivot
+                    if pivot_value not in pivot_values:
+                        pivot_values.append(pivot_value)
+                    if column_name not in column_names:
+                        column_names.append(column_name)
 
-    def _sort_result(self) -> DataFrame:
+                self.result = (
+                    self.result.
+                    selectExpr(
+                        *[f"`{col}`" for col in result_columns if col.find(self.pivot_separator) < 0],
+                        *[f"`{col}{self.pivot_separator}_{pivot_value}` as `{pivot_value}__{col}`" for pivot_value in pivot_values for col in column_names]
+                    )
+                )
+
+    def _sort_result(self) -> None:
         if self.add_rownum or self.sections or self.sub_totals or self.grand_total:
             sort_by = DataFrameExtensions.transform_column_expressions(self.result, *self.sort_by)
             self.result = (
@@ -123,15 +157,26 @@ class DataFrameGroup():
             self.result = self.result.drop("_totals_type")
         
 
-    def _get_aggregates(self) -> DataFrame:
+    def _get_aggregates(self) -> None:
         def apply_grouping(by, aggs, totals_type) -> DataFrame:
             if by is None:
                 # group by all columns is what we defined as no grouping at all
                 agg = self.df
             elif aggs is None:
                 agg = self.df.select(*by).distinct()
-            elif self.pivot_column:
+            elif self.pivot_column and self.pivot_type == 'default':
                 agg = self.df.groupBy(*by).pivot(self.pivot_column).agg(*aggs)
+            elif self.pivot_column and self.pivot_type == 'grouped':
+                agg = (
+                    self.df
+                    .withColumn(
+                        self.pivot_column, 
+                        F.concat(F.ifnull(F.col(self.pivot_column).cast("string"), F.lit("null")), F.lit(self.pivot_separator))
+                    )
+                    .groupBy(*by)
+                    .pivot(self.pivot_column)
+                    .agg(*aggs)
+                )
             else:
                 agg = self.df.groupBy(*by).agg(*aggs)
             
