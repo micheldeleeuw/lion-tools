@@ -2,6 +2,7 @@ from .DataFrameDisplay import DataFrameDisplay
 from .DataFrameExcel import DataFrameExcel
 from .DataFrameExtensions import DataFrameExtensions
 from .DataFrameGroup import DataFrameGroup
+from .DataFrameSummary import DataFrameSummary
 from .DataFrameTap import DataFrameTap
 from .CockpitLogging import CockpitLogging
 from .Tools import Tools
