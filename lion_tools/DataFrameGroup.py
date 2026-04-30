@@ -12,7 +12,7 @@ class DataFrameGroup():
     pivot_separator = "___pivot___"
 
     @staticmethod
-    def group(df: DataFrame, *by: str, **kwargs) -> Self:
+    def group(df: DataFrame, *by: str, **kwargs) -> 'DataFrameGroup':
         return DataFrameGroup(df, *by, **kwargs)
 
     def __init__(self, df: DataFrame, *by: str, **kwargs):
@@ -274,13 +274,13 @@ class DataFrameGroup():
 
     def totals(
             self,
-            *by: str | list[str], 
-            sections: bool = None,
-            sub_totals: bool = None,
-            grand_total: bool = None,
-        ) -> Self:
+            *by: str, 
+            sections: bool | None = None,
+            sub_totals: bool | None = None,
+            grand_total: bool | None = None,
+        ) -> 'DataFrameGroup':
     
-        by = DataFrameExtensions.transform_column_expressions(self.df, *by, include_sort=False)
+        by: list[str] = DataFrameExtensions.transform_column_expressions(self.df, *by, include_sort=False)
 
         assert not (sections and sub_totals), "Sections and sub_totals cannot be used together."
         assert not (by == [] and (sections or sub_totals)

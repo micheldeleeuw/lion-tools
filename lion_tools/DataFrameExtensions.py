@@ -27,34 +27,34 @@ class DataFrameExtensions:
             raise ValueError(f"Package '{package}' is not supported. Use one of {allowable_packages}.")
 
         global DataFrame
-        # from pyspark.sql import DataFrame
-        DataFrame = importlib.import_module(package).DataFrame
+        from pyspark.sql import DataFrame
+        # DataFrame = importlib.import_module(package).DataFrame
         
         # Extend DataFrame with new methods
-        DataFrame.eCockpit = Cockpit.to_cockpit
-        DataFrame.eCompareSummary = DataFrameSummary.compare_summary
-        DataFrame.eDisplay = DataFrameDisplay.display
-        DataFrame.eExamples = DataFrameExtensions.examples
-        DataFrame.eExcel = DataFrameExcel.excel
-        DataFrame.eExcelCockpit = DataFrameExcel.excel_cockpit
-        DataFrame.eGroup = DataFrameGroup.group
-        DataFrame.eName = DataFrameExtensions.name
-        DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns
-        DataFrame.eTap = DataFrameTap.tap
-        DataFrame.eTapEnd = DataFrameTap.tap_end
-        DataFrame.eSetColors = DataFrameDisplay.set_colors
-        DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns
-        DataFrame.eRound = DataFrameExtensions.round
-        DataFrame.eSections = DataFrameExtensions.sections
-        DataFrame.eSort = DataFrameExtensions.sort
-        DataFrame.eSources = DataFrameExtensions.sources
-        DataFrame.eSummary = DataFrameSummary.summary
-        DataFrame.eTranspose = DataFrameExtensions.transpose
-        DataFrame.eTop = DataFrameSummary.top
+        DataFrame.eCockpit = Cockpit.to_cockpit # type: ignore
+        DataFrame.eCompareSummary = DataFrameSummary.compare_summary # type: ignore
+        DataFrame.eDisplay = DataFrameDisplay.display # type: ignore
+        DataFrame.eExamples = DataFrameExtensions.examples # type: ignore
+        DataFrame.eExcel = DataFrameExcel.excel # type: ignore
+        DataFrame.eExcelCockpit = DataFrameExcel.excel_cockpit # type: ignore
+        DataFrame.eGroup = DataFrameGroup.group # type: ignore
+        DataFrame.eName = DataFrameExtensions.name # type: ignore
+        DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns # type: ignore
+        DataFrame.eTap = DataFrameTap.tap # type: ignore
+        DataFrame.eTapEnd = DataFrameTap.tap_end # type: ignore
+        DataFrame.eSetColors = DataFrameDisplay.set_colors # type: ignore
+        DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns # type: ignore
+        DataFrame.eRound = DataFrameExtensions.round # type: ignore
+        DataFrame.eSections = DataFrameExtensions.sections # type: ignore
+        DataFrame.eSort = DataFrameExtensions.sort # type: ignore
+        DataFrame.eSources = DataFrameExtensions.sources # type: ignore
+        DataFrame.eSummary = DataFrameSummary.summary # type: ignore
+        DataFrame.eTranspose = DataFrameExtensions.transpose # type: ignore
+        DataFrame.eTop = DataFrameSummary.top # type: ignore
 
         # Short aliases, pls don't extend these
-        DataFrame.eD = DataFrameDisplay.display
-        DataFrame.eC = Cockpit.to_cockpit
+        DataFrame.eD = DataFrameDisplay.display # type: ignore
+        DataFrame.eC = Cockpit.to_cockpit # type: ignore
 
     def __init__(self):
         print("Use extend_dataframe() to extend DataFrame functionality.")
@@ -116,7 +116,7 @@ class DataFrameExtensions:
         return df.select(*non_empty_columns)
 
     @staticmethod
-    def round(df: DataFrame, precision: int = 2, columns: list[str] = None) -> DataFrame:
+    def round(df: DataFrame, precision: int = 2, columns: list[str] | None = None) -> DataFrame:
         assert isinstance(precision, int),  "Precision must be an integer."
 
         columns = columns if columns else [
@@ -138,7 +138,7 @@ class DataFrameExtensions:
             *by: str,
             n: int = 100,
             add_data_type: bool = False, 
-            column_name_source: str = None,
+            column_name_source: str | None = None,
             data_type: str = 'string',
         ) -> DataFrame:
 
