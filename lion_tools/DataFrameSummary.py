@@ -137,7 +137,7 @@ class DataFrameSummary():
         return top.orderBy('column_no', *by)
     
     @staticmethod
-    def compare_summary(
+    def compare_summaries(
         _df1: DataFrame,
         _df2: DataFrame,
         *by: str,

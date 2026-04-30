@@ -1,5 +1,3 @@
-from typing import Callable
-
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 from pyspark.sql import DataFrame
@@ -7,57 +5,13 @@ from pyspark.sql.column import Column
 import inspect
 import json
 import re
-import importlib
 import random
 
 
 class DataFrameExtensions:
 
-    @staticmethod
-    def extend_dataframe(package: str = "pyspark.sql") -> None:
-        from .Cockpit import Cockpit
-        from .DataFrameDisplay import DataFrameDisplay
-        from .DataFrameExcel import DataFrameExcel
-        from .DataFrameGroup import DataFrameGroup
-        from .DataFrameSummary import DataFrameSummary
-        from .DataFrameTap import DataFrameTap
-
-        allowable_packages = ["pyspark.sql", "pyspark.sql.connect.dataframe"]
-        if package not in allowable_packages:
-            raise ValueError(f"Package '{package}' is not supported. Use one of {allowable_packages}.")
-
-        global DataFrame
-        from pyspark.sql import DataFrame
-        # DataFrame = importlib.import_module(package).DataFrame
-        
-        # Extend DataFrame with new methods
-        DataFrame.eCockpit = Cockpit.to_cockpit # type: ignore
-        DataFrame.eCompareSummary = DataFrameSummary.compare_summary # type: ignore
-        DataFrame.eDisplay = DataFrameDisplay.display # type: ignore
-        DataFrame.eExamples = DataFrameExtensions.examples # type: ignore
-        DataFrame.eExcel = DataFrameExcel.excel # type: ignore
-        DataFrame.eExcelCockpit = DataFrameExcel.excel_cockpit # type: ignore
-        DataFrame.eGroup = DataFrameGroup.group # type: ignore
-        DataFrame.eName = DataFrameExtensions.name # type: ignore
-        DataFrame.eNormalizeColumns = DataFrameExtensions.normalize_columns # type: ignore
-        DataFrame.eTap = DataFrameTap.tap # type: ignore
-        DataFrame.eTapEnd = DataFrameTap.tap_end # type: ignore
-        DataFrame.eSetColors = DataFrameDisplay.set_colors # type: ignore
-        DataFrame.eRemoveEmptyColumns = DataFrameExtensions.remove_empty_columns # type: ignore
-        DataFrame.eRound = DataFrameExtensions.round # type: ignore
-        DataFrame.eSections = DataFrameExtensions.sections # type: ignore
-        DataFrame.eSort = DataFrameExtensions.sort # type: ignore
-        DataFrame.eSources = DataFrameExtensions.sources # type: ignore
-        DataFrame.eSummary = DataFrameSummary.summary # type: ignore
-        DataFrame.eTranspose = DataFrameExtensions.transpose # type: ignore
-        DataFrame.eTop = DataFrameSummary.top # type: ignore
-
-        # Short aliases, pls don't extend these
-        DataFrame.eD = DataFrameDisplay.display # type: ignore
-        DataFrame.eC = Cockpit.to_cockpit # type: ignore
-
     def __init__(self):
-        print("Use extend_dataframe() to extend DataFrame functionality.")
+        print("Use static methods instead of instantiating this class.")
 
     @staticmethod
     def examples(
@@ -96,17 +50,6 @@ class DataFrameExtensions:
             examples = examples.selectExpr(*strata_columns, f'* except({",".join(strata_columns)})')
 
         return examples
-
-
-    @staticmethod
-    def sections(df: DataFrame, *section_columns: str) -> DataFrame:
-        from .DataFrameGroup import DataFrameGroup
-
-        return (
-            DataFrameGroup(df, '*')
-            .totals(*section_columns, sections=True)
-            .agg()
-        )
     
     @staticmethod
     def remove_empty_columns(df: DataFrame) -> DataFrame:

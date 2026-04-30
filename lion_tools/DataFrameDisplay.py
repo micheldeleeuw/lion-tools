@@ -73,7 +73,7 @@ class DataFrameDisplay():
     nbsp_placeholder = '___NBSP___'
 
     @staticmethod
-    def set_defaults(**kwargs):
+    def set_display_defaults(**kwargs):
         for key, value in kwargs.items():
             if key not in DataFrameDisplay.defaults:
                 raise ValueError(f"Invalid default option: {key}")
@@ -115,7 +115,7 @@ class DataFrameDisplay():
         ).serve_out()
 
     @staticmethod
-    def set_colors(df, *color_rules: dict):
+    def set_display_colors(df, *color_rules: dict):
         if len(color_rules) == 0:
             raise ValueError("At least one color rule must be provided")
         
@@ -189,7 +189,7 @@ class DataFrameDisplay():
             df
             # get the colors
             # step 0: create column _color_style_existing to be able to keep already defined colors/styles
-            # when multiple set_colors are used in the same chain
+            # when multiple set_display_colors are used in the same chain
             .withColumn(
                 '_color_style_existing',
                 F.col('_color_style')
@@ -321,10 +321,10 @@ class DataFrameDisplay():
 
         if self.color_rules:
             assert all(isinstance(rule, dict) for rule in self.color_rules)
-            self.df = DataFrameDisplay.set_colors(self.df, *self.color_rules)
+            self.df = DataFrameDisplay.set_display_colors(self.df, *self.color_rules)
 
         if self.format_totals and "_totals_type" in self.df.columns:
-            self.df = DataFrameDisplay.set_colors(
+            self.df = DataFrameDisplay.set_display_colors(
                 self.df, 
                 dict(condition='_totals_type >= 3', style_code='italic')
             )

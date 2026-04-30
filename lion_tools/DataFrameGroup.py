@@ -15,6 +15,16 @@ class DataFrameGroup:
     @staticmethod
     def group(df: DataFrame, *by: str, **kwargs) -> "DataFrameGroup":
         return DataFrameGroup(df, *by, **kwargs)
+    
+    @staticmethod
+    def sections(df: DataFrame, *section_columns: str) -> DataFrame:
+        from .DataFrameGroup import DataFrameGroup
+
+        return (
+            DataFrameGroup(df, '*')
+            .totals(*section_columns, sections=True)
+            .agg()
+        )
 
     def __init__(
         self,
