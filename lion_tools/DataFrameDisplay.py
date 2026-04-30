@@ -481,16 +481,10 @@ class DataFrameDisplay():
 
     def set_length_and_width(self):
         # we recalculate the width of the table based on the statistics and headers
-        # we only look at the last two header rows as we assume that mre headers above them will fit without issue
+        # we only look at the last two header rows as we assume that the headers above them will fit without issue
         # if there only is one header row we copy that one to assume that there are two
         headers = self.headers[-2:] if len(self.headers) >= 2 else [self.headers[0], self.headers[0]]
-        import pprint
-        
-        # pprint.pprint(headers)
-        # pprint.pprint(self.df_statistics)
-        # pprint.pprint(self.table_cols)
-
-        
+       
         col_i = 0
         total_width = 0
         for col_group in headers[0]:
@@ -498,12 +492,11 @@ class DataFrameDisplay():
             no_columns_in_group = col_group[0]
             for i in range(no_columns_in_group):
                 data_width = self.df_statistics[self.table_cols[col_i]]['display_length']
-                header_1_width = len(str(headers[1][col_i][1])) + 1     # +1 for the sort icon
+                header_1_width = len(str(headers[1][col_i][1])) + 3     # +3 for the sort icon
                 group_column_width += max(data_width, header_1_width)
                 col_i += 1
 
             header_0_width = len(str(col_group[1])) + 6 # +6 for the group column padding
-
             total_width += max(header_0_width, group_column_width)
             
         if total_width * 8 + 50 < 600:
@@ -546,10 +539,9 @@ class DataFrameDisplay():
             f.write(self.html_content)
 
     def put_in_iframe(self):
-        max_height = str(int(min(self.df_statistics['__total__']['rows'] + self.header_height -1, self.p) * 28.7 + 146.0)) + 'px'
+        header_and_rows_height = min(self.df_statistics['__total__']['rows'], self.p) + self.header_height
+        max_height = str(int(header_and_rows_height * 28.7 + 146.0)) + 'px'
 
-        # calculated: y = 26,672.4x + 150,094.6
-        
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         self.iframe_html = f"""
             <iframe srcdoc='{self.html_content.replace("'", "&apos;")}'
@@ -595,7 +587,7 @@ class DataFrameDisplay():
 
             if splitted_header:
                 self.headers = self.headers[:-1] + [additional_header_row] + [bottom_header_row]
-                self.header_height += -1
+                self.header_height += 1
                 
     def escape(self,text):
         return (
