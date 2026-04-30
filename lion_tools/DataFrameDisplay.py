@@ -335,10 +335,10 @@ class DataFrameDisplay():
         self.further_limit_data_by_table_bytes()
         self.set_columns_popup()
         self.set_headers()
-        self.set_length_and_width()
-        self.set_other_options()
         self.set_column_definitions()
         self.compact_headers()
+        self.set_length_and_width()
+        self.set_other_options()
         self.data_to_html_table()
         self.apply_to_template()
 
@@ -520,7 +520,7 @@ class DataFrameDisplay():
             f.write(self.html_content)
 
     def put_in_iframe(self):
-        max_height = str(int(min(self.df_statistics['__total__']['rows'], self.p) * 28.7 + 146.0)) + 'px'
+        max_height = str(int(min(self.df_statistics['__total__']['rows'] + self.header_length -1, self.p) * 28.7 + 146.0)) + 'px'
 
         # calculated: y = 26,672.4x + 150,094.6
         
@@ -569,6 +569,7 @@ class DataFrameDisplay():
 
             if splitted_header:
                 self.headers = self.headers[:-1] + [additional_header_row] + [bottom_header_row]
+                self.header_length += -1
                 
     def escape(self,text):
         return (
