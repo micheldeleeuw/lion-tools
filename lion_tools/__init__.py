@@ -6,7 +6,6 @@ from .DataFrameSummary import DataFrameSummary
 from .DataFrameTap import DataFrameTap
 from .CockpitLogging import CockpitLogging
 from .Tools import Tools
-
 from .Cockpit import Cockpit
 from .get_or_create_spark import get_or_create_spark
 
