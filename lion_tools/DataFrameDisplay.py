@@ -520,7 +520,9 @@ class DataFrameDisplay():
             f.write(self.html_content)
 
     def put_in_iframe(self):
-        max_height = str(int(min(self.df_statistics['__total__']['rows'], self.p) * 25 + 178)) + 'px'
+        max_height = str(int(min(self.df_statistics['__total__']['rows'], self.p) * 28.7 + 146.0)) + 'px'
+
+        # calculated: y = 26,672.4x + 150,094.6
         
         # Wrap in an iframe with srcdoc to enable proper JavaScript execution
         self.iframe_html = f"""
