@@ -1,43 +1,65 @@
-# imported underscores to remove from typeahead hinting
-from .DataFrameDisplay import DataFrameDisplay as _DataFrameDisplay
-from .DataFrameExcel import DataFrameExcel as _DataFrameExcel
-from .DataFrameOther import DataFrameOther as _DataFrameOther
-from .DataFrameGroup import DataFrameGroup as _DataFrameGroup
-from .DataFrameSummary import DataFrameSummary as _DataFrameSummary
-from .DataFrameTap import DataFrameTap as _DataFrameTap
-from .Cockpit import Cockpit as _Cockpit
+from .DataFrameDisplay import DataFrameDisplay
+from .DataFrameExcel import DataFrameExcel
+from .DataFrameOther import DataFrameOther
+from .DataFrameGroup import DataFrameGroup
+from .DataFrameSummary import DataFrameSummary
+from .DataFrameTap import DataFrameTap
+from .Cockpit import Cockpit
 
 # DataFrame extensions
 # display
-set_display_colors = _DataFrameDisplay.set_display_colors
-display = _DataFrameDisplay.display
+set_display_colors = DataFrameDisplay.set_display_colors
+display = DataFrameDisplay.display
 
 # regular extensions
-examples = _DataFrameOther.examples
-name = _DataFrameOther.name
-normalize_columns = _DataFrameOther.normalize_columns
-remove_empty_columns = _DataFrameOther.remove_empty_columns
-round = _DataFrameOther.round
-sort = _DataFrameOther.sort
-sources = _DataFrameOther.sources
-transpose = _DataFrameOther.transpose
+examples = DataFrameOther.examples
+name = DataFrameOther.name
+normalize_columns = DataFrameOther.normalize_columns
+remove_empty_columns = DataFrameOther.remove_empty_columns
+round = DataFrameOther.round
+sort = DataFrameOther.sort
+sources = DataFrameOther.sources
+transpose = DataFrameOther.transpose
 
 # excel
-excel = _DataFrameExcel.excel
-excel_cockpit = _DataFrameExcel.excel_cockpit
+excel = DataFrameExcel.excel
+excel_cockpit = DataFrameExcel.excel_cockpit
 
 #group
-group = _DataFrameGroup.group
-sections = _DataFrameGroup.sections
+group = DataFrameGroup.group
+sections = DataFrameGroup.sections
 
 # summary
-compare_summaries = _DataFrameSummary.compare_summaries
-summary = _DataFrameSummary.summary
-top = _DataFrameSummary.top
+compare_summaries = DataFrameSummary.compare_summaries
+summary = DataFrameSummary.summary
+top = DataFrameSummary.top
 
 # tap
-tap = _DataFrameTap.tap
-tap_end = _DataFrameTap.tap_end
+tap = DataFrameTap.tap
+tap_end = DataFrameTap.tap_end
 
 # cockpit
-to_cockpit = _Cockpit.to_cockpit
+to_cockpit = Cockpit.to_cockpit
+
+__all__ = [
+    'set_display_colors',
+    'display',
+    'examples',
+    'name',
+    'normalize_columns',
+    'remove_empty_columns',
+    'round',
+    'sort',
+    'sources',
+    'transpose',
+    'excel',
+    'excel_cockpit',
+    'group',
+    'sections',
+    'compare_summaries',
+    'summary',
+    'top',
+    'tap',
+    'tap_end',
+    'to_cockpit'
+]
