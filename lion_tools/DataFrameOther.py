@@ -8,7 +8,7 @@ import re
 import random
 
 
-class DataFrameExtensions:
+class DataFrameOther:
 
     def __init__(self):
         print("Use static methods instead of instantiating this class.")
@@ -234,7 +234,7 @@ class DataFrameExtensions:
     @staticmethod
     def sort(df: DataFrame, *col_exprs) -> DataFrame:
         return df.orderBy(
-            DataFrameExtensions.transform_column_expressions(df, *col_exprs)
+            DataFrameOther.transform_column_expressions(df, *col_exprs)
         )
 
     @staticmethod

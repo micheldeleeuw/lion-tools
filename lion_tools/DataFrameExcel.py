@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from pyspark.sql import DataFrame
 from .settings import LION_TOOLS_COCKPIT_PATH, LION_TOOLS_TMP_PATH
-from .DataFrameExtensions import DataFrameExtensions
+from .DataFrameOther import DataFrameOther
 import pyspark.sql.functions as F
 import base64
 

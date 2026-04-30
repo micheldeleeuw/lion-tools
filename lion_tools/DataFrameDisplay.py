@@ -9,7 +9,7 @@ from pyspark.sql.window import Window as W
 from datetime import datetime
 from IPython.display import HTML as display_HTML
 from IPython.display import display
-from .DataFrameExtensions import DataFrameExtensions
+from .DataFrameOther import DataFrameOther
 from .DataFrameTap import DataFrameTap
 from .Tools import Tools
 from pyspark.sql import Row
@@ -455,7 +455,7 @@ class DataFrameDisplay():
         # if not requested but rownum is already present we use that
         # otherswise we just pick the first n rows and add a dummy rownum for DataTable.
         if self.sort:
-            sort_by = DataFrameExtensions.transform_column_expressions(self.df, *self.sort)
+            sort_by = DataFrameOther.transform_column_expressions(self.df, *self.sort)
             self.df = self.df.orderBy(sort_by).withColumn('_rownum', F.monotonically_increasing_id())
             self.df = self.df.filter(F.col('_rownum') <= self.n).orderBy('_rownum')
         elif '_rownum' in self.df.columns:

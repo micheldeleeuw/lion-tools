@@ -1,5 +1,5 @@
 import re
-from .DataFrameExtensions import DataFrameExtensions
+from .DataFrameOther import DataFrameOther
 from pyspark.sql import DataFrame
 from pyspark.sql import Column
 import pyspark.sql.functions as F
@@ -43,7 +43,7 @@ class DataFrameGroup:
             self.by_strings = ["*"]
             self.sort_by = sort_by
         else:
-            self.by = DataFrameExtensions.transform_column_expressions(
+            self.by = DataFrameOther.transform_column_expressions(
                 df, *by, include_sort=False
             )
             self.by_strings = [Tools.col_name(col) for col in self.by]
@@ -212,7 +212,7 @@ class DataFrameGroup:
 
     def _sort_result(self) -> None:
         if self.add_rownum or self.sections or self.sub_totals or self.grand_total:
-            sort_by = DataFrameExtensions.transform_column_expressions(
+            sort_by = DataFrameOther.transform_column_expressions(
                 self.result, *self.sort_by
             )
             self.result = (
@@ -259,7 +259,7 @@ class DataFrameGroup:
                 .orderBy("_rownum")
             )
         else:
-            self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
+            self.result = DataFrameOther.sort(self.result, *self.sort_by)
 
         if not (self.sections or self.sub_totals or self.grand_total):
             self.result = self.result.drop("_totals_type")
@@ -320,7 +320,7 @@ class DataFrameGroup:
         )
 
         if not self.round is False:
-            result_df = DataFrameExtensions.round(result_df, self.round)
+            result_df = DataFrameOther.round(result_df, self.round)
 
         self.result = result_df
 
@@ -415,7 +415,7 @@ class DataFrameGroup:
         grand_total: bool | None = None,
     ) -> "DataFrameGroup":
 
-        by: list[str] = DataFrameExtensions.transform_column_expressions(
+        by: list[str] = DataFrameOther.transform_column_expressions(
             self.df, *by, include_sort=False
         )
 

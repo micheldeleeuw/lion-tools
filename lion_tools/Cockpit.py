@@ -4,7 +4,7 @@ from unicodedata import name
 from .settings import LION_TOOLS_PATH, LION_TOOLS_COCKPIT_PATH
 from .settings import cleanup_old_files, cleanup_temp_views
 from .DataFrameDisplay import DataFrameDisplay
-from .DataFrameExtensions import DataFrameExtensions
+from .DataFrameOther import DataFrameOther
 from .DataFrameTap import DataFrameTap
 from .DataFrameExcel import DataFrameExcel
 from datetime import datetime, timedelta
@@ -32,8 +32,8 @@ class Cockpit:
        session, preferably in a notebook environment.
     2. In your Python/PySpark session, use the `display_in_cockpit` method to display
        dataframes in the cockpit. For example:
-            from lion_tools import DataFrameExtensions
-            DataFrameExtensions.display_in_cockpit(my_dataframe)
+            from lion_tools import DataFrameOther
+            DataFrameOther.display_in_cockpit(my_dataframe)
     3. The cockpit will automatically pick up the display request and show the dataframe.
        You can interact with the dataframe, view its schema, and see the code that generated it.
     """
@@ -484,10 +484,10 @@ class Cockpit:
         id = "_lion_tools_tmp_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
 
         if name is None:
-            name = DataFrameExtensions.name(_df)
+            name = DataFrameOther.name(_df)
 
             if name == "unnamed":
-                sources = DataFrameExtensions.sources(_df)
+                sources = DataFrameOther.sources(_df)
                 if len(sources) == 1:
                     name = sources[0].split(".")[-1]
                 elif len(sources) > 1:

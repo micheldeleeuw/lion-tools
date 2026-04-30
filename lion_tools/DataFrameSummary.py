@@ -2,7 +2,7 @@ from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 
-# from lion_tools import DataFrameExtensions
+# from lion_tools import DataFrameOther
 from .DataFrameDisplay import DataFrameDisplay
 from .DataFrameGroup import DataFrameGroup
 
@@ -154,12 +154,12 @@ class DataFrameSummary():
         ignore_missing_columns: bool = False,
     ) -> DataFrame:
         
-        from .DataFrameExtensions import DataFrameExtensions
+        from .DataFrameOther import DataFrameOther
         
         by = list(by)
         common_columns = list(set(_df1.columns).intersection(set(_df2.columns)))
-        name1 = DataFrameExtensions.name(_df1)
-        name2 = DataFrameExtensions.name(_df2)
+        name1 = DataFrameOther.name(_df1)
+        name2 = DataFrameOther.name(_df2)
         name1 = name1 if name1 != 'unnamed' else 'base'
         name2 = name2 if name2 != 'unnamed' else 'compare'
         assert isinstance(color_code_thresholds, list), (
@@ -248,7 +248,7 @@ class DataFrameSummary():
             )
             # set the colors based on the tresholds provided
             .transform(
-                DataFrameDisplay.set_colors, 
+                DataFrameDisplay.set_display_colors, 
                 *[
                     {
                         'column': "result",
