@@ -8,17 +8,18 @@ from typing import Self
 from functools import reduce
 from .Tools import Tools
 
-class DataFrameGroup():
+
+class DataFrameGroup:
     pivot_separator = "___pivot___"
 
     @staticmethod
-    def group(df: DataFrame, *by: str, **kwargs) -> 'DataFrameGroup':
+    def group(df: DataFrame, *by: str, **kwargs) -> "DataFrameGroup":
         return DataFrameGroup(df, *by, **kwargs)
 
     def __init__(
-        self, 
-        df: DataFrame, 
-        *by: str, 
+        self,
+        df: DataFrame,
+        *by: str,
         add_rownum: bool = False,
         round: int | bool = 8,
         sort_by: list[str] = [],
@@ -26,23 +27,31 @@ class DataFrameGroup():
         sort_by = [sort_by] if isinstance(sort_by, str) else sort_by
         self.df = df
         self.columns = df.columns
-    
-        if by == ('*',):
-            self.by = ['*']
-            self.by_strings = ['*']
+
+        if by == ("*",):
+            self.by = ["*"]
+            self.by_strings = ["*"]
             self.sort_by = sort_by
         else:
-            self.by = DataFrameExtensions.transform_column_expressions(df, *by, include_sort=False)
+            self.by = DataFrameExtensions.transform_column_expressions(
+                df, *by, include_sort=False
+            )
             self.by_strings = [Tools.col_name(col) for col in self.by]
-            self.sort_by = [
-                (i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1)
-                for i, col in enumerate(by)
-            ] if sort_by == [] else sort_by
-            
-        self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
+            self.sort_by = (
+                [
+                    (i + 1)
+                    * (-1 if isinstance(col, str) and col.startswith("-") else 1)
+                    for i, col in enumerate(by)
+                ]
+                if sort_by == []
+                else sort_by
+            )
+
+        self.columns_aggregable = [
+            col for col in self.columns if col not in self.by_strings
+        ]
         self.columns_nummeric = [
-            dtype[0] for dtype in df.dtypes
-            if Tools.check_data_type(dtype[1], 'num')
+            dtype[0] for dtype in df.dtypes if Tools.check_data_type(dtype[1], "num")
         ]
         self.add_rownum = add_rownum
         self.round = round
@@ -55,50 +64,83 @@ class DataFrameGroup():
     @staticmethod
     def _normalize_name(name: str) -> str:
         # Replace the specific characters with an underscore
-        name = re.sub(r'[ !"#$%&\'()*+,\-./`]', '_', name.lower())
-        name = re.sub(r'_+', '_', name)
-        return name.strip('_')
-    
+        name = re.sub(r'[ !"#$%&\'()*+,\-./`]', "_", name.lower())
+        name = re.sub(r"_+", "_", name)
+        return name.strip("_")
+
     @staticmethod
     def single_aggregation_functions() -> list[str]:
         return [
-            "min", "max", "sum", "avg", "avg_null", "count", "count_distinct", "approx_count_distinct",
-            "count_null", "count_not_null", "first", "last", "collect_set", "collect_list",
+            "min",
+            "max",
+            "sum",
+            "avg",
+            "avg_null",
+            "count",
+            "count_distinct",
+            "approx_count_distinct",
+            "count_null",
+            "count_not_null",
+            "first",
+            "last",
+            "collect_set",
+            "collect_list",
         ]
-    
-    def pivot(self, column: str, pivot_type: str = 'grouped') -> Self:
-        assert self.by_strings != ['*'], "Pivoting is not supported when grouping by all columns."
-        assert column in self.columns, f"Pivot column must be one of the columns in the DataFrame. Available columns: {self.columns}."
-        assert column not in self.by_strings, f"Pivot column cannot be one of the grouping columns."
-        assert pivot_type in ['grouped', 'default']
-        
+
+    def pivot(self, column: str, pivot_type: str = "grouped") -> Self:
+        assert self.by_strings != [
+            "*"
+        ], "Pivoting is not supported when grouping by all columns."
+        assert (
+            column in self.columns
+        ), f"Pivot column must be one of the columns in the DataFrame. Available columns: {self.columns}."
+        assert (
+            column not in self.by_strings
+        ), f"Pivot column cannot be one of the grouping columns."
+        assert pivot_type in ["grouped", "default"]
+
         self.pivot_column = column
         self.pivot_type = pivot_type
 
         return self
 
     def agg(
-            self, 
-            *aggs: str, 
-            alias: bool = False,
-            normalize_column_names: bool = False,
-            round: int | None = None,
-        ) -> DataFrame:
+        self,
+        *aggs: str,
+        alias: bool = False,
+        normalize_column_names: bool = False,
+        round: int | None = None,
+    ) -> DataFrame:
 
         self.alias = alias
         self.normalize_column_names = normalize_column_names
         self.round = round if round is not None else self.round
 
-        assert not (self.by_strings == ['*'] and not(self.sections or self.sub_totals or self.grand_total) and len(aggs) > 0
-            ), "When grouping by all columns, no aggregation functions can be provided unless totals are requested."
-            
-        self.aggs = [F.count("*").alias("count")] if len(aggs) == 0 and (len(self.by) > 0 or self.sub_totals or self.grand_total) else aggs
+        assert not (
+            self.by_strings == ["*"]
+            and not (self.sections or self.sub_totals or self.grand_total)
+            and len(aggs) > 0
+        ), "When grouping by all columns, no aggregation functions can be provided unless totals are requested."
+
+        self.aggs = (
+            [F.count("*").alias("count")]
+            if len(aggs) == 0
+            and (len(self.by) > 0 or self.sub_totals or self.grand_total)
+            else aggs
+        )
 
         # Force alias when more than one single aggregation function is requested
-        if len([
-            value for value in aggs
-            if isinstance(value, str) and value in self.single_aggregation_functions()
-        ]) > 1:
+        if (
+            len(
+                [
+                    value
+                    for value in aggs
+                    if isinstance(value, str)
+                    and value in self.single_aggregation_functions()
+                ]
+            )
+            > 1
+        ):
             self.alias = True
 
         self._rebuild_aggregates()
@@ -107,75 +149,110 @@ class DataFrameGroup():
         self._sort_result()
 
         return self.result
-    
+
     def _rename_pivot_columns(self) -> None:
-        if self.pivot_column and self.pivot_type == 'grouped':
+        if self.pivot_column and self.pivot_type == "grouped":
             result_columns = self.result.columns
-            if len([col for col in result_columns if col.endswith(self.pivot_separator)]) > 0:
+            if (
+                len(
+                    [
+                        col
+                        for col in result_columns
+                        if col.endswith(self.pivot_separator)
+                    ]
+                )
+                > 0
+            ):
                 # only one column got pivotted, so we can just rename it to the pivot column value
-                self.result = self.result.withColumnsRenamed({
-                    col: col.replace(f"{self.pivot_separator}", "")
-                    for col in result_columns if col.endswith(self.pivot_separator)
-                })
+                self.result = self.result.withColumnsRenamed(
+                    {
+                        col: col.replace(f"{self.pivot_separator}", "")
+                        for col in result_columns
+                        if col.endswith(self.pivot_separator)
+                    }
+                )
             else:
                 # multiple columns got pivotted, so rename and rearrange the column names to have the pivot value at the end of the column name
                 # Especially handy for grouped display
                 pivot_values = []
                 column_names = []
-                for col in [col for col in result_columns if col.find(self.pivot_separator) >= 0]:
-                    column_name, pivot_value = col.split(self.pivot_separator + '_') # additional _ comes from the regular pivot
+                for col in [
+                    col for col in result_columns if col.find(self.pivot_separator) >= 0
+                ]:
+                    column_name, pivot_value = col.split(
+                        self.pivot_separator + "_"
+                    )  # additional _ comes from the regular pivot
                     if pivot_value not in pivot_values:
                         pivot_values.append(pivot_value)
                     if column_name not in column_names:
                         column_names.append(column_name)
 
-                self.result = (
-                    self.result.
-                    selectExpr(
-                        *[f"`{col}`" for col in result_columns if col.find(self.pivot_separator) < 0],
-                        *[f"`{col}{self.pivot_separator}_{pivot_value}` as `{pivot_value}__{col}`" for pivot_value in pivot_values for col in column_names]
-                    )
+                self.result = self.result.selectExpr(
+                    *[
+                        f"`{col}`"
+                        for col in result_columns
+                        if col.find(self.pivot_separator) < 0
+                    ],
+                    *[
+                        f"`{col}{self.pivot_separator}_{pivot_value}` as `{pivot_value}__{col}`"
+                        for pivot_value in pivot_values
+                        for col in column_names
+                    ],
                 )
 
     def _sort_result(self) -> None:
         if self.add_rownum or self.sections or self.sub_totals or self.grand_total:
-            sort_by = DataFrameExtensions.transform_column_expressions(self.result, *self.sort_by)
+            sort_by = DataFrameExtensions.transform_column_expressions(
+                self.result, *self.sort_by
+            )
             self.result = (
                 self.result
                 # to be confirmed in test that new code works
                 # .withColumn("_rownum", F.row_number().over(W.Window.orderBy(
-                    # F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
+                # F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
                 # ))
-                .orderBy(F.expr('if(_totals_type < 9, 0, 1)'), *self.totals_by, '_totals_type', *sort_by)
-                .withColumn("_rownum", F.monotonically_increasing_id())
+                .orderBy(
+                    F.expr("if(_totals_type < 9, 0, 1)"),
+                    *self.totals_by,
+                    "_totals_type",
+                    *sort_by,
+                ).withColumn("_rownum", F.monotonically_increasing_id())
             )
 
             self.result = (
-                self.result
-                .transform(
+                self.result.transform(
                     lambda df: (
-                        df.withColumns({
-                        Tools.col_name(col): F.expr(f"if(_totals_type not in (3), `{Tools.col_name(col)}`, null)")
-                        for col in self.totals_by
-                    })
-                    if len(self.totals_by) > 0 else df
+                        df.withColumns(
+                            {
+                                Tools.col_name(col): F.expr(
+                                    f"if(_totals_type not in (3), `{Tools.col_name(col)}`, null)"
+                                )
+                                for col in self.totals_by
+                            }
+                        )
+                        if len(self.totals_by) > 0
+                        else df
                     )
                 )
-                .withColumns({
-                    col: F.expr(f"if(_totals_type not in (4, 5), `{col}`, null)")
-                    for col in self.result.columns
-                    if col not in ('_rownum', '_totals_type')
-                })
+                .withColumns(
+                    {
+                        col: F.expr(f"if(_totals_type not in (4, 5), `{col}`, null)")
+                        for col in self.result.columns
+                        if col not in ("_rownum", "_totals_type")
+                    }
+                )
                 .withColumn("_rownum", F.expr("_rownum + (_totals_type / 10)"))
-                .withColumn("", F.expr("case when _totals_type in (3, 9) then '+' else null end"))
-                .orderBy('_rownum')
+                .withColumn(
+                    "",
+                    F.expr("case when _totals_type in (3, 9) then '+' else null end"),
+                )
+                .orderBy("_rownum")
             )
         else:
             self.result = DataFrameExtensions.sort(self.result, *self.sort_by)
 
-        if not(self.sections or self.sub_totals or self.grand_total):
+        if not (self.sections or self.sub_totals or self.grand_total):
             self.result = self.result.drop("_totals_type")
-        
 
     def _get_aggregates(self) -> None:
         def apply_grouping(by, aggs, totals_type) -> DataFrame:
@@ -184,14 +261,18 @@ class DataFrameGroup():
                 agg = self.df
             elif aggs is None:
                 agg = self.df.select(*by).distinct()
-            elif self.pivot_column and self.pivot_type == 'default':
+            elif self.pivot_column and self.pivot_type == "default":
                 agg = self.df.groupBy(*by).pivot(self.pivot_column).agg(*aggs)
-            elif self.pivot_column and self.pivot_type == 'grouped':
+            elif self.pivot_column and self.pivot_type == "grouped":
                 agg = (
-                    self.df
-                    .withColumn(
-                        self.pivot_column, 
-                        F.concat(F.ifnull(F.col(self.pivot_column).cast("string"), F.lit("null")), F.lit(self.pivot_separator))
+                    self.df.withColumn(
+                        self.pivot_column,
+                        F.concat(
+                            F.ifnull(
+                                F.col(self.pivot_column).cast("string"), F.lit("null")
+                            ),
+                            F.lit(self.pivot_separator),
+                        ),
                     )
                     .groupBy(*by)
                     .pivot(self.pivot_column)
@@ -199,36 +280,40 @@ class DataFrameGroup():
                 )
             else:
                 agg = self.df.groupBy(*by).agg(*aggs)
-            
+
             return agg.withColumn("_totals_type", F.expr(totals_type))
 
         # the result is build up by unioning the different levels of aggregation.
         result = []
 
         # regular aggregation
-        if self.by_strings == ['*']:
+        if self.by_strings == ["*"]:
             result.append(apply_grouping(None, None, "1"))
         else:
             result.append(apply_grouping(self.by, self.aggs, "2"))
 
         # sub totals, sections and grand total
         if self.sub_totals:
-            result.append(apply_grouping(self.totals_by, self.aggs, "explode(array(3, 4))"))
+            result.append(
+                apply_grouping(self.totals_by, self.aggs, "explode(array(3, 4))")
+            )
 
         if self.sections:
             result.append(apply_grouping(self.totals_by, None, "5"))
 
         if self.grand_total:
             result.append(apply_grouping([], self.aggs, "9"))
-        
+
         # union all result together
-        result_df = reduce(lambda x, y: x.unionByName(y, allowMissingColumns=True), result)
+        result_df = reduce(
+            lambda x, y: x.unionByName(y, allowMissingColumns=True), result
+        )
 
         if not self.round is False:
             result_df = DataFrameExtensions.round(result_df, self.round)
 
         self.result = result_df
-        
+
     def _rebuild_aggregates(self) -> None:
         """
         We (re)build the aggregation expressions into expressions that Spark understands.
@@ -257,11 +342,21 @@ class DataFrameGroup():
                     elif agg == "count_distinct":
                         result_expression = f"count(distinct(`{col}`))"
                     elif agg == "count_null":
-                        result_expression = f"sum(case when `{col}` is null then 1 else 0 end)"
+                        result_expression = (
+                            f"sum(case when `{col}` is null then 1 else 0 end)"
+                        )
                     elif agg == "count_not_null":
-                        result_expression = f"sum(case when `{col}` is not null then 1 else 0 end)"
+                        result_expression = (
+                            f"sum(case when `{col}` is not null then 1 else 0 end)"
+                        )
                     elif col in self.columns_nummeric or agg in (
-                        "max", "min", "count", "first", "collect_set", "collect_list", "approx_count_distinct",
+                        "max",
+                        "min",
+                        "count",
+                        "first",
+                        "collect_set",
+                        "collect_list",
+                        "approx_count_distinct",
                     ):
                         result_expression = f"{agg}(`{col}`)"
                     else:
@@ -276,11 +371,19 @@ class DataFrameGroup():
 
             # 2. SQL expression (string), add sorted_columns() and columns() functionality.
             elif isinstance(agg, str):
-                agg = 'sorted_columns() as columns' if agg == "sorted_columns()" else agg
-                agg = agg.replace("sorted_columns()", f'"{", ".join(sorted(self.columns))}"')
-                agg = 'columns() as columns' if agg == "columns()" else agg
+                agg = (
+                    "sorted_columns() as columns" if agg == "sorted_columns()" else agg
+                )
+                agg = agg.replace(
+                    "sorted_columns()", f'"{", ".join(sorted(self.columns))}"'
+                )
+                agg = "columns() as columns" if agg == "columns()" else agg
                 agg = agg.replace("columns()", f'"{", ".join(self.columns)}"')
-                agg = f"{agg} as `{self._normalize_name(agg)}`" if agg.find(" as ") == -1 else agg
+                agg = (
+                    f"{agg} as `{self._normalize_name(agg)}`"
+                    if agg.find(" as ") == -1
+                    else agg
+                )
                 aggs.append([1, i, 0, agg])
 
             # 3. We assume it is a column expression
@@ -289,27 +392,35 @@ class DataFrameGroup():
 
         aggs = sorted(aggs, key=lambda x: x[0] * 100000 + x[2] * 1000 + x[1])
         aggs = [agg[3] for agg in aggs]
-        aggs = [agg if str(type(agg)).find(".Column") > 0 else F.expr(agg) for agg in aggs]
+        aggs = [
+            agg if str(type(agg)).find(".Column") > 0 else F.expr(agg) for agg in aggs
+        ]
         self.aggs = aggs
 
     def totals(
-            self,
-            *by: str, 
-            sections: bool | None = None,
-            sub_totals: bool | None = None,
-            grand_total: bool | None = None,
-        ) -> 'DataFrameGroup':
-    
-        by: list[str] = DataFrameExtensions.transform_column_expressions(self.df, *by, include_sort=False)
+        self,
+        *by: str,
+        sections: bool | None = None,
+        sub_totals: bool | None = None,
+        grand_total: bool | None = None,
+    ) -> "DataFrameGroup":
 
-        assert not (sections and sub_totals), "Sections and sub_totals cannot be used together."
-        assert not (by == [] and (sections or sub_totals)
-            ), "Sections and sub_totals are not supported without by variables."
-        assert not (by == [] and grand_total is False
-            ), "Grand total is only option when no by variables are provided."
-        assert self.by_strings == ['*'] or all(
+        by: list[str] = DataFrameExtensions.transform_column_expressions(
+            self.df, *by, include_sort=False
+        )
+
+        assert not (
+            sections and sub_totals
+        ), "Sections and sub_totals cannot be used together."
+        assert not (
+            by == [] and (sections or sub_totals)
+        ), "Sections and sub_totals are not supported without by variables."
+        assert not (
+            by == [] and grand_total is False
+        ), "Grand total is only option when no by variables are provided."
+        assert self.by_strings == ["*"] or all(
             Tools.col_name(col) in self.by_strings for col in by
-        ), (f"All by variables must be part of the grouping variables. Available grouping variables: {self.by_strings}.")
+        ), f"All by variables must be part of the grouping variables. Available grouping variables: {self.by_strings}."
 
         if by == []:
             grand_total = True
@@ -329,13 +440,19 @@ class DataFrameGroup():
 
     def __getattr__(self, name):
         if name in self.single_aggregation_functions():
+
             def wrapper(*args, **kwargs):
                 if len(args) > 0:
-                    assert all(isinstance(arg, str) for arg in args), "All arguments must be strings representing column names."
-                    assert all(arg in self.columns_aggregable for arg in args), ("All arguments must be column names"
-                        f"that can be aggregated. Available columns: {self.columns_aggregable}")
+                    assert all(
+                        isinstance(arg, str) for arg in args
+                    ), "All arguments must be strings representing column names."
+                    assert all(arg in self.columns_aggregable for arg in args), (
+                        "All arguments must be column names"
+                        f"that can be aggregated. Available columns: {self.columns_aggregable}"
+                    )
                     self.columns_aggregable = args
                 return self.agg(name, **kwargs)
+
             return wrapper
         else:
             raise AttributeError(f"'DataFrameGroup' object has no attribute '{name}'")
