@@ -82,19 +82,19 @@ class DataFrameDisplay():
     @staticmethod
     def display(
         df: DataFrame, 
-        passthrough: bool = None,
-        compact: int = None,
-        n: int = None,
-        p: int = None,
-        file_path: str = None,
-        sort: list = None,
-        color_rules: list[dict] = None,
-        pretty_headers: bool = None,
-        format_totals: bool = None,
-        column_grouping: bool = None,
-        column_grouping_split_pattern: str = None,
-        percentage_columns_pattern: str = None,
-        display: bool = None,
+        passthrough: bool | None = None,
+        compact: int | None = None,
+        n: int | None = None,
+        p: int | None = None,
+        file_path: str | None = None,
+        sort: list | None = None,
+        color_rules: list[dict] | None = None,
+        pretty_headers: bool | None = None,
+        format_totals: bool | None = None,
+        column_grouping: bool | None = None,
+        column_grouping_split_pattern: str | None = None,
+        percentage_columns_pattern: str | None = None,
+        display: bool | None = None,
      ):
         
         DataFrameDisplay(
@@ -264,20 +264,20 @@ class DataFrameDisplay():
     def __init__(
         self,
         df: DataFrame,
-        passthrough: bool = None,
-        compact: int = None,
-        n: int = None,
-        p: int = None,
-        file_path: str = None,
-        sort: list = None,
-        max_table_bytes: int = None,
-        color_rules: list[dict] = None,
-        pretty_headers: bool = None,
-        format_totals: bool = None,
-        column_grouping: bool = None,
-        column_grouping_split_pattern: str = None,
-        percentage_columns_pattern: str = None,
-        display: bool = None,
+        passthrough: bool | None = None,
+        compact: int | None = None,
+        n: int | None = None,
+        p: int | None = None,
+        file_path: str | None = None,
+        sort: list | None = None,
+        max_table_bytes: int | None = None,
+        color_rules: list[dict] | None = None,
+        pretty_headers: bool | None = None,
+        format_totals: bool | None = None,
+        column_grouping: bool | None = None,
+        column_grouping_split_pattern: str | None = None,
+        percentage_columns_pattern: str | None = None,
+        display: bool | None = None,
     ):
 
         # set instance variables and apply defaults from class defaults
@@ -295,7 +295,7 @@ class DataFrameDisplay():
         self.column_grouping = column_grouping if column_grouping is not None else DataFrameDisplay.defaults['column_grouping']
         self.column_grouping_split_pattern = column_grouping_split_pattern if column_grouping_split_pattern is not None else DataFrameDisplay.defaults['column_grouping_split_pattern']
         self.percentage_columns_pattern = percentage_columns_pattern if percentage_columns_pattern is not None else DataFrameDisplay.defaults['percentage_columns_pattern']
-        self.display = display if display is not None else DataFrameDisplay.defaults['display']
+        self.to_screen = display if display is not None else DataFrameDisplay.defaults['display']
 
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
@@ -310,7 +310,7 @@ class DataFrameDisplay():
         assert isinstance(self.p, int) and self.p > 0 and self.p <= 100000
         assert isinstance(self.file_path, str) or self.file_path is None
         assert isinstance(self.sort, list) or self.sort is None
-        assert isinstance(self.display, bool)
+        assert isinstance(self.to_screen, bool)
         assert isinstance(self.max_table_bytes, int) and self.max_table_bytes > 0 and self.max_table_bytes <= 10000000
         assert isinstance(self.color_rules, list)
         assert isinstance(self.pretty_headers, bool)
@@ -346,7 +346,7 @@ class DataFrameDisplay():
         if self.file_path:
             self.save_to_file()
 
-        if self.display:
+        if self.to_screen:
             self._display()
 
         if self.passthrough:
@@ -480,12 +480,38 @@ class DataFrameDisplay():
         ]))
 
     def set_length_and_width(self):
-        if self.df_statistics['__total__']['width_with_header'] * 8 + 50 < 600:
+        # we recalculate the width of the table based on the statistics and headers
+        # we only look at the last two header rows as we assume that mre headers above them will fit without issue
+        # if there only is one header row we copy that one to assume that there are two
+        headers = self.headers[-2:] if len(self.headers) >= 2 else [self.headers[0], self.headers[0]]
+        import pprint
+        
+        # pprint.pprint(headers)
+        # pprint.pprint(self.df_statistics)
+        # pprint.pprint(self.table_cols)
+
+        
+        col_i = 0
+        total_width = 0
+        for col_group in headers[0]:
+            group_column_width = 0
+            no_columns_in_group = col_group[0]
+            for i in range(no_columns_in_group):
+                data_width = self.df_statistics[self.table_cols[col_i]]['display_length']
+                header_1_width = len(str(headers[1][col_i][1])) + 1     # +1 for the sort icon
+                group_column_width += max(data_width, header_1_width)
+                col_i += 1
+
+            header_0_width = len(str(col_group[1])) + 6 # +6 for the group column padding
+
+            total_width += max(header_0_width, group_column_width)
+            
+        if total_width * 8 + 50 < 600:
             self.max_width = '600px'
         else:
-            self.max_width = str(self.df_statistics['__total__']['width_with_header'] * 9 + 50) + 'px'  # rough estimate of width in pixels
+            self.max_width = str(total_width * 9 + 50) + 'px'  # rough estimate of width in pixels
 
-        self.p = self.p - self.header_length + 1
+        self.p = self.p - self.header_height + 1
     
     def set_other_options(self):
         self.other_options = f"""order: [[{len(self.cols)}, 'asc']], ordering: true"""
@@ -520,7 +546,7 @@ class DataFrameDisplay():
             f.write(self.html_content)
 
     def put_in_iframe(self):
-        max_height = str(int(min(self.df_statistics['__total__']['rows'] + self.header_length -1, self.p) * 28.7 + 146.0)) + 'px'
+        max_height = str(int(min(self.df_statistics['__total__']['rows'] + self.header_height -1, self.p) * 28.7 + 146.0)) + 'px'
 
         # calculated: y = 26,672.4x + 150,094.6
         
@@ -569,7 +595,7 @@ class DataFrameDisplay():
 
             if splitted_header:
                 self.headers = self.headers[:-1] + [additional_header_row] + [bottom_header_row]
-                self.header_length += -1
+                self.header_height += -1
                 
     def escape(self,text):
         return (
@@ -776,12 +802,12 @@ class DataFrameDisplay():
         # Pretty headers are basically just a cosmetic change to make the headers more readable by replacing underscores with
         # spaces and capitalizing words.
 
-        self.header_length = max([
+        self.header_height = max([
             len(col.split(self.column_grouping_split_pattern))
             for col in self.cols
         ])
 
-        if self.column_grouping and self.header_length > 1:
+        if self.column_grouping and self.header_height > 1:
             self.stripe = 'columns'
             split_cols = [col.split(self.column_grouping_split_pattern) for col in self.cols]
             split_cols = [
@@ -789,7 +815,7 @@ class DataFrameDisplay():
                 for split_col in split_cols
             ]
             # pad the arrays with empty string
-            split_cols = [[' '] * (self.header_length - len(split_col)) + split_col for split_col in split_cols]
+            split_cols = [[' '] * (self.header_height - len(split_col)) + split_col for split_col in split_cols]
             # transpose the matrix
             header_rows = list(map(list, zip(*split_cols)))
             # make single titles with count of the number columns the title must span
@@ -811,7 +837,7 @@ class DataFrameDisplay():
         else:
             # make just the single row
             self.stripe = 'rows'
-            self.header_length = 1
+            self.header_height = 1
             self.uneven_columns = []
             self.headers = [[
                 [1, col] if not self.pretty_headers else [1, col.replace('_', ' ').title()]
@@ -876,12 +902,12 @@ class DataFrameDisplay():
             elif key == 'number_format%':
                 for decimals, cols in value.items():
                     col_defs_str.append(
-                        f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '%&nbsp;' ) }},"
+                        f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '%&nbsp;&nbsp;' ) }},"
                     )
             elif key == 'number_format':
                 for decimals, cols in value.items():
                     col_defs_str.append(
-                        f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '&nbsp;' ) }},"
+                        f"{{ targets: {cols}, render: $.fn.dataTable.render.number( ',', '.', {decimals}, '&nbsp;', '&nbsp;&nbsp;' ) }},"
                     )
             elif key == 'string_format%':
                 col_defs_str.append(
