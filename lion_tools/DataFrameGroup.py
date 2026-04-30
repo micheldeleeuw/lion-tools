@@ -152,10 +152,15 @@ class DataFrameGroup():
 
             self.result = (
                 self.result
-                .withColumns({
-                    Tools.col_name(col): F.expr(f"if(_totals_type not in (3), `{Tools.col_name(col)}`, null)")
-                    for col in self.totals_by
-                })
+                .transform(
+                    lambda df: (
+                        df.withColumns({
+                        Tools.col_name(col): F.expr(f"if(_totals_type not in (3), `{Tools.col_name(col)}`, null)")
+                        for col in self.totals_by
+                    })
+                    if len(self.totals_by) > 0 else df
+                    )
+                )
                 .withColumns({
                     col: F.expr(f"if(_totals_type not in (4, 5), `{col}`, null)")
                     for col in self.result.columns
