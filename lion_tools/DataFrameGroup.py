@@ -15,27 +15,37 @@ class DataFrameGroup():
     def group(df: DataFrame, *by: str, **kwargs) -> 'DataFrameGroup':
         return DataFrameGroup(df, *by, **kwargs)
 
-    def __init__(self, df: DataFrame, *by: str, **kwargs):
+    def __init__(
+        self, 
+        df: DataFrame, 
+        *by: str, 
+        add_rownum: bool = False,
+        round: int | bool = 8,
+        sort_by: list[str] = [],
+    ):
+        sort_by = [sort_by] if isinstance(sort_by, str) else sort_by
         self.df = df
         self.columns = df.columns
-
+    
         if by == ('*',):
             self.by = ['*']
             self.by_strings = ['*']
-            self.sort_by = []
+            self.sort_by = sort_by
         else:
             self.by = DataFrameExtensions.transform_column_expressions(df, *by, include_sort=False)
             self.by_strings = [Tools.col_name(col) for col in self.by]
-            self.sort_by = [(i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1) for i, col in enumerate(by)]
+            self.sort_by = [
+                (i + 1) * (-1 if isinstance(col, str) and col.startswith('-') else 1)
+                for i, col in enumerate(by)
+            ] if sort_by == [] else sort_by
             
         self.columns_aggregable = [col for col in self.columns if col not in self.by_strings]
         self.columns_nummeric = [
             dtype[0] for dtype in df.dtypes
             if Tools.check_data_type(dtype[1], 'num')
         ]
-        self.add_rownum = kwargs.get("add_rownum", False)
-        self.round = kwargs.get("round", 8)
-
+        self.add_rownum = add_rownum
+        self.round = round
         self.pivot_column = None
         self.totals_by = []
         self.sections = False
@@ -67,12 +77,17 @@ class DataFrameGroup():
 
         return self
 
-    def agg(self, *aggs: str, **kwargs) -> DataFrame:
-        assert all(key in ["alias", "normalize_column_names", "round"] for key in kwargs.keys()), "Invalid keyword argument(s) provided."
+    def agg(
+            self, 
+            *aggs: str, 
+            alias: bool = False,
+            normalize_column_names: bool = False,
+            round: int | None = None,
+        ) -> DataFrame:
 
-        self.alias = kwargs.get("alias", False)
-        self.normalize_column_names = kwargs.get("normalize_column_names", False)
-        self.round = kwargs.get("round", self.round)
+        self.alias = alias
+        self.normalize_column_names = normalize_column_names
+        self.round = round if round is not None else self.round
 
         assert not (self.by_strings == ['*'] and not(self.sections or self.sub_totals or self.grand_total) and len(aggs) > 0
             ), "When grouping by all columns, no aggregation functions can be provided unless totals are requested."
