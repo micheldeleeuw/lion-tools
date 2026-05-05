@@ -356,7 +356,7 @@ class DataFrameDisplay():
 
     def _display(self):
         self.put_in_iframe()
-        display(display_HTML(self.iframe_html))
+        display(display_HTML(self.iframe_html), clear=True)
 
     def gather_column_information(self):
         # define some variables that are needed down the road
@@ -499,8 +499,8 @@ class DataFrameDisplay():
             header_0_width = len(str(col_group[1])) + 6 # +6 for the group column padding
             total_width += max(header_0_width, group_column_width)
             
-        if total_width * 8 + 50 < 600:
-            self.max_width = '600px'
+        if total_width * 9 + 50 < 550:
+            self.max_width = '550px'
         else:
             self.max_width = str(total_width * 9 + 50) + 'px'  # rough estimate of width in pixels
 
@@ -549,7 +549,7 @@ class DataFrameDisplay():
                     height='{max_height}px'
                     margin='0'
                     frameborder='0'
-                    sandbox='allow-scripts allow-same-origin'
+                    sandbox='allow-scripts allow-same-origin' 
                     style='border: 1px solid #ddd; overflow-y: hidden; overflow-x: auto; display: block;'>
             </iframe>
         """       
