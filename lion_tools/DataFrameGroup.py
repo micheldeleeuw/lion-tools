@@ -97,7 +97,7 @@ class DataFrameGroup:
             "collect_list",
         ]
 
-    def pivot(self, column: str, pivot_type: str = "grouped") -> Self:
+    def pivot(self, column: str, pivot_type: str = "column_grouped") -> Self:
         assert self.by_strings != [
             "*"
         ], "Pivoting is not supported when grouping by all columns."
@@ -107,7 +107,7 @@ class DataFrameGroup:
         assert (
             column not in self.by_strings
         ), f"Pivot column cannot be one of the grouping columns."
-        assert pivot_type in ["grouped", "default"]
+        assert pivot_type in ["column_grouped", "pivot_grouped", "default"]
 
         self.pivot_column = column
         self.pivot_type = pivot_type
@@ -161,54 +161,53 @@ class DataFrameGroup:
         return self.result
 
     def _rename_pivot_columns(self) -> None:
-        if self.pivot_column and self.pivot_type == "grouped":
-            result_columns = self.result.columns
-            if (
-                len(
-                    [
-                        col
-                        for col in result_columns
-                        if col.endswith(self.pivot_separator)
-                    ]
-                )
-                > 0
-            ):
-                # only one column got pivotted, so we can just rename it to the pivot column value
-                self.result = self.result.withColumnsRenamed(
-                    {
-                        col: col.replace(f"{self.pivot_separator}", "")
-                        for col in result_columns
-                        if col.endswith(self.pivot_separator)
-                    }
-                )
-            else:
-                # multiple columns got pivotted, so rename and rearrange the column names to have the pivot value at the end of the column name
-                # Especially handy for grouped display
-                pivot_values = []
-                column_names = []
-                for col in [
-                    col for col in result_columns if col.find(self.pivot_separator) >= 0
-                ]:
-                    column_name, pivot_value = col.split(
-                        self.pivot_separator + "_"
-                    )  # additional _ comes from the regular pivot
-                    if pivot_value not in pivot_values:
-                        pivot_values.append(pivot_value)
-                    if column_name not in column_names:
-                        column_names.append(column_name)
+        result_columns = self.result.columns
+        pivot_values = []
+        column_names = []
+        pivot_columns = [col for col in result_columns if col.find(self.pivot_separator) >= 0]
+        non_pivot_columns = [col for col in result_columns if col.find(self.pivot_separator) < 0]
 
-                self.result = self.result.selectExpr(
-                    *[
-                        f"`{col}`"
-                        for col in result_columns
-                        if col.find(self.pivot_separator) < 0
-                    ],
-                    *[
-                        f"`{col}{self.pivot_separator}_{pivot_value}` as `{pivot_value}__{col}`"
-                        for pivot_value in pivot_values
-                        for col in column_names
-                    ],
-                )
+        for col in pivot_columns:
+            column_name, pivot_value = col.split(
+                self.pivot_separator + "_"
+            )  # additional _ comes from the regular pivot
+            if pivot_value not in pivot_values:
+                pivot_values.append(pivot_value)
+            if column_name not in column_names:
+                column_names.append(column_name)
+
+        if self.pivot_column is None or self.pivot_type == "default":
+            # we're good
+            pass
+        elif len([col for col in result_columns if col.endswith(self.pivot_separator)]) > 0:
+            # only one column got pivotted, so we can just rename it to the pivot column value
+            self.result = self.result.withColumnsRenamed({
+                col: col.replace(f"{self.pivot_separator}", "")
+                for col in result_columns
+                if col.endswith(self.pivot_separator)
+            })
+        elif self.pivot_type == "pivot_grouped":
+            # multiple columns got pivotted, so rename and rearrange the column names to have the pivot
+            # value at the end of the column name
+            self.result = self.result.selectExpr(
+                *[f"`{col}`" for col in non_pivot_columns],
+                *[
+                    f"`{col}{self.pivot_separator}_{pivot_value}` as `{col}__{pivot_value}`"
+                    for col in column_names
+                    for pivot_value in pivot_values
+                ],
+            )
+        elif self.pivot_type == "column_grouped":
+            # multiple columns got pivotted, so rename and rearrange the column names to have the pivot
+            # value at the beginning of the column name
+            self.result = self.result.selectExpr(
+                *[f"`{col}`" for col in non_pivot_columns],
+                *[
+                    f"`{col}{self.pivot_separator}_{pivot_value}` as `{pivot_value}__{col}`"
+                    for pivot_value in pivot_values
+                    for col in column_names
+                ],
+            )
 
     def _sort_result(self) -> None:
         if self.add_rownum or self.sections or self.sub_totals or self.grand_total:
@@ -273,7 +272,7 @@ class DataFrameGroup:
                 agg = self.df.select(*by).distinct()
             elif self.pivot_column and self.pivot_type == "default":
                 agg = self.df.groupBy(*by).pivot(self.pivot_column).agg(*aggs)
-            elif self.pivot_column and self.pivot_type == "grouped":
+            elif self.pivot_column and self.pivot_type != "default":
                 agg = (
                     self.df.withColumn(
                         self.pivot_column,
