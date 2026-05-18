@@ -168,9 +168,13 @@ class DataFrameGroup:
         non_pivot_columns = [col for col in result_columns if col.find(self.pivot_separator) < 0]
 
         for col in pivot_columns:
-            column_name, pivot_value = col.split(
+            splitted = col.split(
                 self.pivot_separator + "_"
             )  # additional _ comes from the regular pivot
+            if len(splitted) > 1:
+                column_name, pivot_value = splitted[0], splitted[1]
+            else:
+                column_name, pivot_value = splitted[0], 'thiswillnotbeused'
             if pivot_value not in pivot_values:
                 pivot_values.append(pivot_value)
             if column_name not in column_names:
