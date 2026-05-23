@@ -65,7 +65,7 @@ class DataFrameGroup:
         ]
         self.add_rownum = add_rownum
         self.round = round
-        self.pivot_column = None
+        self.pivot_columns = []
         self.totals_by = []
         self.sections = False
         self.sub_totals = False
@@ -97,22 +97,54 @@ class DataFrameGroup:
             "collect_list",
         ]
 
-    def pivot(self, column: str, pivot_type: str = "column_grouped") -> Self:
-        assert self.by_strings != [
-            "*"
-        ], "Pivoting is not supported when grouping by all columns."
-        assert (
-            column in self.columns
-        ), f"Pivot column must be one of the columns in the DataFrame. Available columns: {self.columns}."
-        assert (
-            column not in self.by_strings
-        ), f"Pivot column cannot be one of the grouping columns."
+    def pivot(self, *columns: str, pivot_type: str = "column_grouped") -> Self:
+        assert self.by_strings != ["*"], "Pivoting is not supported when grouping by all columns."
+        assert len(columns) > 0, "At least one pivot column must be provided."
         assert pivot_type in ["column_grouped", "pivot_grouped", "default"]
+        assert all(
+            column in self.columns for column in columns
+        ), f"Pivot columns must be one of the columns in the DataFrame. Available columns: {self.columns}."
+        assert all(
+            column not in self.by_strings for column in columns
+        ), "Pivot columns cannot be one of the grouping columns."
 
-        self.pivot_column = column
+        self.pivot_columns = columns
+        self.pivot_column = columns[0] if len(columns) == 1 else None
         self.pivot_type = pivot_type
 
         return self
+
+    def pivot_totals(
+        self,
+        *by: str,
+        sub_totals: bool | None = None,
+        grand_total: bool | None = None,
+    ) -> "DataFrameGroup":
+        
+        by: list[str] = DataFrameOther.transform_column_expressions(
+            self.df, *by, include_sort=False
+        )
+
+        assert not self.pivot_columns == [], "Pivot totals are not supported when no pivot columns are defined."
+        assert all(
+            column in self.pivot_columns for column in by
+        ), f"All by variables must be part of the pivot columns. Available pivot columns: {self.pivot_columns}."
+
+        Hiero!!!!
+        
+        if by == []:
+            grand_total = True
+        else:
+            sub_totals = True if not sub_totals else sub_totals
+            grand_total = True if sub_totals and grand_total is None else grand_total
+
+        self.totals_by = by
+        self.sections = sections or False
+        self.sub_totals = sub_totals or False
+        self.grand_total = grand_total or False
+
+        return self
+
 
     def agg(
         self,
@@ -168,9 +200,13 @@ class DataFrameGroup:
         non_pivot_columns = [col for col in result_columns if col.find(self.pivot_separator) < 0]
 
         for col in pivot_columns:
-            column_name, pivot_value = col.split(
+            splitted = col.split(
                 self.pivot_separator + "_"
             )  # additional _ comes from the regular pivot
+            if len(splitted) > 1:
+                column_name, pivot_value = splitted[0], splitted[1]
+            else:
+                column_name, pivot_value = splitted[0], 'thiswillnotbeused'
             if pivot_value not in pivot_values:
                 pivot_values.append(pivot_value)
             if column_name not in column_names:
