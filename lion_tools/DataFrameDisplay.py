@@ -1,3 +1,4 @@
+from operator import le
 import pathlib
 import decimal
 import html
@@ -71,6 +72,7 @@ class DataFrameDisplay():
 
     new_line_placeholder = '___NEW_LINE___'
     nbsp_placeholder = '___NBSP___'
+    header_splitter = '---HS!@---'
 
     @staticmethod
     def set_display_defaults(**kwargs):
@@ -368,7 +370,6 @@ class DataFrameDisplay():
             if dtype[0] not in ('_rownum', '_totals_type', '_color_style')
         ]
         self.cols = [dtype[0] for dtype in self.dtypes]
-        
         self.nummeric_columns_indexes = [
             i for i, (col, dtype) in enumerate(self.dtypes)
             if Tools.check_data_type(dtype, 'num')
@@ -380,8 +381,7 @@ class DataFrameDisplay():
         self.integer_columns = [
             col for i, (col, dtype) in enumerate(self.dtypes)
             if Tools.check_data_type(dtype, 'num_int')
-        ]
-        
+        ] 
         self.table_cols = [
             col for col in self.all_cols
             if col not in ('_totals_type', '_color_style')
@@ -484,9 +484,10 @@ class DataFrameDisplay():
         # we only look at the last two header rows as we assume that the headers above them will fit without issue
         # if there only is one header row we copy that one to assume that there are two
         headers = self.headers[-2:] if len(self.headers) >= 2 else [self.headers[0], self.headers[0]]
-       
+
         col_i = 0
         total_width = 0
+
         for col_group in headers[0]:
             group_column_width = 0
             no_columns_in_group = col_group[0]
@@ -800,13 +801,21 @@ class DataFrameDisplay():
 
         if self.column_grouping and self.header_height > 1:
             self.stripe = 'columns'
-            split_cols = [col.split(self.column_grouping_split_pattern) for col in self.cols]
-            split_cols = [
-                split_col if not self.pretty_headers else [split_col_.replace('_', ' ').title() for split_col_ in split_col]
-                for split_col in split_cols
+            # First make sure that all column names have the same number of levels by adding levels when needed
+            cols = [
+                ''.join(
+                    [' ' + self.column_grouping_split_pattern] * (self.header_height - len(col.split(self.column_grouping_split_pattern)))
+                ) + col
+                for col in self.cols
             ]
-            # pad the arrays with empty string
-            split_cols = [[' '] * (self.header_height - len(split_col)) + split_col for split_col in split_cols]
+            # we split the column names into multiple levels based on the split pattern
+            # note that we repeat the upper level in a lower level to be able to group by the upper level
+            split_cols = [
+                [
+                    self.header_splitter.join(col.split(self.column_grouping_split_pattern)[0:level+1])
+                    for level in range(0, self.header_height)]
+                for col in cols
+            ]
             # transpose the matrix
             header_rows = list(map(list, zip(*split_cols)))
             # make single titles with count of the number columns the title must span
@@ -817,6 +826,13 @@ class DataFrameDisplay():
                 ] 
                 for header_row in header_rows
             ]
+            # remove the self.header_splitter from the labels and apply pretty headers if needed
+            for header_row in self.headers:
+                for header in header_row:
+                    header[1] = header[1].split(self.header_splitter)[-1]
+                    if self.pretty_headers:
+                        header[1] = header[1].replace('_', ' ').title()
+
             self.uneven_columns = []
             i = 0
             for j, col in enumerate(self.headers[-2]):
