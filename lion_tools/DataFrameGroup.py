@@ -72,6 +72,7 @@ class DataFrameGroup:
         self._pivot = False
         self.pivot_columns = []
         self.pivot_totals_by = []
+        self.pivot_type = None
         self.totals_by = []
         self.sections = False
         self.sub_totals = False
