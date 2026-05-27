@@ -1,5 +1,6 @@
 import re
 from tracemalloc import stop
+from turtle import right
 from .DataFrameOther import DataFrameOther
 from pyspark.sql import DataFrame
 from pyspark.sql import Column
@@ -105,7 +106,7 @@ class DataFrameGroup:
         ]
 
     def prepare_pivot_column(self) -> None:
-        # transform the pivot columns to string and allow null values
+        # transform the pivot columns to strings and allow null values and make life easier
         self.df = (
             self.df
             .withColumns({
@@ -114,14 +115,17 @@ class DataFrameGroup:
         )
 
         # implement pivot totals by exploding the data over the desired totals
-        # first, determine the levels
         if self.pivot_totals_by != []:
+            # first, determine the levels
             pivot_totals_replace_to_totals = [
                 [col for col in self.pivot_columns if col not in by]
                 for by in self.pivot_totals_by
             ]
+            
             # add the original columns as last level of totals
             pivot_totals_replace_to_totals.append([])
+            
+            # apply the explode
             self.df = (
                 self.df
                 .withColumn(
@@ -186,14 +190,18 @@ class DataFrameGroup:
         position: str = 'right',
     ) -> "DataFrameGroup":
         
-        by: list[str] = DataFrameOther.transform_column_expressions(
-            self.df, *by, include_sort=False
-        )
+        by: list[str] = [
+            Tools.col_name(col)
+            for col in DataFrameOther.transform_column_expressions(self.df, *by, include_sort=False)
+        ]
 
         assert not self.pivot_columns == [], "Apply pivot before setting pivot totals."
         assert all(
             column in self.pivot_columns for column in by
         ), f"All by variables must be part of the pivot columns. Available pivot columns: {self.pivot_columns}."
+        assert not all(
+            column in by for column in self.pivot_columns
+        ), "By variables cannot be all pivot columns."
         assert not (by != [] and sub_totals), "Sub totals cannot be applied when by variables are provided."
         assert position in ("left", "right"), "Position must be either 'left' or 'right'."
 
@@ -277,6 +285,18 @@ class DataFrameGroup:
 
         return self.result
 
+    def rename_pivot_totals_column(self, col: str) -> str:            
+        for pivot_total_column in [self.pivot_total_left_column, self.pivot_total_right_column]:
+            # first replace repeating pivot total columns with a single one as that looks nicer
+            double_pattern = pivot_total_column + self.pivot_value_separator + pivot_total_column
+            new_pattern = pivot_total_column + self.pivot_value_separator + ' '
+            while double_pattern in col:
+                # replace right to left
+                col = new_pattern.join(col.rsplit(double_pattern, 1))
+            col = col.replace(pivot_total_column, self.pivot_totals_header)
+
+        return col
+
     def _rename_pivot_columns(self) -> None:
         result_columns = self.result.columns
         pivot_values = []
@@ -333,11 +353,7 @@ class DataFrameGroup:
         # rename pivot totals columns if needed
         if self.pivot_totals_by != []:
             self.result = self.result.withColumnsRenamed({
-                col: (
-                    col
-                    .replace(self.pivot_total_left_column, self.pivot_totals_header)
-                    .replace(self.pivot_total_right_column, self.pivot_totals_header)
-                )
+                col: self.rename_pivot_totals_column(col)
                 for col in self.result.columns
                 if col.find(self.pivot_total_left_column) >=0 or col.find(self.pivot_total_right_column) >= 0
             })
