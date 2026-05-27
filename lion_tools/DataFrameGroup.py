@@ -1,6 +1,4 @@
 import re
-from tracemalloc import stop
-from turtle import right
 from .DataFrameOther import DataFrameOther
 from pyspark.sql import DataFrame
 from pyspark.sql import Column
@@ -289,10 +287,14 @@ class DataFrameGroup:
         for pivot_total_column in [self.pivot_total_left_column, self.pivot_total_right_column]:
             # first replace repeating pivot total columns with a single one as that looks nicer
             double_pattern = pivot_total_column + self.pivot_value_separator + pivot_total_column
-            new_pattern = pivot_total_column + self.pivot_value_separator + ' '
+            # new_pattern = pivot_total_column + self.pivot_value_separator + ' '
+            new_pattern = ' ' + self.pivot_value_separator + pivot_total_column
             while double_pattern in col:
                 # replace right to left
-                col = new_pattern.join(col.rsplit(double_pattern, 1))
+                # col = new_pattern.join(col.rsplit(double_pattern, 1))
+                
+                # replace left to right
+                col = col.replace(double_pattern, new_pattern)
             col = col.replace(pivot_total_column, self.pivot_totals_header)
 
         return col
