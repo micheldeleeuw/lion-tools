@@ -1,4 +1,5 @@
 import re
+from tracemalloc import stop
 from .DataFrameOther import DataFrameOther
 from pyspark.sql import DataFrame
 from pyspark.sql import Column
@@ -71,6 +72,7 @@ class DataFrameGroup:
         self.round = round
         self._pivot = False
         self.pivot_columns = []
+        self.pivot_totals_by = []
         self.totals_by = []
         self.sections = False
         self.sub_totals = False
@@ -112,12 +114,14 @@ class DataFrameGroup:
         )
 
         # implement pivot totals by exploding the data over the desired totals
+        # first, determine the levels
         if self.pivot_totals_by != []:
             pivot_totals_replace_to_totals = [
                 [col for col in self.pivot_columns if col not in by]
                 for by in self.pivot_totals_by
             ]
-            print(pivot_totals_replace_to_totals)
+            # add the original columns as last level of totals
+            pivot_totals_replace_to_totals.append([])
             self.df = (
                 self.df
                 .withColumn(
@@ -135,11 +139,7 @@ class DataFrameGroup:
                 .drop('___pivot_totals_explode___')
             )
 
-            self.df.select(*self.by, *self.pivot_columns).show(10, False) #.display(column_grouping=False)
-            # stop
-
-
-        # Concatenate multiple pivot columns into one column
+        # Concatenate one or multiple pivot columns into a single column
         self.df = (
             self.df.withColumn(
                 self.pivot_column,
@@ -333,8 +333,13 @@ class DataFrameGroup:
         # rename pivot totals columns if needed
         if self.pivot_totals_by != []:
             self.result = self.result.withColumnsRenamed({
-                col: col.replace(self.pivot_total_left_column if self.pivot_totals_position == "left" else self.pivot_total_right_column, self.pivot_totals_header)
-                for col in self.result.columns if col.find(self.pivot_total_left_column if self.pivot_totals_position == "left" else self.pivot_total_right_column) >= 0
+                col: (
+                    col
+                    .replace(self.pivot_total_left_column, self.pivot_totals_header)
+                    .replace(self.pivot_total_right_column, self.pivot_totals_header)
+                )
+                for col in self.result.columns
+                if col.find(self.pivot_total_left_column) >=0 or col.find(self.pivot_total_right_column) >= 0
             })
 
     def _sort_result(self) -> None:
