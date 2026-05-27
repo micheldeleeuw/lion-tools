@@ -13,6 +13,8 @@ class DataFrameGroup:
     pivot_separator = "___pivot___"
     pivot_column = "___pivot_column___"
     pivot_value_separator = "__"
+    pivot_total_left_column = "!!!!___pivot_total_left___"
+    pivot_total_right_column = "~~~~___pivot_total_right___"
 
     @staticmethod
     def group(df: DataFrame, *by: str, **kwargs) -> "DataFrameGroup":
@@ -101,20 +103,56 @@ class DataFrameGroup:
         ]
 
     def prepare_pivot_column(self) -> None:
-        # Just concatenate the pivot columns into one column
+        # transform the pivot columns to string and allow null values
+        self.df = (
+            self.df
+            .withColumns({
+                column: F.ifnull(F.col(column).cast("string"), F.lit("null")) for column in self.pivot_columns
+            })
+        )
+
+        # implement pivot totals by exploding the data over the desired totals
+        if self.pivot_totals_by != []:
+            pivot_totals_replace_to_totals = [
+                [col for col in self.pivot_columns if col not in by]
+                for by in self.pivot_totals_by
+            ]
+            print(pivot_totals_replace_to_totals)
+            self.df = (
+                self.df
+                .withColumn(
+                    '___pivot_totals_explode___', 
+                    F.array(*[F.struct(*[
+                        F.col(column).alias(column) 
+                        if column not in replace_to_total
+                        else F.lit(self.pivot_total_right_column if self.pivot_totals_position == "right" else self.pivot_total_left_column).alias(column)
+                        for column in self.pivot_columns
+                    ]) for replace_to_total in pivot_totals_replace_to_totals])
+                )
+                .drop(*self.pivot_columns)
+                .withColumn('___pivot_totals_explode___', F.explode('___pivot_totals_explode___'))
+                .selectExpr('*', '___pivot_totals_explode___.*')
+                .drop('___pivot_totals_explode___')
+            )
+
+            self.df.select(*self.by, *self.pivot_columns).show(10, False) #.display(column_grouping=False)
+            # stop
+
+
+        # Concatenate multiple pivot columns into one column
         self.df = (
             self.df.withColumn(
                 self.pivot_column,
                 F.concat_ws(
                     self.pivot_value_separator, 
-                    *[F.ifnull(F.col(column).cast("string"), F.lit("null")) for column in self.pivot_columns]
+                    *[F.col(column) for column in self.pivot_columns]
                 ),
             )
         )
 
         if self.pivot_type != "default":
-            # Add the pivot separator at the end to be able to identify it later on and
-            # rename it to needed format
+            # Add the pivot separator at the end of the pivot column to be able to identify
+            # pivotted columns in the result and to be able to rename and sort them properly.
             self.df = (
                 self.df.withColumn(
                     self.pivot_column,
@@ -157,6 +195,7 @@ class DataFrameGroup:
             column in self.pivot_columns for column in by
         ), f"All by variables must be part of the pivot columns. Available pivot columns: {self.pivot_columns}."
         assert not (by != [] and sub_totals), "Sub totals cannot be applied when by variables are provided."
+        assert position in ("left", "right"), "Position must be either 'left' or 'right'."
 
         # Totals are applied :
         # - When by variables are provided, apply totals only on that level, grand total is
@@ -170,20 +209,28 @@ class DataFrameGroup:
         self.pivot_totals_position = position
 
         if by != []: # case 1
-            self.pivot_sub_totals = False
-            self.pivot_grand_total = grand_total or False
+            sub_totals = False
+            grand_total = grand_total or False
         elif sub_totals is None and grand_total is None: # case 2
-            self.pivot_sub_totals = True
-            self.pivot_grand_total = True
+            sub_totals = True
+            grand_total = True
         elif grand_total and sub_totals is None: # case 3
-            self.pivot_sub_totals = False
-            self.pivot_grand_total = True
+            sub_totals = False
         elif sub_totals and grand_total is None: # case 4
-            self.pivot_sub_totals = True
-            self.pivot_grand_total = False
+            grand_total = False
         else:
-            self.pivot_sub_totals = True if not sub_totals else sub_totals
-            self.pivot_grand_total = True if self.pivot_sub_totals and grand_total is None else grand_total
+            sub_totals = True if sub_totals is None else sub_totals
+            grand_total = True if grand_total is None else grand_total
+
+        if by != []:
+            self.pivot_totals_by = [by]
+        elif sub_totals:
+            self.pivot_totals_by = [list(self.pivot_columns[0:i+1]) for i in range(len(self.pivot_columns)-1)]
+        else:
+            self.pivot_totals_by = []
+
+        if grand_total:
+            self.pivot_totals_by.append([])
 
         return self
 
@@ -282,6 +329,13 @@ class DataFrameGroup:
                     for col in column_names
                 ],
             )
+
+        # rename pivot totals columns if needed
+        if self.pivot_totals_by != []:
+            self.result = self.result.withColumnsRenamed({
+                col: col.replace(self.pivot_total_left_column if self.pivot_totals_position == "left" else self.pivot_total_right_column, self.pivot_totals_header)
+                for col in self.result.columns if col.find(self.pivot_total_left_column if self.pivot_totals_position == "left" else self.pivot_total_right_column) >= 0
+            })
 
     def _sort_result(self) -> None:
         if self.add_rownum or self.sections or self.sub_totals or self.grand_total:
