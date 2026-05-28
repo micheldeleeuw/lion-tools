@@ -488,16 +488,19 @@ class DataFrameDisplay():
         col_i = 0
         total_width = 0
 
+        def _len(text):
+            return len(str(text).replace('___NBSP___', ' '))
+
         for col_group in headers[0]:
             group_column_width = 0
             no_columns_in_group = col_group[0]
             for i in range(no_columns_in_group):
                 data_width = self.df_statistics[self.table_cols[col_i]]['display_length']
-                header_1_width = len(str(headers[1][col_i][1])) + 3     # +3 for the sort icon
+                header_1_width = _len(headers[1][col_i][1]) + 3     # +3 for the sort icon
                 group_column_width += max(data_width, header_1_width)
                 col_i += 1
 
-            header_0_width = len(str(col_group[1])) + 6 # +6 for the group column padding
+            header_0_width = _len(col_group[1]) + 6 # +6 for the group column padding
             total_width += max(header_0_width, group_column_width)
             
         if total_width * 9 + 50 < 550:
