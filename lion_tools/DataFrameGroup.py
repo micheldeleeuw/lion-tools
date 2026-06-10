@@ -21,11 +21,15 @@ class DataFrameGroup:
         return DataFrameGroup(df, *by, **kwargs)
     
     @staticmethod
-    def sections(df: DataFrame, *section_columns: str) -> DataFrame:
+    def sections(
+        df: DataFrame, 
+        *section_columns: str,
+        sort_by: list[str] = [],
+    ) -> DataFrame:
         from .DataFrameGroup import DataFrameGroup
 
         return (
-            DataFrameGroup(df, '*')
+            DataFrameGroup(df, '*', sort_by=sort_by)
             .totals(*section_columns, sections=True)
             .agg()
         )
