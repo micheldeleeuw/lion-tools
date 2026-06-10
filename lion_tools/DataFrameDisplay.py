@@ -489,7 +489,7 @@ class DataFrameDisplay():
         total_width = 0
 
         def _len(text):
-            return len(str(text).replace('___NBSP___', ' '))
+            return len(str(text).replace(self.nbsp_placeholder, ' '))
 
         for col_group in headers[0]:
             group_column_width = 0
@@ -626,7 +626,7 @@ class DataFrameDisplay():
                     for i, (colspan, header) in enumerate(header_row)
                 ]) +
             '</tr>'
-            for i, header_type, header_row in headers_ext    
+            for i, header_type, header_row in headers_ext
         )
 
         # table body
