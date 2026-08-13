@@ -21,11 +21,15 @@ class DataFrameGroup:
         return DataFrameGroup(df, *by, **kwargs)
     
     @staticmethod
-    def sections(df: DataFrame, *section_columns: str) -> DataFrame:
+    def sections(
+        df: DataFrame, 
+        *section_columns: str,
+        sort_by: list[str] = [],
+    ) -> DataFrame:
         from .DataFrameGroup import DataFrameGroup
 
         return (
-            DataFrameGroup(df, '*')
+            DataFrameGroup(df, '*', sort_by=sort_by)
             .totals(*section_columns, sections=True)
             .agg()
         )
@@ -72,6 +76,7 @@ class DataFrameGroup:
         self._pivot = False
         self.pivot_columns = []
         self.pivot_totals_by = []
+        self.pivot_type = None
         self.totals_by = []
         self.sections = False
         self.sub_totals = False
