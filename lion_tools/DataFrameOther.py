@@ -111,7 +111,7 @@ class DataFrameOther:
 
         transposed = (
             df
-            .withColumn('_transpose_id', F.col(column_name_source) if column_name_source else F.col('_n'))
+            .withColumn('_transpose_id', F.col(column_name_source) if column_name_source else F.expr('"_record_" || _n'))
             .select(
                 '_transpose_id',
                 *by,
