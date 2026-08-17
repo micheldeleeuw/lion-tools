@@ -34,7 +34,8 @@ class DataFrameOther:
         examples = (
             df
             .filter(filter)
-            .withColumn('__id', F.row_number().over(Window.partitionBy(*strata_columns).orderBy(F.rand(seed=random.randint(1, 99999999)))))
+            .withColumn('__dummy', F.lit(1))
+            .withColumn('__id', F.row_number().over(Window.partitionBy('__dummy', *strata_columns).orderBy(F.rand(seed=random.randint(1, 99999999)))))
             .filter(f'__id <= {number_of_examples}')
             .drop('__id', '__dummy')
         )
