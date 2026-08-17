@@ -97,7 +97,11 @@ class DataFrameOther:
         data_types = [dtype for col, dtype in df.dtypes]
 
         if list(by) == []:
-            df = df.limit(n)
+            df = (
+                df
+                .limit(n)
+                .withColumn('_n', F.monotonically_increasing_id())
+            )
         else:
             df = (
                 df
@@ -107,7 +111,7 @@ class DataFrameOther:
 
         transposed = (
             df
-            .withColumn('_transpose_id', F.col(column_name_source) if column_name_source else F.monotonically_increasing_id())
+            .withColumn('_transpose_id', F.col(column_name_source) if column_name_source else F.col('_n'))
             .select(
                 '_transpose_id',
                 *by,
