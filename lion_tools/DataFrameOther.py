@@ -233,9 +233,14 @@ class DataFrameOther:
 
     @staticmethod
     def sort(df: DataFrame, *col_exprs) -> DataFrame:
-        return df.orderBy(
-            DataFrameOther.transform_column_expressions(df, *col_exprs)
-        )
+        col_exprs = list(col_exprs)
+        if col_exprs == []:
+            # no sorting needed
+            return df
+        else:
+            return df.orderBy(
+                DataFrameOther.transform_column_expressions(df, *col_exprs)
+            )
 
     @staticmethod
     def name(_df: DataFrame) -> str:
