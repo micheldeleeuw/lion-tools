@@ -96,14 +96,18 @@ class DataFrameOther:
         
         data_types = [dtype for col, dtype in df.dtypes]
 
-        W = Window.partitionBy(*by).orderBy(F.lit(1))
-        
+        if list(by) == []:
+            df = df.limit(n)
+        else:
+            df = (
+                df
+                .withColumn('_n', F.row_number().over(Window.partitionBy(*by).orderBy(F.lit(1))))
+                .filter(F.col('_n') <= n)
+            )
+
         transposed = (
             df
-            .withColumn('_n', F.row_number().over(W))
-            # .eTap(lambda x: x.show())
-            .filter(F.col('_n') <= n)
-            .withColumn('_transpose_id', F.col(column_name_source) if column_name_source else F.col('_n'))
+            .withColumn('_transpose_id', F.col(column_name_source) if column_name_source else F.monotonically_increasing_id())
             .select(
                 '_transpose_id',
                 *by,
