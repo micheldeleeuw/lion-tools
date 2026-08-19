@@ -57,6 +57,7 @@ class DataFrameDisplay():
         add_time_to_name = False,    # should time be added to the name of the display??
         n = 1001,                    # number of rows tot diplay
         p = 15,                      # number of rows per page
+        paging = True,               # should the display be paged?
         file_path = None,            # save the display to the file path
         sort = None,                 # column(s) to sort by before display, (list of) string or integers
         max_table_bytes = 200000,    # 500000, the maximum size of the table in bytes that will be displayed
@@ -88,6 +89,7 @@ class DataFrameDisplay():
         compact: int | None = None,
         n: int | None = None,
         p: int | None = None,
+        paging: bool | None = True,
         file_path: str | None = None,
         sort: list | None = None,
         color_rules: list[dict] | None = None,
@@ -105,6 +107,7 @@ class DataFrameDisplay():
             compact=compact,
             n=n,
             p=p,
+            paging=paging,
             file_path=file_path,
             sort=sort,
             color_rules=color_rules,
@@ -270,6 +273,7 @@ class DataFrameDisplay():
         compact: int | None = None,
         n: int | None = None,
         p: int | None = None,
+        paging: bool | None = None,
         file_path: str | None = None,
         sort: list | None = None,
         max_table_bytes: int | None = None,
@@ -288,6 +292,7 @@ class DataFrameDisplay():
         self.compact = compact if compact is not None else DataFrameDisplay.defaults['compact']
         self.n = n if n is not None else DataFrameDisplay.defaults['n']
         self.p = p if p is not None else DataFrameDisplay.defaults['p']
+        self.paging = paging if paging is not None else DataFrameDisplay.defaults['paging']
         self.file_path = file_path if file_path is not None else DataFrameDisplay.defaults['file_path']
         self.sort = sort if sort is not None else DataFrameDisplay.defaults['sort']
         self.max_table_bytes = max_table_bytes if max_table_bytes is not None else DataFrameDisplay.defaults['max_table_bytes']
@@ -532,7 +537,7 @@ class DataFrameDisplay():
         html_content = html_content.replace('{col_defs}', self.column_definitions)
         html_content = html_content.replace('{other_options}', self.other_options)
         html_content = html_content.replace('{max_width}', self.max_width)
-        html_content = html_content.replace('{page_length}', str(self.p))
+        html_content = html_content.replace('{page_length}', "-1" if self.paging else str(self.p))
         html_content = html_content.replace('{length_menu}', self.length_menu)
         
         self.html_content = html_content
