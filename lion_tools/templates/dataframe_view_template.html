@@ -380,6 +380,25 @@ $(document).ready(function() {
             columnList.removeClass('show');
         }
     });
+
+    // VS Code notebook output nests this content in an extra iframe that swallows the
+    // native Cmd/Ctrl-C shortcut, so re-implement it via execCommand on the current selection.
+    $(document).on('keydown', function(e) {
+        var isCopyShortcut = (e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C');
+        if (!isCopyShortcut) {
+            return;
+        }
+        var selection = window.getSelection().toString();
+        if (!selection) {
+            return;
+        }
+        e.preventDefault();
+        try {
+            document.execCommand('copy');
+        } catch (err) {
+            // ignore, nothing we can do if execCommand is unavailable
+        }
+    });
 });
 </script>
 
