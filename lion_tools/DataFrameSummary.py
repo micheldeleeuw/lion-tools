@@ -204,6 +204,8 @@ class DataFrameSummary():
                         F.col(f"summary2.{stat}").alias(f"{stat}__{name2}"),
                         F.expr(f"""
                             case
+                               when summary1.{stat} is null and summary2.{stat} is null
+                               then cast(null as double)
                                when ('{stat}' = 'min' or '{stat}' = 'max') and
                                     (summary1.datatype in ('string', 'boolean', 'date', 'timestamp')
                                      or summary2.datatype in ('string', 'boolean', 'date', 'timestamp'))
