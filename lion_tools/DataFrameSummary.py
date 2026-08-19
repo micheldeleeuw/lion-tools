@@ -157,7 +157,7 @@ class DataFrameSummary():
         from .DataFrameOther import DataFrameOther
         
         by = list(by)
-        common_columns = list(set(_df1.columns).intersection(set(_df2.columns)))
+        common_columns = [col for col in _df1.columns if col in _df2.columns]
         name1 = DataFrameOther.name(_df1)
         name2 = DataFrameOther.name(_df2)
         name1 = name1 if name1 != 'unnamed' else 'base'
