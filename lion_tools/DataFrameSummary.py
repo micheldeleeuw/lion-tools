@@ -152,6 +152,7 @@ class DataFrameSummary():
         ], 
         round_decimals: int = 5,
         ignore_missing_columns: bool = False,
+        include_datatypes: bool = True,
     ) -> DataFrame:
         
         from .DataFrameOther import DataFrameOther
@@ -277,6 +278,9 @@ class DataFrameSummary():
             .withColumn('_rownum', F.monotonically_increasing_id())
             .drop(f'column_no__{name1}', f'column_no__{name2}')
         )
+
+        if not include_datatypes:
+            comparison = comparison.drop(f'datatype__{name1}', f'datatype__{name2}', 'datatype__diff_perc')
         
         return comparison
 
