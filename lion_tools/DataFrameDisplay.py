@@ -315,6 +315,7 @@ class DataFrameDisplay():
         assert isinstance(self.compact, int) and self.compact in (0, 1)
         assert isinstance(self.n, int) and self.n > 0 and self.n <= 100000
         assert isinstance(self.p, int) and self.p > 0 and self.p <= 100000
+        assert isinstance(self.paging, bool)
         assert isinstance(self.file_path, str) or self.file_path is None
         assert isinstance(self.sort, list) or self.sort is None
         assert isinstance(self.to_screen, bool)
@@ -489,7 +490,6 @@ class DataFrameDisplay():
         # we only look at the last two header rows as we assume that the headers above them will fit without issue
         # if there only is one header row we copy that one to assume that there are two
         headers = self.headers[-2:] if len(self.headers) >= 2 else [self.headers[0], self.headers[0]]
-
         col_i = 0
         total_width = 0
 
@@ -560,6 +560,7 @@ class DataFrameDisplay():
                     height='{max_height}px'
                     frameborder='0'
                     sandbox='allow-scripts allow-same-origin' 
+                    allow='clipboard-write'
                     style='background: #f0f0f0; padding: 10px; border: 1px solid #ddd; overflow-y: hidden; overflow-x: auto; display: block;'>
             </iframe>
         """       

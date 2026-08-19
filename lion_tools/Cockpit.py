@@ -249,6 +249,7 @@ class Cockpit:
                     height="{max_height}"
                     frameborder="0"
                     sandbox='allow-scripts allow-same-origin'
+                    allow='clipboard-write'
                     style="border: 1px solid #ddd; margin: 0px; padding: 0px;">
                 </iframe>
             """
