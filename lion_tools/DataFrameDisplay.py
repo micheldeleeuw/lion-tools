@@ -525,6 +525,8 @@ class DataFrameDisplay():
             # don't strip the rows, strip the columns
             self.other_options += ", stripeClasses: []"
 
+        self.page_length = str(self.p) if self.paging else "-1"
+
     def apply_to_template(self):
         # Load template using relative path from this file's location
         with open(pathlib.Path(__file__).parent / "templates" / "dataframe_view_template.html", 'r', encoding='utf-8') as f:
@@ -537,7 +539,7 @@ class DataFrameDisplay():
         html_content = html_content.replace('{col_defs}', self.column_definitions)
         html_content = html_content.replace('{other_options}', self.other_options)
         html_content = html_content.replace('{max_width}', self.max_width)
-        html_content = html_content.replace('{page_length}', "-1" if self.paging else str(self.p))
+        html_content = html_content.replace('{page_length}', self.page_length)
         html_content = html_content.replace('{length_menu}', self.length_menu)
         
         self.html_content = html_content
