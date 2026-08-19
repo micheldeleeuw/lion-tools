@@ -237,7 +237,7 @@ class DataFrameSummary():
                     F.expr(
                         'case ' + 
                         'when ' + ' and '.join([
-                            f"{stat}__diff_perc = 0.0" for stat in stats
+                            f"ifnull({stat}__diff_perc, 0.0) = 0.0" for stat in stats
                         ] + [f"datatype__diff_perc = 0.0"]) + 
                         ' then "" ' +
                         ' else "≠" end'
