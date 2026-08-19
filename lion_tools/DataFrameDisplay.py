@@ -739,8 +739,10 @@ class DataFrameDisplay():
         elif value is None:
             return ''
         elif (
-            self.compact > 0 and isinstance(value, str) and len(value) == 32 and 
-                all(c in '0123456789abcdefABCDEF' for c in value)
+            self.compact > 0 and isinstance(value, str) and (
+                (len(value) == 32 and all(c in '0123456789abcdefABCDEF' for c in value))
+                    or
+                (len(value) == 36 and all(c in '0123456789abcdef-' for c in value))
             ):
             value = html.escape(value)
             return value[0:5] + "...." + value[-5:]
