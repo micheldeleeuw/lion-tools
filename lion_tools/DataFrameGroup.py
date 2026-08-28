@@ -1,5 +1,6 @@
 import re
 from .DataFrameOther import DataFrameOther
+from .DataFrameDisplay import DataFrameDisplay
 from pyspark.sql import DataFrame
 from pyspark.sql import Column
 import pyspark.sql.functions as F
@@ -113,7 +114,8 @@ class DataFrameGroup:
         self.df = (
             self.df
             .withColumns({
-                column: F.ifnull(F.col(column).cast("string"), F.lit("null")) for column in self.pivot_columns
+                column: F.replace(F.ifnull(F.col(column).cast("string"), F.lit("null")), F.lit("."), F.lit("_"))
+                for column in self.pivot_columns
             })
         )
 
@@ -591,6 +593,9 @@ class DataFrameGroup:
 
     def count(self, **kwargs) -> DataFrame:
         return self.agg("count(*) as count", **kwargs)
+
+    def display(self, *args, **kwargs):
+        return DataFrameDisplay.display(self.count(), *args, **kwargs)
 
     def __getattr__(self, name):
         if name in self.single_aggregation_functions():

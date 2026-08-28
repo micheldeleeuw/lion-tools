@@ -10,7 +10,6 @@ Commercial use is not permitted.
 ## Wishlist High
 - display, show schema button
 - display, show explain button
-- Copy/paste on data possible
 - fix multi line headers (compact > 1) alignment
 
 ## Wishlist Low

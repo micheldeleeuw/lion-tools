@@ -2,6 +2,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.window import Window
 from pyspark.sql import DataFrame
 from pyspark.sql.column import Column
+import html
 import inspect
 import json
 import re
@@ -58,6 +59,98 @@ class DataFrameOther:
         non_empty_columns = [col for col in df.columns if column_filling[col] == 0]
         
         return df.select(*non_empty_columns)
+
+    @staticmethod
+    def show_schema(df: DataFrame) -> None:
+        from pyspark.sql.types import ArrayType, DataType, MapType, StructType
+
+        def type_label(dtype: DataType) -> str:
+            if isinstance(dtype, ArrayType):
+                return f"array<{type_label(dtype.elementType)}>"
+            if isinstance(dtype, MapType):
+                return f"map<{type_label(dtype.keyType)}, {type_label(dtype.valueType)}>"
+            if isinstance(dtype, StructType):
+                return "struct"
+            return dtype.simpleString()
+
+        def unwrap(dtype: DataType) -> DataType:
+            # descend through array/map containers to find a struct worth expanding
+            while isinstance(dtype, (ArrayType, MapType)):
+                dtype = dtype.elementType if isinstance(dtype, ArrayType) else dtype.valueType
+            return dtype
+
+        lines = ["root"]
+
+        def walk(name: str, dtype: DataType, nullable: bool, prefix: str, is_last: bool) -> None:
+            connector = "└── " if is_last else "├── "
+            nullable_suffix = "" if nullable else " (not null)"
+            lines.append(f"{prefix}{connector}{name}: {type_label(dtype)}{nullable_suffix}")
+
+            child_prefix = prefix + ("    " if is_last else "│   ")
+            inner = unwrap(dtype)
+            if isinstance(inner, StructType):
+                fields = inner.fields
+                for i, field in enumerate(fields):
+                    walk(field.name, field.dataType, field.nullable, child_prefix, i == len(fields) - 1)
+
+        fields = df.schema.fields
+        for i, field in enumerate(fields):
+            walk(field.name, field.dataType, field.nullable, "", i == len(fields) - 1)
+
+        print("\n".join(lines))
+
+    @staticmethod
+    def show_schema_html(df: DataFrame) -> str:
+        from pyspark.sql.types import ArrayType, DataType, MapType, StructType
+
+        def type_label(dtype: DataType) -> str:
+            if isinstance(dtype, ArrayType):
+                return f"array&lt;{type_label(dtype.elementType)}&gt;"
+            if isinstance(dtype, MapType):
+                return f"map&lt;{type_label(dtype.keyType)}, {type_label(dtype.valueType)}&gt;"
+            if isinstance(dtype, StructType):
+                return "struct"
+            return html.escape(dtype.simpleString())
+
+        def unwrap(dtype: DataType) -> DataType:
+            # descend through array/map containers to find a struct worth expanding
+            while isinstance(dtype, (ArrayType, MapType)):
+                dtype = dtype.elementType if isinstance(dtype, ArrayType) else dtype.valueType
+            return dtype
+
+        def render_fields(fields) -> str:
+            items = []
+            for field in fields:
+                inner = unwrap(field.dataType)
+                nullable_suffix = "" if field.nullable else " <span class='schema-not-null'>(not null)</span>"
+                name = html.escape(field.name)
+                type_html = f"<span class='schema-type'>{type_label(field.dataType)}</span>{nullable_suffix}"
+
+                if isinstance(inner, StructType):
+                    items.append(
+                        "<li><details open>"
+                        f"<summary><span class='schema-name'>{name}</span>: {type_html}</summary>"
+                        f"{render_fields(inner.fields)}"
+                        "</details></li>"
+                    )
+                else:
+                    items.append(f"<li><span class='schema-name'>{name}</span>: {type_html}</li>")
+            return f"<ul>{''.join(items)}</ul>"
+
+        style = """
+            <style>
+                .schema-tree { font-family: Menlo, Consolas, monospace; font-size: 12px; }
+                .schema-tree ul { list-style: none; margin: 0; padding-left: 18px; }
+                .schema-tree > ul { padding-left: 0; }
+                .schema-tree li { margin: 2px 0; }
+                .schema-tree summary { cursor: pointer; }
+                .schema-tree .schema-name { font-weight: bold; }
+                .schema-tree .schema-type { color: #357abd; }
+                .schema-tree .schema-not-null { color: #999; font-style: italic; }
+            </style>
+        """
+
+        return f"<div class='schema-tree'>{style}{render_fields(df.schema.fields)}</div>"
 
     @staticmethod
     def round(df: DataFrame, precision: int = 2, columns: list[str] | None = None) -> DataFrame:

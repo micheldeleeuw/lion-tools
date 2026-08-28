@@ -17,6 +17,8 @@ name = _DataFrameOther.name
 normalize_columns = _DataFrameOther.normalize_columns
 remove_empty_columns = _DataFrameOther.remove_empty_columns
 round = _DataFrameOther.round
+show_schema = _DataFrameOther.show_schema
+show_schema_html = _DataFrameOther.show_schema_html
 sort = _DataFrameOther.sort
 sources = _DataFrameOther.sources
 transpose = _DataFrameOther.transpose
@@ -54,6 +56,8 @@ __all__ = [
     'round',
     'sections',
     'set_display_colors',
+    'show_schema',
+    'show_schema_html',
     'sort',
     'sources',
     'transpose',
