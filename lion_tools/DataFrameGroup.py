@@ -26,12 +26,13 @@ class DataFrameGroup:
         df: DataFrame, 
         *section_columns: str,
         sort_by: list[str] = [],
+        suppress_grouped_values: bool | None = None,
     ) -> DataFrame:
         from .DataFrameGroup import DataFrameGroup
 
         return (
             DataFrameGroup(df, '*', sort_by=sort_by)
-            .totals(*section_columns, sections=True)
+            .totals(*section_columns, sections=True, suppress_grouped_values=suppress_grouped_values)
             .agg()
         )
 
@@ -82,6 +83,7 @@ class DataFrameGroup:
         self.sections = False
         self.sub_totals = False
         self.grand_total = False
+        self.suppress_grouped_values = False
 
     @staticmethod
     def _normalize_name(name: str) -> str:
@@ -287,6 +289,7 @@ class DataFrameGroup:
         self._get_aggregates()
         self._rename_pivot_columns()
         self._sort_result()
+        self._suppress_grouped_values()
 
         return self.result
 
@@ -420,6 +423,23 @@ class DataFrameGroup:
 
         if not (self.sections or self.sub_totals or self.grand_total):
             self.result = self.result.drop("_totals_type")
+
+    def _suppress_grouped_values(self) -> bool:
+        if self.suppress_grouped_values:
+            # nullify values that are not the first record in a group
+            self.result = (
+                self.result
+                .withColumn(
+                    "__rownum",
+                    F.row_number().over(W.Window.partitionBy(*self.totals_by).orderBy(F.col('_rownum')))
+                )
+                .withColumns({
+                    Tools.col_name(col): F.expr(f"case when __rownum = 1 then `{Tools.col_name(col)}` else null end")
+                    for col in self.totals_by
+                })
+            )
+
+            self.result = self.result.drop("__rownum")
 
     def _get_aggregates(self) -> None:
         def apply_grouping(by, aggs, totals_type) -> DataFrame:
@@ -559,6 +579,7 @@ class DataFrameGroup:
         sections: bool | None = None,
         sub_totals: bool | None = None,
         grand_total: bool | None = None,
+        suppress_grouped_values: bool | None = None,
     ) -> "DataFrameGroup":
 
         by: list[str] = DataFrameOther.transform_column_expressions(
@@ -584,10 +605,15 @@ class DataFrameGroup:
             sub_totals = True if not (sections or sub_totals) else sub_totals
             grand_total = True if sub_totals and grand_total is None else grand_total
 
+        assert not (
+            suppress_grouped_values and not (sections or sub_totals)
+        ), "Suppressing grouped values is only supported when sections or sub_totals are enabled."
+
         self.totals_by = by
         self.sections = sections or False
         self.sub_totals = sub_totals or False
         self.grand_total = grand_total or False
+        self.suppress_grouped_values = suppress_grouped_values or False
 
         return self
 
