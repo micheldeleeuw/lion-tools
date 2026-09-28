@@ -67,6 +67,7 @@ class DataFrameDisplay():
         column_grouping_split_pattern = '__',       # pattern to split column names into column groups
         percentage_columns_pattern = r'(_perc|%)$', # regex pattern to identify percentage columns for proper formatting
         display = True,              # whether to display the table (set to False for debugging)
+        title = 'DataTable View',    # title of the display, used in the HTML <title> tag
     )
 
     new_line_placeholder = '___NEW_LINE___'
@@ -97,6 +98,7 @@ class DataFrameDisplay():
         column_grouping_split_pattern: str | None = None,
         percentage_columns_pattern: str | None = None,
         display: bool | None = None,
+        title: str | None = None,
      ):
         
         DataFrameDisplay(
@@ -115,6 +117,7 @@ class DataFrameDisplay():
             column_grouping_split_pattern=column_grouping_split_pattern,
             percentage_columns_pattern=percentage_columns_pattern,
             display=display,
+            title=title
         ).serve_out()
 
     @staticmethod
@@ -282,6 +285,7 @@ class DataFrameDisplay():
         column_grouping_split_pattern: str | None = None,
         percentage_columns_pattern: str | None = None,
         display: bool | None = None,
+        title: str | None = None,
     ):
 
         # set instance variables and apply defaults from class defaults
@@ -301,6 +305,7 @@ class DataFrameDisplay():
         self.column_grouping_split_pattern = column_grouping_split_pattern if column_grouping_split_pattern is not None else DataFrameDisplay.defaults['column_grouping_split_pattern']
         self.percentage_columns_pattern = percentage_columns_pattern if percentage_columns_pattern is not None else DataFrameDisplay.defaults['percentage_columns_pattern']
         self.to_screen = display if display is not None else DataFrameDisplay.defaults['display']
+        self.html_title = title if title is not None else DataFrameDisplay.defaults['title']
 
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
@@ -531,6 +536,7 @@ class DataFrameDisplay():
             html_content = f.read()
 
         # create html
+        html_content = html_content.replace('{html_title}', self.html_title)
         html_content = html_content.replace('{generation_date}', datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
         html_content = html_content.replace('{main_table}', self.html_table)
         html_content = html_content.replace('{columns}', self.columns_popup)
