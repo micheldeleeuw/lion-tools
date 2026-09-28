@@ -125,16 +125,17 @@ class DataFrameSummary():
         )
 
         if transpose:
-            top = (
+            return (
                 top
                 .withColumn('_transpose_id', F.concat(F.lit('occurence_'), F.lpad(F.format_number('row_number', 0), len(str(n)), '0')))
                 .withColumn('value', F.concat(F.coalesce(F.col('value'), F.lit('null')), F.lit(' ('), F.format_number('count', 0), F.lit(')')))
                 .groupBy(*by, 'column_no', 'column')
                 .pivot('_transpose_id')
                 .agg(F.first('value'))
+                .orderBy('column_no', *by)
             )
-
-        return top.orderBy('column_no', *by)
+        else:
+            return top.orderBy('column_no', *by, 'row_number')
     
     @staticmethod
     def compare_summaries(
