@@ -51,11 +51,11 @@ class DataFrameSummary():
                                 *[
                                     F.lit(None).alias(stat)
                                     if f"{stat}_{col}" not in summary_cols
-                                    else F.col(f"{stat}_{col}").cast('string').alias(stat)
+                                    else F.col(f"{stat}_{col}").try_cast('string').alias(stat)
                                     if stat in ['min', 'max']
-                                    else F.round(F.col(f"{stat}_{col}").cast('double'), round_decimals).alias(stat)
+                                    else F.round(F.col(f"{stat}_{col}").try_cast('double'), round_decimals).alias(stat)
                                     if stat in ['avg', 'avg_null', 'sum']
-                                    else F.col(f"{stat}_{col}").cast('int').alias(stat)
+                                    else F.col(f"{stat}_{col}").try_cast('int').alias(stat)
                                     for stat in stats
                                 ],
                             )
@@ -113,7 +113,7 @@ class DataFrameSummary():
                         F.struct(
                             F.lit(i).alias('column_no'),
                             F.lit(col).alias('column'),
-                            F.col(col).cast('string').alias('value')
+                            F.col(col).try_cast('string').alias('value')
                         ) for i, col in enumerate([col for col in cols if col not in by])]
                     )
                 ).alias('row')
@@ -207,7 +207,7 @@ class DataFrameSummary():
                         F.expr(f"""
                             case
                                when summary1.{stat} is null and summary2.{stat} is null
-                               then cast(null as double)
+                               then try_cast(null as double)
                                when ('{stat}' = 'min' or '{stat}' = 'max') and
                                     (summary1.datatype in ('string', 'boolean', 'date', 'timestamp')
                                      or summary2.datatype in ('string', 'boolean', 'date', 'timestamp'))
@@ -220,10 +220,10 @@ class DataFrameSummary():
                                     round(
                                         100 *
                                         (
-                                            cast(summary1.{stat} as double) - 
-                                            cast(summary2.{stat} as double)
+                                            try_cast(summary1.{stat} as double) - 
+                                            try_cast(summary2.{stat} as double)
                                         ) / 
-                                        nullif(cast(summary1.{stat} as double), 0.0),
+                                        nullif(try_cast(summary1.{stat} as double), 0.0),
                                         {round_decimals}
                                     )
                             end as {stat}__diff_perc
