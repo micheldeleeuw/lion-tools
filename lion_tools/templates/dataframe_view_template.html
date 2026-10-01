@@ -214,14 +214,14 @@
 <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
 $(document).ready(function() {
-    var filterEnabled = {filter_enabled};
-    var filterColumnIndex = {filter_column_index};
-    var filterColumnLabel = '{filter_column_label}';
+    var filterEnabled = {column_filter};
+    var FILTER_BACK = '__back__';
     var FILTER_MODE_ALL = '__all__';
     var FILTER_MODE_EMPTY = '__empty__';
+    var FILTER_MODE_NON_EMPTY = '__non_empty__';
+    var filterColumnIndex = -1;
     var filterMode = FILTER_MODE_ALL;
     var filterValue = '';
-    var filterOptionsLoaded = false;
 
     var table = $('#mainTable').DataTable({
         paging: true,
@@ -248,23 +248,26 @@ $(document).ready(function() {
             if (settings.nTable !== table.table().node()) {
                 return true;
             }
-            if (filterMode === FILTER_MODE_ALL) {
+            if (filterMode === FILTER_MODE_ALL || filterColumnIndex < 0) {
                 return true;
             }
 
-            var rowNode = table.row(dataIndex).node();
-            if (!rowNode) {
+            var cellNode = table.cell(dataIndex, filterColumnIndex).node();
+            if (!cellNode) {
                 return true;
             }
 
-            var rowCellText = $('td', rowNode)
-                .eq(filterColumnIndex)
+            var rowCellText = $(cellNode)
                 .text()
                 .replace(/\u00a0/g, ' ')
                 .trim();
 
             if (filterMode === FILTER_MODE_EMPTY) {
                 return rowCellText === '';
+            }
+
+            if (filterMode === FILTER_MODE_NON_EMPTY) {
+                return rowCellText !== '';
             }
 
             return rowCellText === filterValue;
@@ -323,25 +326,41 @@ $(document).ready(function() {
 
     if (filterEnabled) {
         filterSelect = $('<select id="valueFilter"></select>');
-        filterSelect.append($('<option></option>').val(FILTER_MODE_ALL).text('Filter ' + filterColumnLabel));
 
-        var loadFilterOptions = function() {
-            if (filterOptionsLoaded) {
-                return;
+        var getCellText = function(rowIdx, colIdx) {
+            var cellNode = table.cell(rowIdx, colIdx).node();
+            if (!cellNode) {
+                return '';
             }
-            filterOptionsLoaded = true;
+            return $(cellNode)
+                .text()
+                .replace(/\u00a0/g, ' ')
+                .trim();
+        };
+
+        var showColumnOptions = function() {
+            filterColumnIndex = -1;
+            filterMode = FILTER_MODE_ALL;
+            filterValue = '';
+            filterSelect.empty();
+            filterSelect.append($('<option></option>').val(FILTER_MODE_ALL).text('Filter column...'));
+            table.columns().every(function(colIdx) {
+                var label = $(this.header()).text().trim();
+                filterSelect.append($('<option></option>').val('c:' + colIdx).text(label));
+            });
+            filterSelect.val(FILTER_MODE_ALL);
+        };
+
+        var showValueOptions = function(colIdx, colLabel) {
+            filterColumnIndex = colIdx;
+            filterMode = FILTER_MODE_ALL;
+            filterValue = '';
 
             var distinctValues = new Set();
             var hasEmptyValue = false;
 
-            table.rows({ search: 'none' }).every(function() {
-                var textValue = $(this.node())
-                    .find('td')
-                    .eq(filterColumnIndex)
-                    .text()
-                    .replace(/\u00a0/g, ' ')
-                    .trim();
-
+            table.rows({ search: 'none' }).every(function(rowIdx) {
+                var textValue = getCellText(rowIdx, colIdx);
                 if (textValue === '') {
                     hasEmptyValue = true;
                     return;
@@ -349,8 +368,12 @@ $(document).ready(function() {
                 distinctValues.add(textValue);
             });
 
+            filterSelect.empty();
+            filterSelect.append($('<option></option>').val(FILTER_BACK).text('<- Columns'));
+            filterSelect.append($('<option></option>').val(FILTER_MODE_ALL).text(colLabel + ': (all)'));
+            filterSelect.append($('<option></option>').val(FILTER_MODE_NON_EMPTY).text(colLabel + ': (non-empty)'));
             if (hasEmptyValue) {
-                filterSelect.append($('<option></option>').val(FILTER_MODE_EMPTY).text('(empty)'));
+                filterSelect.append($('<option></option>').val(FILTER_MODE_EMPTY).text(colLabel + ': (empty)'));
             }
 
             Array.from(distinctValues)
@@ -358,27 +381,42 @@ $(document).ready(function() {
                     return a.localeCompare(b);
                 })
                 .forEach(function(value) {
-                    filterSelect.append($('<option></option>').val(value).text(value));
+                    filterSelect.append($('<option></option>').val('v:' + value).text(value));
                 });
-        };
 
-        filterSelect.on('focus mousedown touchstart', loadFilterOptions);
+            filterSelect.val(FILTER_MODE_ALL);
+        };
 
         filterSelect.on('change', function() {
             var selectedValue = $(this).val();
-            if (selectedValue === FILTER_MODE_ALL) {
+
+            if (selectedValue.indexOf('c:') === 0) {
+                var selectedOption = $(this).find('option:selected');
+                showValueOptions(parseInt(selectedValue.slice(2), 10), selectedOption.text());
+                table.draw();
+                return;
+            }
+
+            if (selectedValue === FILTER_BACK) {
+                showColumnOptions();
+            } else if (selectedValue === FILTER_MODE_ALL) {
                 filterMode = FILTER_MODE_ALL;
+                filterValue = '';
+            } else if (selectedValue === FILTER_MODE_NON_EMPTY) {
+                filterMode = FILTER_MODE_NON_EMPTY;
                 filterValue = '';
             } else if (selectedValue === FILTER_MODE_EMPTY) {
                 filterMode = FILTER_MODE_EMPTY;
                 filterValue = '';
-            } else {
+            } else if (selectedValue.indexOf('v:') === 0) {
                 filterMode = 'value';
-                filterValue = selectedValue;
+                filterValue = selectedValue.slice(2);
             }
+
             table.draw();
         });
 
+        showColumnOptions();
         $('.dataTables_filter label').before(filterSelect);
     }
 
@@ -391,8 +429,15 @@ $(document).ready(function() {
         e.preventDefault();
         table.search('');              // Clear search filter
         if (filterEnabled && filterSelect) {
+            filterColumnIndex = -1;
             filterMode = FILTER_MODE_ALL;
             filterValue = '';
+            filterSelect.empty();
+            filterSelect.append($('<option></option>').val(FILTER_MODE_ALL).text('Filter column...'));
+            table.columns().every(function(colIdx) {
+                var label = $(this.header()).text().trim();
+                filterSelect.append($('<option></option>').val('c:' + colIdx).text(label));
+            });
             filterSelect.val(FILTER_MODE_ALL);
         }
         table.order(initialOrder);     // Reset to original column sort
