@@ -417,11 +417,13 @@ $(document).ready(function() {
         });
 
         showColumnOptions();
-        $('.dataTables_filter label').before(filterSelect);
     }
 
     $('.dataTables_filter label').before(columnBtn);
     $('.dataTables_filter label').before(resetBtn);
+    if (filterEnabled && filterSelect) {
+        $('.dataTables_filter label').before(filterSelect);
+    }
     $('.dataTables_filter').append(columnList);
     
     // Reset button logic
