@@ -68,6 +68,7 @@ class DataFrameDisplay():
         percentage_columns_pattern = r'(_perc|%)$', # regex pattern to identify percentage columns for proper formatting
         display = True,              # whether to display the table (set to False for debugging)
         title = 'DataTable View',    # title of the display, used in the HTML <title> tag
+        filter_column = None,        # optional column for client-side dropdown filtering in HTML output
     )
 
     new_line_placeholder = '___NEW_LINE___'
@@ -99,6 +100,7 @@ class DataFrameDisplay():
         percentage_columns_pattern: str | None = None,
         display: bool | None = None,
         title: str | None = None,
+        filter_column: str | None = None,
      ):
         
         DataFrameDisplay(
@@ -117,7 +119,8 @@ class DataFrameDisplay():
             column_grouping_split_pattern=column_grouping_split_pattern,
             percentage_columns_pattern=percentage_columns_pattern,
             display=display,
-            title=title
+            title=title,
+            filter_column=filter_column,
         ).serve_out()
 
     @staticmethod
@@ -286,6 +289,7 @@ class DataFrameDisplay():
         percentage_columns_pattern: str | None = None,
         display: bool | None = None,
         title: str | None = None,
+        filter_column: str | None = None,
     ):
 
         # set instance variables and apply defaults from class defaults
@@ -306,6 +310,7 @@ class DataFrameDisplay():
         self.percentage_columns_pattern = percentage_columns_pattern if percentage_columns_pattern is not None else DataFrameDisplay.defaults['percentage_columns_pattern']
         self.to_screen = display if display is not None else DataFrameDisplay.defaults['display']
         self.html_title = title if title is not None else DataFrameDisplay.defaults['title']
+        self.filter_column = filter_column if filter_column is not None else DataFrameDisplay.defaults['filter_column']
 
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
@@ -329,6 +334,10 @@ class DataFrameDisplay():
         assert isinstance(self.column_grouping, bool)
         assert isinstance(self.column_grouping_split_pattern, str)
         assert isinstance(self.percentage_columns_pattern, str)
+        assert isinstance(self.filter_column, str) or self.filter_column is None
+
+        if self.filter_column is not None:
+            assert self.filter_column in self.df.columns, f"filter_column '{self.filter_column}' must be a valid DataFrame column"
 
         if self.color_rules:
             assert all(isinstance(rule, dict) for rule in self.color_rules)
@@ -342,6 +351,7 @@ class DataFrameDisplay():
 
         self.prepare_data_with_rownum()
         self.gather_column_information()
+        self.set_filter_options()
         self.collect_data_and_stats()
         self.further_limit_data_by_table_bytes()
         self.set_columns_popup()
@@ -488,6 +498,11 @@ class DataFrameDisplay():
             for col, dtype in self.dtypes
         ]))
 
+    def set_filter_options(self):
+        self.filter_enabled = self.filter_column is not None
+        self.filter_column_index = self.cols.index(self.filter_column) if self.filter_enabled else -1
+        self.filter_column_label = self.filter_column if self.filter_enabled else ''
+
     def set_length_and_width(self):
         # we recalculate the width of the table based on the statistics and headers
         # we only look at the last two header rows as we assume that the headers above them will fit without issue
@@ -545,6 +560,9 @@ class DataFrameDisplay():
         html_content = html_content.replace('{max_width}', self.max_width)
         html_content = html_content.replace('{page_length}', self.page_length)
         html_content = html_content.replace('{length_menu}', self.length_menu)
+        html_content = html_content.replace('{filter_enabled}', 'true' if self.filter_enabled else 'false')
+        html_content = html_content.replace('{filter_column_index}', str(self.filter_column_index))
+        html_content = html_content.replace('{filter_column_label}', html.escape(self.filter_column_label))
         
         self.html_content = html_content
 

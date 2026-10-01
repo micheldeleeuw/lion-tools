@@ -185,6 +185,12 @@
         position: relative;
         margin-bottom: 10px;
     }
+    #valueFilter {
+        font-size: 12px;
+        padding: 4px 8px;
+        margin-right: 10px;
+        max-width: 260px;
+    }
 
     .dataTables_wrapper .dataTables_info,
     .dataTables_wrapper .dataTables_paginate,
@@ -208,6 +214,15 @@
 <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
 $(document).ready(function() {
+    var filterEnabled = {filter_enabled};
+    var filterColumnIndex = {filter_column_index};
+    var filterColumnLabel = '{filter_column_label}';
+    var FILTER_MODE_ALL = '__all__';
+    var FILTER_MODE_EMPTY = '__empty__';
+    var filterMode = FILTER_MODE_ALL;
+    var filterValue = '';
+    var filterOptionsLoaded = false;
+
     var table = $('#mainTable').DataTable({
         paging: true,
         searching: true,
@@ -228,10 +243,39 @@ $(document).ready(function() {
     var initialOrder = table.order() ? JSON.parse(JSON.stringify(table.order())) : [];
     var initialLength = table.page.len();
 
+    if (filterEnabled) {
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+            if (settings.nTable !== table.table().node()) {
+                return true;
+            }
+            if (filterMode === FILTER_MODE_ALL) {
+                return true;
+            }
+
+            var rowNode = table.row(dataIndex).node();
+            if (!rowNode) {
+                return true;
+            }
+
+            var rowCellText = $('td', rowNode)
+                .eq(filterColumnIndex)
+                .text()
+                .replace(/\u00a0/g, ' ')
+                .trim();
+
+            if (filterMode === FILTER_MODE_EMPTY) {
+                return rowCellText === '';
+            }
+
+            return rowCellText === filterValue;
+        });
+    }
+
     // Add Reset and Column buttons
     var resetBtn = $('<button id="resetBtn">Reset</button>');
     var columnBtn = $('<button id="columnBtn">Columns</button>');
     var columnList = $('<div id="columnList"></div>');
+    var filterSelect = null;
     
     var selectButtonsDiv = $('<div class="select-buttons"></div>');
     var selectAllBtn = $('<button class="select-btn">Select All</button>');
@@ -275,15 +319,82 @@ $(document).ready(function() {
     columnList.append(columnItemsContainer);
     columnList.append(buttonsContainer);
     
-    // Insert Reset button first, then Column button so Reset ends up on the far left
-    $('.dataTables_filter label').before(resetBtn);
+    // Insert Column first and then Reset so Reset sits between Columns and Search.
+
+    if (filterEnabled) {
+        filterSelect = $('<select id="valueFilter"></select>');
+        filterSelect.append($('<option></option>').val(FILTER_MODE_ALL).text('Filter ' + filterColumnLabel));
+
+        var loadFilterOptions = function() {
+            if (filterOptionsLoaded) {
+                return;
+            }
+            filterOptionsLoaded = true;
+
+            var distinctValues = new Set();
+            var hasEmptyValue = false;
+
+            table.rows({ search: 'none' }).every(function() {
+                var textValue = $(this.node())
+                    .find('td')
+                    .eq(filterColumnIndex)
+                    .text()
+                    .replace(/\u00a0/g, ' ')
+                    .trim();
+
+                if (textValue === '') {
+                    hasEmptyValue = true;
+                    return;
+                }
+                distinctValues.add(textValue);
+            });
+
+            if (hasEmptyValue) {
+                filterSelect.append($('<option></option>').val(FILTER_MODE_EMPTY).text('(empty)'));
+            }
+
+            Array.from(distinctValues)
+                .sort(function(a, b) {
+                    return a.localeCompare(b);
+                })
+                .forEach(function(value) {
+                    filterSelect.append($('<option></option>').val(value).text(value));
+                });
+        };
+
+        filterSelect.on('focus mousedown touchstart', loadFilterOptions);
+
+        filterSelect.on('change', function() {
+            var selectedValue = $(this).val();
+            if (selectedValue === FILTER_MODE_ALL) {
+                filterMode = FILTER_MODE_ALL;
+                filterValue = '';
+            } else if (selectedValue === FILTER_MODE_EMPTY) {
+                filterMode = FILTER_MODE_EMPTY;
+                filterValue = '';
+            } else {
+                filterMode = 'value';
+                filterValue = selectedValue;
+            }
+            table.draw();
+        });
+
+        $('.dataTables_filter label').before(filterSelect);
+    }
+
     $('.dataTables_filter label').before(columnBtn);
+    $('.dataTables_filter label').before(resetBtn);
     $('.dataTables_filter').append(columnList);
     
     // Reset button logic
     resetBtn.on('click', function(e) {
         e.preventDefault();
         table.search('');              // Clear search filter
+        if (filterEnabled && filterSelect) {
+            filterMode = FILTER_MODE_ALL;
+            filterValue = '';
+            filterSelect.val(FILTER_MODE_ALL);
+        }
         table.order(initialOrder);     // Reset to original column sort
         table.page.len(initialLength); // Reset to original page length
         table.draw();                  // Redraw the table to apply changes
