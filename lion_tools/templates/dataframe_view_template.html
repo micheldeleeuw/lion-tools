@@ -93,6 +93,20 @@
     #columnList.show {
         display: block;
     }
+    .column-search-container {
+        padding: 10px 10px 0 10px;
+    }
+    #columnSearch {
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 12px;
+        padding: 4px 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .column-item.hidden {
+        display: none;
+    }
     .column-items-container {
         max-height: 350px;
         overflow-y: auto;
@@ -319,6 +333,11 @@ $(document).ready(function() {
     buttonsContainer.append(selectButtonsRow);
     buttonsContainer.append(copyButtonsRow);
     
+    var columnSearchContainer = $('<div class="column-search-container"></div>');
+    var columnSearch = $('<input type="text" id="columnSearch" placeholder="Search columns..." autocomplete="off">');
+    columnSearchContainer.append(columnSearch);
+
+    columnList.append(columnSearchContainer);
     columnList.append(columnItemsContainer);
     columnList.append(buttonsContainer);
     
@@ -451,6 +470,26 @@ $(document).ready(function() {
     columnBtn.on('click', function(e) {
         e.stopPropagation();
         columnList.toggleClass('show');
+        if (columnList.hasClass('show')) {
+            columnSearch.trigger('focus');
+        }
+    });
+
+    columnSearch.on('click', function(e) {
+        e.stopPropagation();
+    });
+
+    // Keep keystrokes from reaching DataTables key handling
+    columnSearch.on('keydown keyup keypress', function(e) {
+        e.stopPropagation();
+    });
+
+    columnSearch.on('input', function() {
+        var term = $(this).val().toLowerCase();
+        columnItemsContainer.find('.column-item').each(function() {
+            var name = String($(this).data('column-name')).toLowerCase();
+            $(this).toggleClass('hidden', name.indexOf(term) === -1);
+        });
     });
     
     columnList.on('click', '.column-item', function(e) {
@@ -460,12 +499,12 @@ $(document).ready(function() {
     
     selectAllBtn.on('click', function(e) {
         e.stopPropagation();
-        $('.column-item').addClass('selected');
+        $('.column-item:not(.hidden)').addClass('selected');
     });
     
     deselectAllBtn.on('click', function(e) {
         e.stopPropagation();
-        $('.column-item').removeClass('selected');
+        $('.column-item:not(.hidden)').removeClass('selected');
     });
     
     function copyToClipboard(format, button) {
