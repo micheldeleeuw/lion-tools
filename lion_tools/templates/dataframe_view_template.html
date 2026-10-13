@@ -50,32 +50,65 @@
         border-radius: 8px;
     }
     
-    /* New Reset Button Styles */
-    #resetBtn {
-        padding: 4px 12px;
-        background: #95a5a6;
-        color: white;
-        border: none;
+    /* Toolbar buttons */
+    #resetBtn, #columnBtn, #exportBtn {
+        height: 28px;
+        padding: 0 12px;
+        background: #fafbfd;
+        color: #5f7ea8;
+        border: 1px solid #5f7ea8;
         border-radius: 4px;
         cursor: pointer;
-        font-size: 13px;
-        margin-right: 10px;
+        font-size: 12px;
+        margin: 0;
     }
-    #resetBtn:hover {
-        background: #7f8c8d;
+    #resetBtn:hover, #columnBtn:hover, #exportBtn:hover {
+        background: #f0f4fa;
     }
-    #columnBtn {
-        padding: 4px 12px;
-        background: #5f7ea8;
-        color: white;
-        border: none;
+    .export-wrapper, .column-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+    .column-wrapper {
+        margin-left: 3px;
+    }
+    #exportMenu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        margin-top: 5px;
+        background: white;
+        border: 1px solid #ddd;
         border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-        margin-right: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        z-index: 1000;
+        min-width: 110px;
+        padding: 4px 0;
     }
-    #columnBtn:hover {
-        background: #357abd;
+    #exportMenu.show {
+        display: block;
+    }
+    .export-item {
+        padding: 6px 14px;
+        font-size: 12px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .export-item:hover {
+        background: #f5f5f5;
+    }
+    #exportToast {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: #2c3e50;
+        color: white;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 2000;
+        display: none;
     }
     #columnList {
         display: none;
@@ -85,10 +118,10 @@
         border-radius: 4px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         z-index: 1000;
-        min-width: 200px;
+        min-width: 260px;
         top: 100%;
         margin-top: 5px;
-        right: 0;
+        left: 0;
     }
     #columnList.show {
         display: block;
@@ -161,60 +194,73 @@
         flex-direction: row;
         gap: 5px;
     }
-    .select-btn {
+    .select-btn, .copy-btn {
         flex: 1;
-        padding: 6px 8px;
-        background: #888;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 11px;
-        text-align: center;
-    }
-    .select-btn:hover {
-        background: #666;
-    }
-    .copy-btn {
-        flex: 1;
-        padding: 6px 8px;
-        background: #50e3c2;
-        color: white;
-        border: none;
+        min-width: 0;
+        height: 28px;
+        padding: 0 4px;
+        background: #fafbfd;
+        color: #5f7ea8;
+        border: 1px solid #5f7ea8;
         border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
         font-weight: normal;
         text-align: center;
+        white-space: nowrap;
     }
-    .copy-btn:hover {
-        background: #3ac2a0;
+    .select-btn:hover, .copy-btn:hover {
+        background: #f0f4fa;
     }
-    .copy-btn:active {
-        background: #2fa889;
+    .select-btn:active, .copy-btn:active {
+        background: #e8eef8;
     }
-    .dataTables_filter {
+    .dt-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        margin-bottom: 15px;
+    }
+    .dt-toolbar-left, .dt-toolbar-right {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+    .dt-toolbar .dataTables_length,
+    .dt-toolbar .dataTables_filter {
+        float: none;
+        margin: 0;
+        padding: 0;
+    }
+    .dt-toolbar .dataTables_length label,
+    .dt-toolbar .dataTables_filter label {
         display: flex;
         align-items: center;
-        position: relative;
-        margin-bottom: 10px;
+        gap: 6px;
+        margin: 0;
+        font-size: 12px;
+    }
+    .dt-toolbar select,
+    .dt-toolbar .dataTables_filter input {
+        box-sizing: border-box;
+        height: 28px;
+        margin: 0;
+        padding: 0 8px;
+        font-size: 12px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: white;
     }
     #valueFilter {
-        font-size: 12px;
-        padding: 4px 8px;
-        margin-right: 10px;
         max-width: 260px;
     }
 
     .dataTables_wrapper .dataTables_info,
-    .dataTables_wrapper .dataTables_paginate,
-    .dataTables_wrapper .dataTables_length,
-    .dataTables_wrapper .dataTables_filter label {
+    .dataTables_wrapper .dataTables_paginate {
         font-size: 12px;
-    }
-    .dataTables_wrapper .dataTables_length select {
-        font-size: 11px;
-        padding: 2px 4px;
     }
 </style>
 </head>
@@ -292,6 +338,13 @@ $(document).ready(function() {
     var resetBtn = $('<button id="resetBtn">Reset</button>');
     var columnBtn = $('<button id="columnBtn">Columns</button>');
     var columnList = $('<div id="columnList"></div>');
+    var exportBtn = $('<button id="exportBtn">Export</button>');
+    var exportMenu = $('<div id="exportMenu"></div>');
+    exportMenu.append('<div class="export-item" data-export="excel">Excel</div>');
+    exportMenu.append('<div class="export-item" data-export="markdown">Markdown</div>');
+    var exportWrapper = $('<span class="export-wrapper"></span>').append(exportBtn).append(exportMenu);
+    var exportToast = $('<div id="exportToast"></div>');
+    $('body').append(exportToast);
     var filterSelect = null;
     
     var selectButtonsDiv = $('<div class="select-buttons"></div>');
@@ -438,12 +491,19 @@ $(document).ready(function() {
         showColumnOptions();
     }
 
-    $('.dataTables_filter label').before(columnBtn);
-    $('.dataTables_filter label').before(resetBtn);
+    var wrapper = $(table.table().container());
+    var columnWrapper = $('<span class="column-wrapper"></span>').append(columnBtn).append(columnList);
+    var toolbarLeft = $('<div class="dt-toolbar-left"></div>')
+        .append(wrapper.find('.dataTables_length'))
+        .append(columnWrapper)
+        .append(exportWrapper)
+        .append(resetBtn);
+    var toolbarRight = $('<div class="dt-toolbar-right"></div>');
     if (filterEnabled && filterSelect) {
-        $('.dataTables_filter label').before(filterSelect);
+        toolbarRight.append(filterSelect);
     }
-    $('.dataTables_filter').append(columnList);
+    toolbarRight.append(wrapper.find('.dataTables_filter'));
+    $('<div class="dt-toolbar"></div>').append(toolbarLeft).append(toolbarRight).prependTo(wrapper);
     
     // Reset button logic
     resetBtn.on('click', function(e) {
@@ -469,6 +529,7 @@ $(document).ready(function() {
     // Toggle column list on button click
     columnBtn.on('click', function(e) {
         e.stopPropagation();
+        exportMenu.removeClass('show');
         columnList.toggleClass('show');
         if (columnList.hasClass('show')) {
             columnSearch.trigger('focus');
@@ -548,11 +609,15 @@ $(document).ready(function() {
             try {
                 var successful = document.execCommand('copy');
                 if (successful) {
-                    var originalHtml = button.html();
+                    // keep the label in data so a second click during the 1.5s window can't capture 'Copied!' as the label
+                    if (button.data('label') === undefined) {
+                        button.data('label', button.html());
+                    }
+                    clearTimeout(button.data('timer'));
                     button.html('✓ Copied!');
-                    setTimeout(function() {
-                        button.html(originalHtml);
-                    }, 1500);
+                    button.data('timer', setTimeout(function() {
+                        button.html(button.data('label'));
+                    }, 1500));
                 } else {
                     alert('Copy failed. Text: ' + columnString);
                 }
@@ -575,6 +640,160 @@ $(document).ready(function() {
     $(document).on('click', function(e) {
         if (!$(e.target).closest('#columnBtn, #columnList').length) {
             columnList.removeClass('show');
+        }
+        if (!$(e.target).closest('#exportBtn, #exportMenu').length) {
+            exportMenu.removeClass('show');
+        }
+    });
+
+    function showToast(message) {
+        exportToast.text(message).stop(true, true).fadeIn(150).delay(2000).fadeOut(300);
+    }
+
+    function cellToText(raw) {
+        if (raw === null || raw === undefined) {
+            return '';
+        }
+        var body = new DOMParser()
+            .parseFromString(String(raw).replace(/<br\s*\/?>/gi, '\n'), 'text/html')
+            .body;
+        // the summary is only a truncated preview of the expandable content
+        $(body).find('summary').remove();
+        return $(body).text().replace(/\u00a0/g, ' ').trim();
+    }
+
+    function getExportHeaders(colIdxs) {
+        var levels = [];
+        $(table.table().header()).find('tr').each(function() {
+            var cells = [];
+            $(this).children('th').each(function() {
+                var span = parseInt($(this).attr('colspan') || '1', 10);
+                var text = $(this).text().replace(/\u00a0/g, ' ').trim();
+                for (var s = 0; s < span; s++) {
+                    cells.push(text);
+                }
+            });
+            levels.push(cells);
+        });
+
+        var totalCols = table.columns().indexes().length;
+        var usable = levels.filter(function(cells) {
+            return cells.length === totalCols || cells.length === colIdxs.length;
+        });
+
+        return colIdxs.map(function(colIdx, k) {
+            var parts = usable.map(function(cells) {
+                return cells.length === totalCols ? cells[colIdx] : cells[k];
+            });
+            if (parts.length === 0) {
+                parts = [$(table.column(colIdx).header()).text().replace(/\u00a0/g, ' ').trim()];
+            }
+            return parts.filter(function(part, i) {
+                return part !== '' && (i === 0 || part !== parts[i - 1]);
+            }).join(' ');
+        });
+    }
+
+    function getExportData() {
+        var colIdxs = table.columns().indexes().toArray().filter(function(colIdx) {
+            return table.column(colIdx).visible();
+        });
+        var numeric = colIdxs.map(function(colIdx) {
+            return $(table.column(colIdx).header()).hasClass('dt-right');
+        });
+        var rows = table.rows({ search: 'applied', order: 'applied' }).data().toArray().map(function(row) {
+            return colIdxs.map(function(colIdx, k) {
+                var text = cellToText(row[colIdx]);
+                if (numeric[k] && /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(text)) {
+                    return Number(text);
+                }
+                return text;
+            });
+        });
+        return { headers: getExportHeaders(colIdxs), numeric: numeric, rows: rows };
+    }
+
+    function copyText(text) {
+        var textarea = $('<textarea>');
+        textarea.val(text);
+        textarea.css({ position: 'fixed', top: 0, left: 0, width: '2em', height: '2em', opacity: 0 });
+        $('body').append(textarea);
+        textarea[0].select();
+        var successful = false;
+        try {
+            successful = document.execCommand('copy');
+        } catch (err) {
+            successful = false;
+        }
+        textarea.remove();
+        return successful;
+    }
+
+    function exportToExcel() {
+        // loaded on first use so it can't delay or break the table setup
+        if (typeof XLSX !== 'undefined') {
+            writeExcel();
+            return;
+        }
+        showToast('Preparing Excel export...');
+        $.ajax({
+            url: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+            dataType: 'script',
+            cache: true
+        }).done(writeExcel).fail(function() {
+            alert('Excel export library could not be loaded.');
+        });
+    }
+
+    function writeExcel() {
+        var data = getExportData();
+        var sheet = XLSX.utils.aoa_to_sheet([data.headers].concat(data.rows));
+        var book = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(book, sheet, 'Data');
+        var fileName = (document.title || 'dataframe').replace(/[^\w\- ]+/g, '_').trim() || 'dataframe';
+        var base64 = XLSX.write(book, { bookType: 'xlsx', type: 'base64' });
+        // a data URI anchor is what the notebook download button uses; blob downloads get no save dialog there
+        var link = document.createElement('a');
+        link.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + base64;
+        link.download = fileName + '.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function exportToMarkdown() {
+        var data = getExportData();
+        var escapeCell = function(value) {
+            return String(value).replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+        };
+        var lines = [
+            '| ' + data.headers.map(escapeCell).join(' | ') + ' |',
+            '| ' + data.numeric.map(function(isNumeric) { return isNumeric ? '---:' : '---'; }).join(' | ') + ' |'
+        ];
+        data.rows.forEach(function(row) {
+            lines.push('| ' + row.map(escapeCell).join(' | ') + ' |');
+        });
+        var markdown = lines.join('\n');
+        if (copyText(markdown)) {
+            showToast('Markdown table copied to memory');
+        } else {
+            alert('Copy failed.');
+        }
+    }
+
+    exportBtn.on('click', function(e) {
+        e.stopPropagation();
+        columnList.removeClass('show');
+        exportMenu.toggleClass('show');
+    });
+
+    exportMenu.on('click', '.export-item', function(e) {
+        e.stopPropagation();
+        exportMenu.removeClass('show');
+        if ($(this).data('export') === 'excel') {
+            exportToExcel();
+        } else {
+            exportToMarkdown();
         }
     });
 

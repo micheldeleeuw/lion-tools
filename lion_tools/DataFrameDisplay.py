@@ -570,7 +570,7 @@ class DataFrameDisplay():
                     width='99.9%' 
                     height='{max_height}px'
                     frameborder='0'
-                    sandbox='allow-scripts allow-same-origin' 
+                    sandbox='allow-scripts allow-same-origin allow-downloads' 
                     allow='clipboard-write'
                     style='background: #f0f0f0; padding: 10px; border: 1px solid #ddd; overflow-y: hidden; overflow-x: auto; display: block;'>
             </iframe>
