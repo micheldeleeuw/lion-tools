@@ -517,8 +517,10 @@ class DataFrameDisplay():
             header_0_width = _len(col_group[1]) + 6 # +6 for the group column padding
             total_width += max(header_0_width, group_column_width)
             
-        if total_width * 9 + 50 < 550:
-            self.max_width = '550px'
+        # minimal width at which the toolbar (entries, buttons, filter, search) fits on one row
+        min_width = 760 if self.column_filter else 620
+        if total_width * 9 + 50 < min_width:
+            self.max_width = f'{min_width}px'
         else:
             self.max_width = str(total_width * 9 + 50) + 'px'  # rough estimate of width in pixels
 
