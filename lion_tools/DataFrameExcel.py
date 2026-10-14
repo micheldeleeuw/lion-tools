@@ -5,7 +5,7 @@ import math
 import os
 from datetime import datetime
 from pyspark.sql import DataFrame
-from .settings import LION_TOOLS_COCKPIT_PATH, LION_TOOLS_TMP_PATH
+from .settings import LION_TOOLS_TMP_PATH
 from .DataFrameOther import DataFrameOther
 import pyspark.sql.functions as F
 import base64
@@ -22,15 +22,6 @@ class DataFrameExcel:
         if passthrough:
             return df
 
-    @staticmethod
-    def excel_cockpit(df, *dfs: list, name: str = None, passthrough: bool = False) -> None | DataFrame:
-        from .DataFrameExcel import DataFrameExcel
-        
-        DataFrameExcel.to_cockpit(*([df] + list(dfs)), name=name)
-    
-        if passthrough:
-            return df
-    
     @classmethod
     def examples(cls):
         Tools.display(HTML(Tools.load_file("dataframe_excel_examples.html", type='template')))
@@ -80,18 +71,6 @@ class DataFrameExcel:
         cls._write_excel(*dfs, path=path)
 
         cls.download_button(path=path)
-
-    @classmethod
-    def to_cockpit(
-        cls,
-        *dfs: list,
-        name: str = None,
-    ):
-        name = name or "excel_export"
-        name = "_lion_tools_tmp_" + name + "_" + datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        path = str(LION_TOOLS_COCKPIT_PATH.joinpath(f"{name}.xlsx"))
-        path = path.replace('.xlsx.xlsx', '.xlsx')  # in case the user already added .xlsx in the name
-        cls._write_excel(*dfs, path=path)
 
     @classmethod
     def to_file(

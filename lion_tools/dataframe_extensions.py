@@ -4,7 +4,6 @@ from .DataFrameOther import DataFrameOther as _DataFrameOther
 from .DataFrameGroup import DataFrameGroup as _DataFrameGroup
 from .DataFrameSummary import DataFrameSummary as _DataFrameSummary
 from .DataFrameTap import DataFrameTap as _DataFrameTap
-from .Cockpit import Cockpit as _Cockpit
 
 # DataFrame extensions
 # display
@@ -25,7 +24,6 @@ transpose = _DataFrameOther.transpose
 
 # excel
 excel = _DataFrameExcel.excel
-excel_cockpit = _DataFrameExcel.excel_cockpit
 
 #group
 group = _DataFrameGroup.group
@@ -40,15 +38,11 @@ top = _DataFrameSummary.top
 tap = _DataFrameTap.tap
 tap_end = _DataFrameTap.tap_end
 
-# cockpit
-to_cockpit = _Cockpit.to_cockpit
-
 __all__ = [
     'compare_summaries',
     'display',
     'examples',
     'excel',
-    'excel_cockpit',
     'group',
     'name',
     'normalize_columns',
@@ -65,5 +59,4 @@ __all__ = [
     'tap',
     'tap_end',
     'top',
-    'to_cockpit'
 ]

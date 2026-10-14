@@ -18,7 +18,7 @@ import re
 
 class DataFrameDisplay():
 
-    # all defaults for the display and disply to cockpit functions are ajustable
+    # all defaults for the display function are ajustable
     # the are defined here to be overwritten by the user
     color_codes_colors = [
         # Grays
@@ -49,17 +49,14 @@ class DataFrameDisplay():
     ]
 
     defaults = dict(
-        name = None,                 # name of the display, used for the tab name in the cockpit
         passthrough = False,         # should the dataframe be returned for chaining after display?
         compact = 0,                 # 1-3, should the display be compacted to make row less wide?
-        add_time_to_name = False,    # should time be added to the name of the display??
         n = 1001,                    # number of rows tot diplay
         p = 15,                      # number of rows per page
         paging = True,               # should the display be paged?
         file_path = None,            # save the display to the file path
         sort = None,                 # column(s) to sort by before display, (list of) string or integers
         max_table_bytes = 200000,    # 500000, the maximum size of the table in bytes that will be displayed
-        lazy = True,                 # should cockpit displays be lazy?
         color_rules = [],            # list of dicts with rules to color the cells
         pretty_headers = False,      # should the headers be prettified?
         format_totals = True,        # should the totals rows be formatted with a different style to make them recognizable?

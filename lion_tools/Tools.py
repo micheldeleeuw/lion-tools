@@ -1,6 +1,5 @@
 import os
 import pathlib
-from .settings import LION_TOOLS_COCKPIT_PATH
 from IPython.display import display as ipython_display
 
 
@@ -37,10 +36,6 @@ class Tools():
     def load_file(name: str, type='template') -> str:
         if type == 'template':
             path = pathlib.Path(__file__).parent / "templates" / name
-        elif type == 'cockpit_json':
-            path = LION_TOOLS_COCKPIT_PATH.joinpath(name + ".json")
-        elif type == 'cockpit_html':
-            path = LION_TOOLS_COCKPIT_PATH.joinpath(name + ".html")
         else:
             path=name
 
@@ -62,7 +57,7 @@ class Tools():
                 _display = eval("display")
             except:
                 raise Exception(
-                    "Could not find the display function to render the cockpit in Databricks."
+                    "Could not find the display function in Databricks."
                 )
             else:
                 _display(content)
