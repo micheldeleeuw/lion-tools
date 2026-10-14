@@ -190,39 +190,90 @@
         background: #cfdcf0;
     }
     .buttons-container {
-        padding: 10px;
+        padding: 10px 12px 12px;
         border-top: 1px solid #e0e0e0;
-        background: white;
+        background: #fafbfd;
+        border-radius: 0 0 4px 4px;
         position: sticky;
         bottom: 0;
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 10px;
     }
-    .button-row {
+    .selection-row {
         display: flex;
-        flex-direction: row;
-        gap: 5px;
+        align-items: center;
+        gap: 4px;
     }
-    .select-btn, .copy-btn {
-        flex: 1;
-        min-width: 0;
-        height: 28px;
-        padding: 0 4px;
-        background: #fafbfd;
+    .select-btn {
+        padding: 2px 6px;
+        background: none;
         color: #5f7ea8;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 12px;
+        white-space: nowrap;
+    }
+    .select-btn:hover {
+        background: #e8eef8;
+        color: #2f4a70;
+    }
+    .selection-count {
+        margin-left: auto;
+        color: #888;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .apply-btn {
+        height: 32px;
+        background: #5f7ea8;
+        color: white;
         border: 1px solid #5f7ea8;
         border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
-        font-weight: normal;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+        transition: background 0.15s;
+    }
+    .apply-btn:hover {
+        background: #4f6d96;
+    }
+    .apply-btn:active {
+        background: #43607f;
+    }
+    .copy-group {
+        display: flex;
+    }
+    .copy-btn {
+        flex: 1;
+        min-width: 0;
+        height: 28px;
+        padding: 0 4px;
+        margin-left: -1px;
+        background: white;
+        color: #5f7ea8;
+        border: 1px solid #b8c7dc;
+        border-radius: 0;
+        cursor: pointer;
+        font-size: 12px;
         text-align: center;
         white-space: nowrap;
     }
-    .select-btn:hover, .copy-btn:hover {
-        background: #f0f4fa;
+    .copy-btn:first-child {
+        margin-left: 0;
+        border-radius: 4px 0 0 4px;
     }
-    .select-btn:active, .copy-btn:active {
+    .copy-btn:last-child {
+        border-radius: 0 4px 4px 0;
+    }
+    .copy-btn:hover {
+        background: #f0f4fa;
+        border-color: #5f7ea8;
+        position: relative;
+    }
+    .copy-btn:active {
         background: #e8eef8;
     }
     .dt-toolbar {
@@ -275,7 +326,8 @@
         box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
     }
     #resetBtn:focus-visible, #columnBtn:focus-visible, #exportBtn:focus-visible,
-    .select-btn:focus-visible, .copy-btn:focus-visible {
+    .select-btn:focus-visible, .copy-btn:focus-visible, .apply-btn:focus-visible {
+        position: relative;
         outline: none;
         box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
     }
@@ -391,21 +443,31 @@ $(document).ready(function() {
     
     var buttonsContainer = $('<div class="buttons-container"></div>');
     
-    var selectButtonsRow = $('<div class="button-row"></div>');
-    var selectAllBtn = $('<button class="select-btn">Select All</button>');
-    var deselectAllBtn = $('<button class="select-btn">Deselect All</button>');
+    var selectButtonsRow = $('<div class="selection-row"></div>');
+    var selectAllBtn = $('<button class="select-btn">Select all</button>');
+    var deselectAllBtn = $('<button class="select-btn">Deselect all</button>');
+    var selectionCount = $('<span class="selection-count"></span>');
     selectButtonsRow.append(selectAllBtn);
     selectButtonsRow.append(deselectAllBtn);
+    selectButtonsRow.append(selectionCount);
     
-    var copyButtonsRow = $('<div class="button-row"></div>');
-    var copyBtn1 = $('<button class="copy-btn" data-format="simple">Copy 1</button>');
-    var copyBtn2 = $('<button class="copy-btn" data-format="quoted">Copy 2</button>');
-    var copyBtn3 = $('<button class="copy-btn" data-format="quoted-newline">Copy 3</button>');
+    var applyBtn = $('<button class="apply-btn" title="Show only the selected columns">Apply</button>');
+    var copyButtonsRow = $('<div class="copy-group"></div>');
+    var copyBtn1 = $('<button class="copy-btn" data-format="simple" title="Copy names: a, b, c">Copy 1</button>');
+    var copyBtn2 = $('<button class="copy-btn" data-format="quoted" title="Copy names: &quot;a&quot;, &quot;b&quot;, &quot;c&quot;">Copy 2</button>');
+    var copyBtn3 = $('<button class="copy-btn" data-format="quoted-newline" title="Copy names: one quoted name per line">Copy 3</button>');
     copyButtonsRow.append(copyBtn1);
     copyButtonsRow.append(copyBtn2);
     copyButtonsRow.append(copyBtn3);
     
+    function updateSelectionCount() {
+        var items = columnItemsContainer.find('.column-item');
+        selectionCount.text(items.filter('.selected').length + ' of ' + items.length + ' selected');
+    }
+    updateSelectionCount();
+    
     buttonsContainer.append(selectButtonsRow);
+    buttonsContainer.append(applyBtn);
     buttonsContainer.append(copyButtonsRow);
     
     var columnSearchContainer = $('<div class="column-search-container"></div>');
@@ -439,6 +501,9 @@ $(document).ready(function() {
             filterSelect.empty();
             filterSelect.append($('<option></option>').val(FILTER_MODE_ALL).text('Filter column...'));
             table.columns().every(function(colIdx) {
+                if (!this.visible()) {
+                    return;
+                }
                 var label = $(this.header()).text().trim();
                 filterSelect.append($('<option></option>').val('c:' + colIdx).text(label));
             });
@@ -531,6 +596,11 @@ $(document).ready(function() {
     resetBtn.on('click', function(e) {
         e.preventDefault();
         table.search('');              // Clear search filter
+        options.forEach(function(option, idx) {
+            table.column(idx).visible(true, false);
+        });
+        $(table.table().node()).css('width', '100%');
+        table.columns.adjust();
         if (filterEnabled && filterSelect) {
             filterColumnIndex = -1;
             filterMode = FILTER_MODE_ALL;
@@ -538,6 +608,9 @@ $(document).ready(function() {
             filterSelect.empty();
             filterSelect.append($('<option></option>').val(FILTER_MODE_ALL).text('Filter column...'));
             table.columns().every(function(colIdx) {
+                if (!this.visible()) {
+                    return;
+                }
                 var label = $(this.header()).text().trim();
                 filterSelect.append($('<option></option>').val('c:' + colIdx).text(label));
             });
@@ -578,16 +651,19 @@ $(document).ready(function() {
     columnList.on('click', '.column-item', function(e) {
         e.stopPropagation();
         $(this).toggleClass('selected');
+        updateSelectionCount();
     });
     
     selectAllBtn.on('click', function(e) {
         e.stopPropagation();
         $('.column-item:not(.hidden)').addClass('selected');
+        updateSelectionCount();
     });
     
     deselectAllBtn.on('click', function(e) {
         e.stopPropagation();
         $('.column-item:not(.hidden)').removeClass('selected');
+        updateSelectionCount();
     });
     
     function copyToClipboard(format, button) {
@@ -657,6 +733,33 @@ $(document).ready(function() {
         e.stopPropagation();
         var format = $(this).data('format');
         copyToClipboard(format, $(this));
+    });
+
+    columnList.on('click', '.apply-btn', function(e) {
+        e.stopPropagation();
+        // item order equals DataTables column order; the hidden rownum column is not in the list
+        var selected = columnItemsContainer.find('.column-item').map(function() {
+            return $(this).hasClass('selected');
+        }).get();
+
+        if (selected.indexOf(true) === -1) {
+            alert('No columns selected');
+            return;
+        }
+
+        selected.forEach(function(isSelected, idx) {
+            table.column(idx).visible(isSelected, false);
+        });
+        // a column subset is sized to its content instead of stretched over the full width
+        $(table.table().node()).css({ width: selected.every(Boolean) ? '100%' : 'auto', marginLeft: 0 });
+        table.columns.adjust().draw(false);
+
+        if (filterEnabled && filterSelect && filterColumnIndex >= 0 && !table.column(filterColumnIndex).visible()) {
+            showColumnOptions();
+            table.draw(false);
+        }
+
+        columnList.removeClass('show');
     });
     
     $(document).on('click', function(e) {
@@ -775,12 +878,21 @@ $(document).ready(function() {
         var fileName = (document.title || 'dataframe').replace(/[^\w\- ]+/g, '_').trim() || 'dataframe';
         var base64 = XLSX.write(book, { bookType: 'xlsx', type: 'base64' });
         // a data URI anchor is what the notebook download button uses; blob downloads get no save dialog there
-        var link = document.createElement('a');
+        // start the download from the parent document when same-origin, like the notebook download button does
+        var host = document;
+        try {
+            if (window.parent !== window && window.parent.document) {
+                host = window.parent.document;
+            }
+        } catch (err) {
+            host = document;
+        }
+        var link = host.createElement('a');
         link.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + base64;
         link.download = fileName + '.xlsx';
-        document.body.appendChild(link);
+        host.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        host.body.removeChild(link);
     }
 
     function exportToMarkdown() {
