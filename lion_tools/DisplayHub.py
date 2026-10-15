@@ -7,6 +7,7 @@ from .Tools import Tools
 import datetime
 
 CONFIG_NAME = "lion_tools_hub.json"
+DATA_NAME = "hub_data.js"
 MAX_TABS = 6
 MAX_OUTPUTS = 50
 
@@ -51,7 +52,7 @@ class DisplayHub():
     def _delete_unreferenced_outputs(self):
         referenced_files = {o["filename"] for o in self.config["outputs"]}
         for file in Path(self.display_hub_path).glob("*"):
-            if file.name not in referenced_files and file.name != CONFIG_NAME and file.name != "index.html":
+            if file.name not in referenced_files and file.name not in (CONFIG_NAME, DATA_NAME, "index.html"):
                 file.unlink()
 
     def add_output(self, item: Any, name: str, type: str='html'):
@@ -93,6 +94,10 @@ class DisplayHub():
         )
         with open(self.master_html_path, "w", encoding="utf-8") as f:
             f.write(html)
+
+        # the open index.html polls this script for new outputs (fetch of json is blocked on file://)
+        with open(Path(self.display_hub_path) / DATA_NAME, "w", encoding="utf-8") as f:
+            f.write(f"window.LION_HUB_OUTPUTS = {outputs_json};")
 
         self._delete_unreferenced_outputs()
 

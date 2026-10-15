@@ -162,10 +162,19 @@ function formatTime(iso) {
   return d && !isNaN(d) ? timeFormat.format(d) : '';
 }
 
-const items = OUTPUTS.map(o => ({
-  filename: o.filename, name: o.name, when: formatWhen(o.timestamp), time: formatTime(o.timestamp),
-}));
-const byFile = Object.fromEntries(items.map(i => [i.filename, i]));
+const items = [];
+const byFile = {};
+
+function toItem(o) {
+  return { filename: o.filename, name: o.name, when: formatWhen(o.timestamp), time: formatTime(o.timestamp) };
+}
+
+function setItems(outputs) {
+  items.splice(0, items.length, ...outputs.map(toItem));
+  for (const k of Object.keys(byFile)) delete byFile[k];
+  for (const i of items) byFile[i.filename] = i;
+}
+setItems(OUTPUTS);
 
 function escapeHtml(s) {
   const el = document.createElement('div');
@@ -235,8 +244,16 @@ function render() {
 }
 
 const picker = document.getElementById('picker');
+let ts = null;
+
+function fillFallbackPicker() {
+  picker.innerHTML = '<option value="">Open a display...</option>' +
+    items.map(i => '<option value="' + escapeHtml(i.filename) + '">' + escapeHtml(i.name) +
+      (i.when ? ' - ' + escapeHtml(i.when) : '') + '</option>').join('');
+}
+
 if (window.TomSelect) {
-  const ts = new TomSelect(picker, {
+  ts = new TomSelect(picker, {
     options: items,
     valueField: 'filename',
     labelField: 'name',
@@ -257,14 +274,50 @@ if (window.TomSelect) {
   });
 } else {
   // CDN unreachable: plain select keeps the hub usable
-  picker.innerHTML = '<option value="">Open a display...</option>' +
-    items.map(i => '<option value="' + escapeHtml(i.filename) + '">' + escapeHtml(i.name) +
-      (i.when ? ' - ' + escapeHtml(i.when) : '') + '</option>').join('');
+  fillFallbackPicker();
   picker.addEventListener('change', () => {
     if (picker.value) openTab(picker.value);
     picker.value = '';
   });
 }
+
+function refreshPicker() {
+  if (ts) {
+    ts.clearOptions();
+    ts.addOptions(items);
+  } else {
+    fillFallbackPicker();
+  }
+}
+
+function applyOutputs(outputs) {
+  const known = new Set(Object.keys(byFile));
+  const incoming = new Set(outputs.map(o => o.filename));
+  const added = outputs.filter(o => !known.has(o.filename)).map(o => o.filename);
+  const removed = [...known].filter(f => !incoming.has(f));
+  if (!added.length && !removed.length) return;
+
+  setItems(outputs);
+  openFiles = openFiles.filter(f => !removed.includes(f));
+  for (const f of removed) removeFrame(f);
+  if (removed.includes(activeFile)) activeFile = openFiles[0] || null;
+  refreshPicker();
+
+  // outputs are newest first, so the newest new display ends up as the first, active tab
+  if (added.length) openTab(added[0]); else render();
+}
+
+// index.html is static; hub_data.js is rewritten on every new output and loaded as a script (works on file://)
+function pollForUpdates() {
+  if (document.hidden) return;
+  const s = document.createElement('script');
+  s.src = 'hub_data.js?t=' + Date.now();
+  s.onload = () => { s.remove(); if (window.LION_HUB_OUTPUTS) applyOutputs(window.LION_HUB_OUTPUTS); };
+  s.onerror = () => s.remove();
+  document.head.appendChild(s);
+}
+setInterval(pollForUpdates, 3000);
+document.addEventListener('visibilitychange', pollForUpdates);
 
 render();
 </script>
