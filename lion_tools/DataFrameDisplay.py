@@ -524,7 +524,8 @@ class DataFrameDisplay():
         total_width = 0
 
         def _len(text):
-            return len(str(text).replace(self.nbsp_placeholder, ' '))
+            # a header split over lines is as wide as its longest line
+            return max(len(line.strip()) for line in str(text).replace(self.nbsp_placeholder, ' ').split(self.new_line_placeholder))
 
         for col_group in headers[0]:
             group_column_width = 0
@@ -616,25 +617,21 @@ class DataFrameDisplay():
     def compact_headers(self):
         if self.compact == 1 and self.stripe == 'rows':
             # TODO: also allow for stripe == 'columns'
-            # last bottom line of the headers will be wrapped into 2 lines when the
-            # header is longer then the maximum width of the data in that column.
+            # long headers of the last header row are wrapped onto 2 lines with a <br>
+            # when they are longer than the maximum width of the data in that column.
             bottom_header_row = self.headers[-1]
-            additional_header_row = []
             splitted_header = False
-            
+
             for i, (col, dtype) in enumerate(self.dtypes):
                 header = bottom_header_row[i][1]
-                additional_header_row.append([1, ""])
                 if len(header) > self.df_statistics[col].get('display_length', 0):
                     splitted = self.split_near_middle(header)
                     if splitted[1] != '':
                         splitted_header = True
-                        additional_header_row[i][1] = (splitted[0] + self.nbsp_placeholder + self.nbsp_placeholder 
-                            + self.nbsp_placeholder + self.nbsp_placeholder)
-                        bottom_header_row[i][1] = splitted[1] 
+                        # the space keeps the text readable when the <br> is stripped (export, filter list)
+                        bottom_header_row[i][1] = splitted[0] + ' ' + self.new_line_placeholder + splitted[1]
 
             if splitted_header:
-                self.headers = self.headers[:-1] + [additional_header_row] + [bottom_header_row]
                 self.header_height += 1
                 
     def escape(self,text):
