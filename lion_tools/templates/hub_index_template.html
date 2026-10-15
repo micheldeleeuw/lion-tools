@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LionTools Display Hub</title>
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.default.min.css" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f0f0f0;
+    --surface: #ffffff;
+    --border: #ddd;
+    --text: #2f4a70;
+    --muted: #888;
+    --accent: #5f7ea8;
+    --accent-soft: #e8eef8;
+  }
+  *, *:before, *:after { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 12px;
+  }
+  header h1 { margin: 0; font-size: 16px; font-weight: bold; }
+  header a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 12px;
+  }
+  header a:hover { color: var(--text); }
+  header svg { width: 14px; height: 14px; fill: currentColor; }
+
+  .toolbar { padding: 0 0 12px; max-width: 360px; width: 100%; }
+  .toolbar .ts-wrapper, .toolbar select { width: 100%; }
+
+  .ts-control, .ts-dropdown, .ts-control input { font-size: 12px; }
+  .ts-control, .ts-dropdown { border-radius: 4px; border-color: #ccc; }
+  .ts-wrapper.focus .ts-control { border-color: var(--accent); box-shadow: none; }
+  .ts-dropdown .active { background: #f0f4fa; color: var(--text); }
+  .hub-option { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; }
+  .hub-option .hub-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hub-option .hub-when { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+  .tabs {
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+  }
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 240px;
+    padding: 5px 6px 5px 12px;
+    background: #fafbfd;
+    border: 1px solid #b8c7dc;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: none;
+  }
+  .tab:hover { background: #f0f4fa; }
+  .tab.active { background: var(--bg); color: var(--text); border-color: var(--accent); }
+  .tab .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab .tab-when { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .tab .tab-close {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .tab .tab-close:hover { background: #dce6f4; color: var(--text); }
+
+  .content {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background: var(--bg);
+    border: 1px solid var(--accent);
+    border-radius: 0 4px 4px 4px;
+    overflow: hidden;
+  }
+  .content iframe { display: none; width: 100%; height: 100%; border: 0; }
+  .content iframe.active { display: block; }
+  .empty {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+  }
+  .empty.visible { display: flex; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>LionTools Display Hub</h1>
+  <a href="https://github.com/micheldeleeuw/lion-tools" target="_blank" rel="noopener">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+    What is this? micheldeleeuw/lion-tools
+  </a>
+</header>
+
+<div class="toolbar">
+  <select id="picker" placeholder="Open a display..."></select>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="content" id="content">
+  <div class="empty" id="empty">No display open. Pick one from the list above.</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script>
+const OUTPUTS = {outputs_json};
+const MAX_TABS = {max_tabs};
+
+const dateFormat = new Intl.DateTimeFormat(undefined, {
+  day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
+});
+
+function formatWhen(iso) {
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d) ? dateFormat.format(d) : '';
+}
+
+const timeFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+
+function formatTime(iso) {
+  const d = iso ? new Date(iso) : null;
+  return d && !isNaN(d) ? timeFormat.format(d) : '';
+}
+
+const items = OUTPUTS.map(o => ({
+  filename: o.filename, name: o.name, when: formatWhen(o.timestamp), time: formatTime(o.timestamp),
+}));
+const byFile = Object.fromEntries(items.map(i => [i.filename, i]));
+
+function escapeHtml(s) {
+  const el = document.createElement('div');
+  el.textContent = s;
+  return el.innerHTML;
+}
+
+let openFiles = items.slice(0, MAX_TABS).map(i => i.filename);
+let activeFile = openFiles[0] || null;
+
+const tabsEl = document.getElementById('tabs');
+const contentEl = document.getElementById('content');
+const emptyEl = document.getElementById('empty');
+const frames = {};
+
+function openTab(filename) {
+  openFiles = [filename, ...openFiles.filter(f => f !== filename)];
+  while (openFiles.length > MAX_TABS) removeFrame(openFiles.pop());
+  activeFile = filename;
+  render();
+}
+
+function closeTab(filename) {
+  const idx = openFiles.indexOf(filename);
+  openFiles.splice(idx, 1);
+  removeFrame(filename);
+  if (activeFile === filename) activeFile = openFiles[idx] || openFiles[idx - 1] || null;
+  render();
+}
+
+function removeFrame(filename) {
+  if (frames[filename]) {
+    frames[filename].remove();
+    delete frames[filename];
+  }
+}
+
+function render() {
+  tabsEl.replaceChildren();
+  for (const f of openFiles) {
+    const item = byFile[f];
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (f === activeFile ? ' active' : '');
+    tab.title = item.name + (item.when ? ' - ' + item.when : '');
+    tab.innerHTML = '<span class="tab-label">' + escapeHtml(item.name) + '</span>' +
+      (item.time ? '<span class="tab-when">' + escapeHtml(item.time) + '</span>' : '');
+    tab.addEventListener('click', () => { activeFile = f; render(); });
+    const close = document.createElement('button');
+    close.className = 'tab-close';
+    close.type = 'button';
+    close.title = 'Close';
+    close.innerHTML = '&times;';
+    close.addEventListener('click', e => { e.stopPropagation(); closeTab(f); });
+    tab.appendChild(close);
+    tabsEl.appendChild(tab);
+  }
+
+  // iframes are created on first activation and kept so each tab preserves its state
+  if (activeFile && !frames[activeFile]) {
+    const frame = document.createElement('iframe');
+    frame.src = activeFile;
+    contentEl.appendChild(frame);
+    frames[activeFile] = frame;
+  }
+  for (const [f, frame] of Object.entries(frames)) frame.classList.toggle('active', f === activeFile);
+  emptyEl.classList.toggle('visible', !activeFile);
+}
+
+const picker = document.getElementById('picker');
+if (window.TomSelect) {
+  const ts = new TomSelect(picker, {
+    options: items,
+    valueField: 'filename',
+    labelField: 'name',
+    searchField: ['name', 'when'],
+    maxItems: 1,
+    sortField: null,
+    render: {
+      option: (d, esc) => '<div class="hub-option"><span class="hub-name">' + esc(d.name) +
+        '</span><span class="hub-when">' + esc(d.when) + '</span></div>',
+      item: (d, esc) => '<div>' + esc(d.name) + '</div>',
+      no_results: () => '<div class="no-results">No displays found</div>',
+    },
+    onChange: value => {
+      if (!value) return;
+      openTab(value);
+      ts.clear(true);
+    },
+  });
+} else {
+  // CDN unreachable: plain select keeps the hub usable
+  picker.innerHTML = '<option value="">Open a display...</option>' +
+    items.map(i => '<option value="' + escapeHtml(i.filename) + '">' + escapeHtml(i.name) +
+      (i.when ? ' - ' + escapeHtml(i.when) : '') + '</option>').join('');
+  picker.addEventListener('change', () => {
+    if (picker.value) openTab(picker.value);
+    picker.value = '';
+  });
+}
+
+render();
+</script>
+</body>
+</html>

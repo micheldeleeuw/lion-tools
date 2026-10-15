@@ -345,20 +345,27 @@ class DataFrameOther:
             )
 
     @staticmethod
-    def name(_df: DataFrame) -> str:
-        # we go up max 5 levels to find a variable that holds the dataframe
+    def name(_df: DataFrame, levels_to_skip: int = 0) -> str:
+        # we go up max 5 levels (inside out) to find a variable that holds the dataframe,
+        # levels_to_skip ignores that many of the nearest calling frames first
+        frames = []
+        frame = inspect.currentframe().f_back
+        for _ in range(levels_to_skip):
+            if frame is None:
+                break
+            frame = frame.f_back
+        for _ in range(5):
+            if frame is None:
+                break
+            frames.append(frame)
+            frame = frame.f_back
 
-        for locals in (
-            inspect.currentframe().f_back.f_back.f_back.f_back.f_back.f_locals,
-            inspect.currentframe().f_back.f_back.f_back.f_back.f_locals,
-            inspect.currentframe().f_back.f_back.f_back.f_locals,
-            inspect.currentframe().f_back.f_back.f_locals,
-            inspect.currentframe().f_back.f_locals,
-        ):
+        # nearest frame first, so the innermost variable name wins
+        for frame in frames:
             # just return the first name where the value is the same dataframe
             # note that we have use _df as the name of the parameter to avoid
             # confusion with the actual dataframe name
-            for name, value in locals.items():
+            for name, value in list(frame.f_locals.items()):
                 if value is _df and not name.startswith("_"):
                     return name
 

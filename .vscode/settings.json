@@ -8,5 +8,6 @@
     "chat.tools.terminal.autoApprove": {
         ".venv/bin/python": true,
         "true": true
-    }
+    },
+    "liveServer.settings.port": 5501
 }

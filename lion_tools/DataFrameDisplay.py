@@ -11,6 +11,7 @@ from IPython.display import HTML as display_HTML
 from IPython.display import display
 from .DataFrameOther import DataFrameOther
 from .DataFrameTap import DataFrameTap
+from .DisplayHub import DisplayHub
 from .Tools import Tools
 from pyspark.sql import Row
 from itertools import groupby
@@ -64,8 +65,9 @@ class DataFrameDisplay():
         column_grouping_split_pattern = '__',       # pattern to split column names into column groups
         percentage_columns_pattern = r'(_perc|%)$', # regex pattern to identify percentage columns for proper formatting
         display = True,              # whether to display the table (set to False for debugging)
-        title = 'DataTable View',    # title of the display, used in the HTML <title> tag
+        title = None,                # title of the display, used in the HTML <title> tag
         column_filter = False,       # show a dropdown to pick a column and filter rows by a value
+        display_hub_path = None,     # path to the output hub for saving the display
     )
 
     new_line_placeholder = '___NEW_LINE___'
@@ -98,6 +100,7 @@ class DataFrameDisplay():
         display: bool | None = None,
         title: str | None = None,
         column_filter: bool | None = None,
+        display_hub_path: str | None = None,
      ):
         
         DataFrameDisplay(
@@ -118,6 +121,7 @@ class DataFrameDisplay():
             display=display,
             title=title,
             column_filter=column_filter,
+            display_hub_path=display_hub_path,
         ).serve_out()
 
     @staticmethod
@@ -287,6 +291,7 @@ class DataFrameDisplay():
         display: bool | None = None,
         title: str | None = None,
         column_filter: bool | None = None,
+        display_hub_path: str | None = None,
     ):
 
         # set instance variables and apply defaults from class defaults
@@ -308,6 +313,7 @@ class DataFrameDisplay():
         self.to_screen = display if display is not None else DataFrameDisplay.defaults['display']
         self.html_title = title if title is not None else DataFrameDisplay.defaults['title']
         self.column_filter = column_filter if column_filter is not None else DataFrameDisplay.defaults['column_filter']
+        self.display_hub_path = display_hub_path if display_hub_path is not None else DataFrameDisplay.defaults['display_hub_path']
 
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
@@ -332,6 +338,8 @@ class DataFrameDisplay():
         assert isinstance(self.column_grouping_split_pattern, str)
         assert isinstance(self.percentage_columns_pattern, str)
         assert isinstance(self.column_filter, bool)
+
+        self.html_title_from_source()
 
         if self.color_rules:
             assert all(isinstance(rule, dict) for rule in self.color_rules)
@@ -360,6 +368,9 @@ class DataFrameDisplay():
         if self.file_path:
             self.save_to_file()
 
+        if self.display_hub_path:
+            self.add_to_display_hub()
+
         if self.to_screen:
             self._display()
 
@@ -371,6 +382,19 @@ class DataFrameDisplay():
     def _display(self):
         self.put_in_iframe()
         display(display_HTML(self.iframe_html), clear=True)
+
+    def html_title_from_source(self):
+        if self.html_title is None:
+            name = DataFrameOther.name(self.df, levels_to_skip=3)
+
+            if name == "unnamed":
+                sources = DataFrameOther.sources(self.df)
+                if len(sources) == 1:
+                    name = sources[0].split(".")[-1]
+                elif len(sources) > 1:
+                    name = sources[0].split(".")[-1] + f" (+{len(sources)-1})"
+
+            self.html_title = name
 
     def gather_column_information(self):
         # define some variables that are needed down the road
@@ -558,6 +582,9 @@ class DataFrameDisplay():
         # save to file
         with open(self.file_path, 'w', encoding='utf-8') as f:
             f.write(self.html_content)
+
+    def add_to_display_hub(self):
+        DisplayHub.add_to_display_hub(self.html_content, self.display_hub_path, self.html_title)
 
     def put_in_iframe(self):
         header_and_rows_height = min(self.df_statistics['__total__']['rows'], self.p) + self.header_height
