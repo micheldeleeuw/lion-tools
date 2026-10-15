@@ -29,7 +29,7 @@ class DisplayHub():
 
     def _load_config(self):
         if not self.config_path.is_file():
-            self.recreate_config()
+            self._recreate_config()
 
         with open(self.config_path, "r") as f:
             self.config = json.load(f)

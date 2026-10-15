@@ -61,6 +61,11 @@
     display: flex;
     gap: 3px;
     overflow-x: auto;
+    /* the bottom padding row overlaps the content's top border so the active tab can cover it */
+    position: relative;
+    z-index: 1;
+    padding-bottom: 1px;
+    margin-bottom: -1px;
   }
   .tab {
     display: flex;
@@ -77,7 +82,7 @@
     user-select: none;
   }
   .tab:hover { background: #f0f4fa; }
-  .tab.active { background: var(--bg); color: var(--text); border-color: var(--accent); }
+  .tab.active { background: var(--surface); color: var(--text); border-color: var(--accent); margin-bottom: -1px; }
   .tab .tab-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tab .tab-when { font-size: 11px; color: var(--muted); white-space: nowrap; }
   .tab .tab-close {
