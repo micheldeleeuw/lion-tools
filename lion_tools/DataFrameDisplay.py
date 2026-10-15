@@ -53,7 +53,7 @@ class DataFrameDisplay():
         passthrough = False,         # should the dataframe be returned for chaining after display?
         compact = 0,                 # 1-3, should the display be compacted to make row less wide?
         n = 1001,                    # number of rows tot diplay
-        p = 15,                      # number of rows per page
+        p = 15,                      # page length
         paging = True,               # should the display be paged?
         file_path = None,            # save the display to the file path
         sort = None,                 # column(s) to sort by before display, (list of) string or integers
