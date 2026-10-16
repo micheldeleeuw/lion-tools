@@ -14,7 +14,7 @@
     }
 
     /* support of multirow headers */
-    table.dataTable thead tr:first-child th {
+    table.dataTable thead tr:first-child:not(:last-child) th {
         border-bottom: none !important;
         text-align: center !important;
         padding-bottom: 2px !important;

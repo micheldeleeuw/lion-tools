@@ -660,7 +660,9 @@ class DataFrameDisplay():
         table_header = "\n                    ".join(
             '<tr>' + 
                 ''.join([
-                    f'<th>{self.escape(str(header))}</th>' if header_type in ('last', 'single', 'row_stripped')
+                    f'<th class="dt-right">{self.escape(str(header))}</th>'
+                    if header_type in ('last', 'single', 'row_stripped') and i in self.nummeric_columns_indexes
+                    else f'<th>{self.escape(str(header))}</th>' if header_type in ('last', 'single', 'row_stripped')
                     else f'<th>{self.escape(str(header))}</th>' if colspan == 1 and i % 2 == 0
                     else f'<th class="grouped_column">{self.escape(str(header))}</th>' if colspan == 1 and i % 2 == 1
                     else f'<th colspan="{colspan}">{self.escape(str(header))}</th>' if i % 2 == 0
