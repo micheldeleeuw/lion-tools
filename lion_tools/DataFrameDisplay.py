@@ -315,7 +315,8 @@ class DataFrameDisplay():
         self.html_title = title if title is not None else DataFrameDisplay.defaults['title']
         self.column_filter = column_filter if column_filter is not None else DataFrameDisplay.defaults['column_filter']
         self.display_hub_path = display_hub_path if display_hub_path is not None else DataFrameDisplay.defaults['display_hub_path']
-
+        self.primary_source = None
+        self.primary_source_is_table = False
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
         self.color_rules = [self.color_rules] if self.color_rules and not isinstance(self.color_rules, list) else (
@@ -340,7 +341,7 @@ class DataFrameDisplay():
         assert isinstance(self.percentage_columns_pattern, str)
         assert isinstance(self.column_filter, bool)
 
-        self.html_title_from_source()
+        self.html_title_and_primary_source()
 
         if self.color_rules:
             assert all(isinstance(rule, dict) for rule in self.color_rules)
@@ -384,19 +385,22 @@ class DataFrameDisplay():
         self.put_in_iframe()
         display(display_HTML(self.iframe_html), clear=True)
 
-    def html_title_from_source(self):
-        print(DataFrameOther.sources(self.df))
-        if self.html_title is None:
-            name = DataFrameOther.name(self.df, levels_to_skip=3)
+    def html_title_and_primary_source(self):
+        name = DataFrameOther.name(self.df, levels_to_skip=3)
 
-            if name == "unnamed":
-                sources = DataFrameOther.sources(self.df)
+        if name != "unnamed":
+            self.html_title = self.html_title or name
+            self.primary_source = name
+        else:
+            sources = DataFrameOther.sources(self.df)
+            self.primary_source = sources[0] if sources else None
+            self.primary_source_is_table = bool(sources)
+            if self.html_title is None and sources:
                 if len(sources) == 1:
-                    name = sources[0].split(".")[-1]
+                    self.html_title = self.html_title or sources[0].split(".")[-1]
                 elif len(sources) > 1:
-                    name = sources[0].split(".")[-1] + f" (+{len(sources)-1})"
+                    self.html_title = self.html_title or sources[0].split(".")[-1] + f" (+{len(sources)-1})"
 
-            self.html_title = name
 
     def gather_column_information(self):
         # define some variables that are needed down the road
@@ -586,10 +590,26 @@ class DataFrameDisplay():
         self.html_content = html_content
 
     def query_builder_meta(self):
-        table_name = self.html_title if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*', self.html_title or '') else 'your_table'
+        identifier = r'[A-Za-z_][A-Za-z0-9_]*'
+        source = self.primary_source or ''
+
+        # SQL: a table name with every part that is not a plain identifier quoted
+        table_name = '.'.join(
+            part if re.fullmatch(identifier, part) else '`' + part.replace('`', '``') + '`'
+            for part in source.split('.')
+        ) if source else 'your_table'
+
+        # PySpark: the variable name of the DataFrame, or the table it was read from
+        if self.primary_source_is_table:
+            py_source = f'spark.table({json.dumps(source)})'
+        elif re.fullmatch(identifier, source):
+            py_source = source
+        else:
+            py_source = 'df'
+
         meta = {
             'tableName': table_name,
-            'title': self.html_title or '',
+            'pySource': py_source,
             'columns': [
                 {'name': col, 'type': dtype, 'numeric': i in self.nummeric_columns_indexes}
                 for i, (col, dtype) in enumerate(self.dtypes)

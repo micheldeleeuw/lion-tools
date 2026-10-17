@@ -380,8 +380,8 @@ window.LionQueryBuilder = (function() {
     function init(ctx) {
         var table = ctx.table;
         var meta = ctx.meta;
-        // the title is the DataFrame's variable name when it could be determined
-        var pyDefault = /^[A-Za-z_][A-Za-z0-9_]*$/.test(meta.title || '') && meta.title !== 'unnamed' ? meta.title : 'df';
+        // the DataFrame's variable name, or spark.table(...) of the table it was read from
+        var pyDefault = meta.pySource || 'df';
         var state = null;
         var step = 0;
         var frameRestore = null;
