@@ -81,7 +81,7 @@
     }
     .qb-close:hover { color: #2c3e50; }
     .qb-body {
-        flex: 1;
+        flex: 0 1 430px;
         min-height: 0;
         overflow: auto;
         padding: 12px 14px;
@@ -93,6 +93,17 @@
     .qb-pane-head .qb-panel-title { margin: 0; }
     .qb-pane-head .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
     .qb-pane-list { height: 300px; overflow: auto; }
+    .qb-search-row {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        box-sizing: border-box;
+        height: 33px;
+        padding: 4px 6px;
+        background: white;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .qb-overlay input.qb-search { width: 100%; }
     .qb-item {
         display: flex;
         align-items: center;
@@ -119,8 +130,14 @@
     .qb-item-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
     .qb-item .qb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .qb-item .qb-type { margin-left: auto; color: #8a97a8; white-space: nowrap; }
-    .qb-item input.qb-alias { flex: 0 0 45%; }
-    .qb-pane-selected .qb-item-btn { flex: 0 1 50%; }
+    .qb-item input.qb-alias { flex: 0 0 38%; }
+    .qb-pane-selected .qb-item-btn { flex: 1 1 0; }
+    .qb-move { width: 20px; height: 20px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 9px; cursor: pointer; }
+    .qb-move:hover:not(:disabled) { color: #5f7ea8; }
+    .qb-move:disabled { opacity: 0.3; cursor: default; }
+    .qb-badges { display: inline-flex; flex: none; gap: 3px; margin-left: auto; }
+    .qb-badge { padding: 0 5px; border-radius: 8px; background: #e3eaf5; color: #5f7ea8; font-size: 10px; line-height: 15px; }
+    .qb-badges + .qb-type { margin-left: 8px; }
     .qb-agg-layout { display: grid; grid-template-columns: 1fr 120px 1.5fr; gap: 12px; }
     .qb-agg-buttons { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
     .qb-agg-buttons .qb-btn { width: calc(100% - 12px); align-self: center; padding: 0 8px; }
@@ -146,7 +163,7 @@
         font-size: 11px;
         font-weight: bold;
     }
-    .qb-agg-head.qb-col-head { grid-template-columns: minmax(0, 1fr) auto; padding-left: 8px; padding-right: 12px; }
+    .qb-agg-head.qb-col-head { top: 33px; grid-template-columns: minmax(0, 1fr) auto; padding-left: 8px; padding-right: 12px; }
     .qb-selected-agg { border-bottom: 1px solid #f0f2f5; }
     .qb-selected-agg:last-child { border-bottom: none; }
     .qb-selected-agg:hover { background: #f6f8fc; }
@@ -154,6 +171,33 @@
     .qb-remove { border: none; background: none; color: #8a97a8; font-size: 16px; cursor: pointer; }
     .qb-remove:hover { color: #c0392b; }
     .qb-empty { padding: 10px; color: #8a97a8; }
+    .qb-refine { display: flex; flex-direction: column; gap: 12px; }
+    .qb-section { border: 1px solid #e5e7eb; border-radius: 4px; padding: 8px 10px; }
+    .qb-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; margin-bottom: 6px; }
+    .qb-section-title { font-weight: bold; }
+    .qb-section-tools { display: inline-flex; align-items: center; gap: 6px; color: #6b7a8f; }
+    .qb-section-tools .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
+    .qb-cond, .qb-sortrow { display: grid; align-items: center; gap: 8px; padding: 3px 0; }
+    .qb-cond { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.2fr) 22px; }
+    .qb-sortrow { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.6fr) 22px; max-width: 520px; }
+    .qb-section-note { padding: 2px 0 4px 0; color: #8a97a8; }
+    .qb-limit-row { display: flex; align-items: center; gap: 8px; }
+    .qb-overlay input.qb-limit { width: 110px; }
+    .qb-overlay select {
+        height: 24px;
+        padding: 0 4px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+        font-size: 12px;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+    .qb-overlay select:focus {
+        outline: none;
+        border-color: #5f7ea8;
+        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
+    }
     .qb-overlay input[type="text"] {
         height: 24px;
         padding: 0 6px;
@@ -171,6 +215,29 @@
     .qb-overlay input[type="text"]:disabled { background: #f4f4f4; color: #aaa; }
     .qb-overlay input.qb-invalid { border-color: #c0392b; }
     .qb-overlay input.qb-default { color: #9aa5b5; }
+    .qb-sql-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 8px; }
+    .qb-sql-head .qb-hint { margin: 0; }
+    .qb-sql-options { display: flex; align-items: center; gap: 14px; flex: none; }
+    .qb-overlay input.qb-source { width: 110px; }
+    .qb-check { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+    .qb-seg { display: inline-flex; border: 1px solid #5f7ea8; border-radius: 4px; overflow: hidden; flex: none; }
+    .qb-seg-btn { height: 26px; padding: 0 12px; border: none; background: #f6f8fc; color: #5f7ea8; font-size: 12px; cursor: pointer; }
+    .qb-seg-btn + .qb-seg-btn { border-left: 1px solid #5f7ea8; }
+    .qb-seg-btn[aria-pressed="true"] { background: #5f7ea8; color: white; }
+    .qb-seg-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7); }
+    .qb-notice {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        background: #fff8e6;
+        border: 1px solid #f0d9a0;
+        border-radius: 4px;
+        color: #7a5b00;
+    }
+    .qb-notice span { flex: 1; }
+    .qb-notice .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
     .qb-sql {
         width: 100%;
         min-height: 220px;
@@ -203,26 +270,51 @@
     .qb-btn:hover { background: #eef2f9; }
     .qb-btn.primary { background: #5f7ea8; color: white; }
     .qb-btn.primary:hover { background: #4f6d95; }
+    .qb-btn.quiet { background: none; border-color: transparent; }
+    .qb-btn.quiet:hover { background: #eef2f9; }
     .qb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .qb-btn:focus-visible, .qb-close:focus-visible {
         outline: none;
         box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.35);
     }
+    @media (max-width: 760px) {
+        .qb-dual, .qb-agg-layout { grid-template-columns: 1fr; }
+        .qb-agg-buttons { flex-direction: row; flex-wrap: wrap; }
+        .qb-agg-buttons .qb-btn { width: auto; }
+        .qb-pane-list { height: 220px; }
+        .qb-stepper { flex-wrap: wrap; }
+    }
 </style>
 <script>
 window.LionQueryBuilder = (function() {
     var MIN_FRAME_HEIGHT = 560;
-    var STEPS = ['Columns (optional)', 'Aggregates (optional)', 'Query'];
+    var STEPS = ['Columns', 'Aggregates', 'Filter & sort', 'Query'];
+    var STEP_REFINE = 2;
+    var MAX_SUGGESTIONS = 300;
+    var LAST_STEP = STEPS.length - 1;
+
+    function typeKind(type) {
+        var t = String(type).toLowerCase();
+        if (t.indexOf('map') === 0) { return 'map'; }
+        if (t.indexOf('array') === 0 || t.indexOf('struct') === 0) { return 'complex'; }
+        return 'simple';
+    }
+
+    // Spark cannot compare or hash map values
+    function notMap(col) { return typeKind(col.type) !== 'map'; }
+    function isNumeric(col) { return col.numeric; }
+
     var AGG_FUNCS = [
-        { id: 'min', label: 'min', prefix: 'min', sql: function(c) { return 'min(' + c + ')'; } },
-        { id: 'max', label: 'max', prefix: 'max', sql: function(c) { return 'max(' + c + ')'; } },
-        { id: 'avg', label: 'avg', prefix: 'avg', numericOnly: true, sql: function(c) { return 'avg(' + c + ')'; } },
-        { id: 'count_null', label: 'count null', prefix: 'count_null', sql: function(c) { return 'count_if(' + c + ' IS NULL)'; } },
-        { id: 'count_not_null', label: 'count not null', prefix: 'count_not_null', sql: function(c) { return 'count(' + c + ')'; } },
-        { id: 'count_distinct', label: 'count distinct', prefix: 'count_distinct', sql: function(c) { return 'count(DISTINCT ' + c + ')'; } },
-        { id: 'approx_count_distinct', label: 'apprx cnt dstnct', prefix: 'approx_count_distinct', sql: function(c) { return 'approx_count_distinct(' + c + ')'; } }
+        { id: 'min', label: 'min', short: 'min', prefix: 'min', accepts: notMap, sql: function(c) { return 'min(' + c + ')'; }, py: function(c) { return 'F.min(' + c + ')'; } },
+        { id: 'max', label: 'max', short: 'max', prefix: 'max', accepts: notMap, sql: function(c) { return 'max(' + c + ')'; }, py: function(c) { return 'F.max(' + c + ')'; } },
+        { id: 'sum', label: 'sum', short: 'sum', prefix: 'sum', accepts: isNumeric, sql: function(c) { return 'sum(' + c + ')'; }, py: function(c) { return 'F.sum(' + c + ')'; } },
+        { id: 'avg', label: 'avg', short: 'avg', prefix: 'avg', accepts: isNumeric, sql: function(c) { return 'avg(' + c + ')'; }, py: function(c) { return 'F.avg(' + c + ')'; } },
+        { id: 'count_null', label: 'count null', short: 'null', prefix: 'count_null', sql: function(c) { return 'count_if(' + c + ' IS NULL)'; }, py: function(c) { return 'F.count(F.when(F.col(' + c + ').isNull(), 1))'; } },
+        { id: 'count_not_null', label: 'count not null', short: 'not null', prefix: 'count_not_null', sql: function(c) { return 'count(' + c + ')'; }, py: function(c) { return 'F.count(' + c + ')'; } },
+        { id: 'count_distinct', label: 'count distinct', short: 'distinct', prefix: 'count_distinct', accepts: notMap, sql: function(c) { return 'count(DISTINCT ' + c + ')'; }, py: function(c) { return 'F.countDistinct(' + c + ')'; } },
+        { id: 'approx_count_distinct', label: 'apprx cnt dstnct', short: 'approx', prefix: 'approx_count_distinct', accepts: notMap, sql: function(c) { return 'approx_count_distinct(' + c + ')'; }, py: function(c) { return 'F.approx_count_distinct(' + c + ')'; } }
     ];
-    var STAR_AGG = { id: 'count_star', label: 'count(*)', sql: function() { return 'count(*)'; } };
+    var STAR_AGG = { id: 'count_star', label: 'count(*)', sql: function() { return 'count(*)'; }, py: function() { return 'F.count("*")'; } };
 
     function quoteIdent(name) {
         return '`' + String(name).replace(/`/g, '``') + '`';
@@ -232,13 +324,64 @@ window.LionQueryBuilder = (function() {
         return "'" + String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
     }
 
+    // PySpark only needs backticks when the name contains a dot or a backtick
+    function pyRef(name) {
+        return JSON.stringify(/[.`]/.test(name) ? quoteIdent(name) : name);
+    }
+
     function aggFunc(id) {
         return id === STAR_AGG.id ? STAR_AGG : AGG_FUNCS.filter(function(f) { return f.id === id; })[0];
+    }
+
+    function accepts(func, col) {
+        return !func.accepts || func.accepts(col);
+    }
+
+    function literal(value, col) {
+        var v = String(value).trim();
+        if (col.numeric && /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(v)) { return v; }
+        if (String(col.type).toLowerCase() === 'boolean' && /^(true|false)$/i.test(v)) { return v.toLowerCase(); }
+        return quoteString(value);
+    }
+
+    function likeOp(prefix, suffix) {
+        return function(c, v, col) {
+            var left = String(col.type).toLowerCase() === 'string' ? c : 'CAST(' + c + ' AS STRING)';
+            return left + ' LIKE ' + quoteString(prefix + v + suffix);
+        };
+    }
+
+    function compareOp(symbol) {
+        return function(c, v, col) { return c + ' ' + symbol + ' ' + literal(v, col); };
+    }
+
+    var OPS = [
+        { id: 'eq', label: '=', sql: compareOp('=') },
+        { id: 'ne', label: '<>', sql: compareOp('<>') },
+        { id: 'gt', label: '>', sql: compareOp('>') },
+        { id: 'ge', label: '>=', sql: compareOp('>=') },
+        { id: 'lt', label: '<', sql: compareOp('<') },
+        { id: 'le', label: '<=', sql: compareOp('<=') },
+        { id: 'contains', label: 'contains', sql: likeOp('%', '%') },
+        { id: 'starts', label: 'starts with', sql: likeOp('', '%') },
+        { id: 'ends', label: 'ends with', sql: likeOp('%', '') },
+        { id: 'in', label: 'in list', sql: function(c, v, col) {
+            var items = String(v).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+            return c + ' IN (' + items.map(function(s) { return literal(s, col); }).join(', ') + ')';
+        } },
+        { id: 'null', label: 'is null', noValue: true, sql: function(c) { return c + ' IS NULL'; } },
+        { id: 'notnull', label: 'is not null', noValue: true, sql: function(c) { return c + ' IS NOT NULL'; } }
+    ];
+
+    function opDef(id) {
+        return OPS.filter(function(o) { return o.id === id; })[0];
     }
 
     function init(ctx) {
         var table = ctx.table;
         var meta = ctx.meta;
+        // the title is the DataFrame's variable name when it could be determined
+        var pyDefault = /^[A-Za-z_][A-Za-z0-9_]*$/.test(meta.title || '') && meta.title !== 'unnamed' ? meta.title : 'df';
         var state = null;
         var step = 0;
         var frameRestore = null;
@@ -250,10 +393,11 @@ window.LionQueryBuilder = (function() {
         var closeBtn = $('<button type="button" class="qb-close" aria-label="Close">&times;</button>');
         var body = $('<div class="qb-body"></div>');
         var errorBox = $('<div class="qb-error" role="alert"></div>');
-        var cancelBtn = $('<button type="button" class="qb-btn">Cancel</button>');
+        var cancelBtn = $('<button type="button" class="qb-btn quiet">Cancel</button>');
         var backBtn = $('<button type="button" class="qb-btn">Back</button>');
-        var nextBtn = $('<button type="button" class="qb-btn primary">Next</button>');
-        var doneBtn = $('<button type="button" class="qb-btn primary">Done</button>');
+        var skipBtn = $('<button type="button" class="qb-btn quiet" title="Go directly to the query">Skip to query</button>');
+        var nextBtn = $('<button type="button" class="qb-btn primary" title="Ctrl/Cmd+Enter">Next</button>');
+        var doneBtn = $('<button type="button" class="qb-btn primary" title="Ctrl/Cmd+Enter">Copy &amp; close</button>');
 
         dialog
             .append($('<div class="qb-header"></div>')
@@ -261,7 +405,7 @@ window.LionQueryBuilder = (function() {
                 .append(stepper)
                 .append(closeBtn))
             .append(body)
-            .append($('<div class="qb-footer"></div>').append(errorBox).append(cancelBtn).append(backBtn).append(nextBtn).append(doneBtn));
+            .append($('<div class="qb-footer"></div>').append(cancelBtn).append(skipBtn).append(errorBox).append(backBtn).append(nextBtn).append(doneBtn));
         overlay.append(dialog);
         $('body').append(overlay);
 
@@ -284,7 +428,13 @@ window.LionQueryBuilder = (function() {
         }
 
         function defaultAlias(col, fn) {
-            return fn === STAR_AGG.id ? 'count' : aggFunc(fn).prefix + '_' + col.name;
+            if (fn === STAR_AGG.id) { return 'count'; }
+            var base = col.name.replace(/[^\p{L}\p{N}_]+/gu, '_').replace(/^_+|_+$/g, '') || 'col';
+            return aggFunc(fn).prefix + '_' + base;
+        }
+
+        function aggAlias(a) {
+            return a.alias.trim() || defaultAlias(a.col, a.fn);
         }
 
         function selectedCols() {
@@ -293,37 +443,112 @@ window.LionQueryBuilder = (function() {
 
         function outputNames() {
             var names = selectedCols().map(outName);
-            state.aggs.forEach(function(a) { names.push(a.alias.trim() || defaultAlias(a.col, a.fn)); });
+            state.aggs.forEach(function(a) { names.push(aggAlias(a)); });
             return names;
         }
 
+        // maps lower-cased name to the name as typed
         function duplicateNames(names) {
             var seen = {}, dups = {};
             names.forEach(function(n) {
                 var key = n.toLowerCase();
-                if (seen[key]) { dups[key] = true; }
+                if (seen[key]) { dups[key] = n; }
                 seen[key] = true;
             });
             return dups;
         }
 
+        function duplicateError(names) {
+            var dups = duplicateNames(names);
+            var list = Object.keys(dups).map(function(k) { return dups[k]; });
+            return list.length ? 'Names must be unique: ' + list.join(', ') + '.' : '';
+        }
+
+        var listCounter = 0;
+        var valueCache = {};
+
+        // distinct values of the loaded data, as suggestions for filter values
+        function distinctValues(col) {
+            if (valueCache[col.idx]) { return valueCache[col.idx]; }
+            var seen = Object.create(null), values = [];
+            var rows = table.rows().indexes().toArray();
+            for (var i = 0; i < rows.length && values.length < MAX_SUGGESTIONS; i++) {
+                var cell = table.cell(rows[i], col.idx);
+                var data = cell.data();
+                if (data === null || data === undefined) { continue; }
+                var text = String(data);
+                if (text.indexOf('<') !== -1 || text.indexOf('&') !== -1) {
+                    var node = cell.node();
+                    text = node ? $(node).text().replace(/\u00a0/g, ' ') : '';
+                }
+                text = text.trim();
+                if (text && !seen[text]) {
+                    seen[text] = true;
+                    values.push(text);
+                }
+            }
+            values.sort(function(a, b) {
+                return col.numeric ? parseFloat(a) - parseFloat(b) : a.localeCompare(b);
+            });
+            valueCache[col.idx] = values;
+            return values;
+        }
+
+        function filterableCols() {
+            return state.cols.filter(function(c) { return typeKind(c.type) === 'simple'; });
+        }
+
+        function isComplete(cond) {
+            return opDef(cond.op).noValue || $.trim(cond.value) !== '';
+        }
+
+        function limitValid() {
+            return state.limit === '' || /^[1-9]\d*$/.test(state.limit);
+        }
+
+        function describeTableFilter(f) {
+            var name = meta.columns[f.colIdx].name;
+            if (f.mode === '__empty__') { return name + ' is empty'; }
+            if (f.mode === '__non_empty__') { return name + ' is not empty'; }
+            return name + ' = ' + f.value;
+        }
+
+        function describeTableSort(sorts) {
+            return sorts.map(function(s) { return s.name + (s.dir === 'desc' ? ' \u2193' : ' \u2191'); }).join(', ');
+        }
+
+        function snapshotTableFilter() {
+            var f = ctx.getFilter ? ctx.getFilter() : null;
+            if (!f || f.colIdx < 0 || f.mode === '__all__' || !meta.columns[f.colIdx]) { return null; }
+            return { colIdx: f.colIdx, mode: f.mode, value: f.value };
+        }
+
+        function snapshotTableSort() {
+            var order = ctx.getSort ? ctx.getSort() : [];
+            return order
+                .filter(function(o) { return meta.columns[o[0]]; })
+                .map(function(o) { return { name: meta.columns[o[0]].name, dir: o[1] }; });
+        }
+
+        function hasRefinements() {
+            return (state.tableFilter && state.useTableFilter) || state.conds.length || state.rconds.length || state.sorts.length
+                || (state.tableSort.length && state.useTableSort) || state.limit !== '';
+        }
+
         function validate() {
             if (step === 0) {
-                if (Object.keys(duplicateNames(selectedCols().map(outName))).length) {
-                    return 'Column names must be unique.';
-                }
-            } else if (step === 1) {
-                if (state.aggs.length && state.star) {
-                    return 'Deselect * in step 1 when using aggregates.';
-                }
-                var names = outputNames();
-                if (Object.keys(duplicateNames(names)).length) {
-                    return 'Column and aggregate names must be unique.';
-                }
-            } else if (!$.trim(sqlBox().val())) {
-                return 'The query is empty.';
+                return duplicateError(selectedCols().map(outName));
             }
-            return '';
+            if (step === 1) {
+                if (state.aggs.length && state.star) { return 'Deselect * in step 1 when using aggregates.'; }
+                return duplicateError(outputNames());
+            }
+            if (step === STEP_REFINE) {
+                if (!state.conds.every(isComplete) || !state.rconds.every(isComplete)) { return 'Fill in or remove the incomplete filter conditions.'; }
+                if (!limitValid()) { return 'Limit must be a positive whole number.'; }
+                return '';
+            }
+            return $.trim(sqlBox().val()) ? '' : 'The query is empty.';
         }
 
         function sqlBox() {
@@ -334,7 +559,8 @@ window.LionQueryBuilder = (function() {
             var error = validate();
             errorBox.text(error);
             nextBtn.prop('disabled', !!error);
-            nextBtn.text((step === 0 && !state.order.length) || (step === 1 && !state.aggs.length) ? 'Skip' : 'Next');
+            var skip = (step === 0 && !state.order.length) || (step === 1 && !state.aggs.length) || (step === STEP_REFINE && !hasRefinements());
+            nextBtn.text(skip ? 'Skip' : 'Next');
             doneBtn.prop('disabled', !!error);
             // mark duplicated alias inputs
             var dups = duplicateNames(outputNames());
@@ -358,6 +584,17 @@ window.LionQueryBuilder = (function() {
             });
         }
 
+        function searchInput() {
+            return $('<input type="text" class="qb-search" placeholder="Search columns..." autocomplete="off" aria-label="Search columns">');
+        }
+
+        function nameMatcher(search) {
+            return function(item) {
+                var term = $.trim(search.val()).toLowerCase();
+                return !term || item.name.toLowerCase().indexOf(term) !== -1;
+            };
+        }
+
         function renderColumns() {
             body.append($('<p class="qb-hint"></p>').text('Select columns to add to the query.'));
 
@@ -377,7 +614,12 @@ window.LionQueryBuilder = (function() {
             var selectedTitle = $('<p class="qb-panel-title"></p>');
             var addAll = $('<button type="button" class="qb-btn">Add all</button>');
             var removeAll = $('<button type="button" class="qb-btn">Remove all</button>');
-            var availableList = $('<div class="qb-list qb-pane-list"></div>');
+            var search = searchInput();
+            var matches = nameMatcher(search);
+            var availableRows = $('<div></div>');
+            var availableList = $('<div class="qb-list qb-pane-list"></div>')
+                .append($('<div class="qb-search-row"></div>').append(search))
+                .append(availableRows);
             var selectedList = $('<div class="qb-list qb-pane-list"></div>');
 
             function makeItem(item, selected) {
@@ -407,29 +649,48 @@ window.LionQueryBuilder = (function() {
                     });
                     row.append(alias);
                 }
+                if (selected) {
+                    var pos = state.order.indexOf(item);
+                    row.append($('<button type="button" class="qb-move" aria-label="Move up" title="Move up">\u25B2</button>')
+                        .prop('disabled', pos === 0).on('click', function() { moveItem(item, -1); }));
+                    row.append($('<button type="button" class="qb-move" aria-label="Move down" title="Move down">\u25BC</button>')
+                        .prop('disabled', pos === state.order.length - 1).on('click', function() { moveItem(item, 1); }));
+                }
                 return row;
             }
 
+            function moveItem(item, delta) {
+                var from = state.order.indexOf(item);
+                var to = from + delta;
+                if (to < 0 || to >= state.order.length) { return; }
+                state.order.splice(to, 0, state.order.splice(from, 1)[0]);
+                renderLists();
+            }
+
             function renderLists() {
-                availableList.empty();
+                availableRows.empty();
                 selectedList.empty();
-                var available = 0;
+                var available = 0, shown = 0;
                 items.forEach(function(item) {
                     if (!isSelected(item)) {
                         available++;
-                        availableList.append(makeItem(item, false));
+                        if (matches(item)) {
+                            shown++;
+                            availableRows.append(makeItem(item, false));
+                        }
                     }
                 });
                 var selected = state.order.length;
                 state.order.forEach(function(item) { selectedList.append(makeItem(item, true)); });
-                if (!available) { availableList.append($('<div class="qb-empty"></div>').text('All columns selected.')); }
+                if (!shown) { availableRows.append($('<div class="qb-empty"></div>').text(available ? 'No matching columns.' : 'All columns selected.')); }
                 if (!selected) { selectedList.append($('<div class="qb-empty"></div>').text('No columns selected.')); }
                 availableTitle.text('Available (' + available + ')');
                 selectedTitle.text('Selected (' + selected + ')');
                 refresh();
             }
 
-            addAll.on('click', function() { state.cols.forEach(function(c) { setSelected(c, true); }); renderLists(); });
+            search.on('input', renderLists);
+            addAll.on('click', function() { state.cols.filter(matches).forEach(function(c) { setSelected(c, true); }); renderLists(); });
             removeAll.on('click', function() { items.forEach(function(i) { setSelected(i, false); }); renderLists(); });
 
             var availablePane = $('<div></div>')
@@ -452,11 +713,25 @@ window.LionQueryBuilder = (function() {
             var selectAll = $('<button type="button" class="qb-btn">Select all</button>');
             var clearAll = $('<button type="button" class="qb-btn">Clear</button>');
             var removeAllAggs = $('<button type="button" class="qb-btn">Remove all</button>');
-            var columnList = $('<div class="qb-list qb-pane-list"></div>');
+            var search = searchInput();
+            var matches = nameMatcher(search);
+            var columnRows = $('<div></div>');
+            var columnList = $('<div class="qb-list qb-pane-list"></div>')
+                .append($('<div class="qb-search-row"></div>').append(search))
+                .append(columnRows);
             var aggList = $('<div class="qb-list qb-pane-list"></div>');
             var buttonsBox = $('<div class="qb-agg-buttons"></div>');
             var aggButtons = [];
+            var badgeBoxes = [];
 
+            function fillBadges() {
+                badgeBoxes.forEach(function(b) {
+                    b.box.empty();
+                    state.aggs.filter(function(a) { return a.col === b.col; }).forEach(function(a) {
+                        b.box.append($('<span class="qb-badge"></span>').text(aggFunc(a.fn).short));
+                    });
+                });
+            }
             function activeCols() {
                 return state.cols.filter(function(c) { return state.aggCols.indexOf(c) !== -1; });
             }
@@ -468,13 +743,15 @@ window.LionQueryBuilder = (function() {
             }
 
             function addButton(func) {
-                var btn = $('<button type="button" class="qb-btn"></button>').text(func.label);
+                var btn = $('<button type="button" class="qb-btn"></button>')
+                    .text(func.label)
+                    .attr('title', func.sql(func.id === STAR_AGG.id ? '' : 'column'));
                 btn.on('click', function() {
                     if (func.id === STAR_AGG.id) {
                         addAgg(null, func.id);
                     } else {
                         activeCols().forEach(function(col) {
-                            if (!func.numericOnly || col.numeric) { addAgg(col, func.id); }
+                            if (accepts(func, col)) { addAgg(col, func.id); }
                         });
                     }
                     renderAggs();
@@ -487,19 +764,25 @@ window.LionQueryBuilder = (function() {
                 var active = activeCols();
                 aggButtons.forEach(function(b) {
                     var enabled = b.func.id === STAR_AGG.id
-                        || (b.func.numericOnly ? active.some(function(c) { return c.numeric; }) : active.length > 0);
+                        || active.some(function(c) { return accepts(b.func, c); });
                     b.btn.prop('disabled', !enabled);
                 });
             }
 
             function renderColumnList() {
-                columnList.empty();
-                columnList.append($('<div class="qb-agg-head qb-col-head"></div>')
+                columnRows.empty();
+                columnRows.append($('<div class="qb-agg-head qb-col-head"></div>')
                     .append('<span>Column</span>').append('<span>Data type</span>'));
-                state.cols.forEach(function(col) {
+                badgeBoxes = [];
+                var shown = 0;
+                state.cols.filter(matches).forEach(function(col) {
+                    shown++;
+                    var badges = $('<span class="qb-badges"></span>');
+                    badgeBoxes.push({ col: col, box: badges });
                     var btn = $('<button type="button" class="qb-item-btn"></button>')
                         .toggleClass('active', state.aggCols.indexOf(col) !== -1)
                         .append($('<span class="qb-name"></span>').text(col.name))
+                        .append(badges)
                         .append($('<span class="qb-type"></span>').text(col.type));
                     btn.on('click', function() {
                         var pos = state.aggCols.indexOf(col);
@@ -507,8 +790,10 @@ window.LionQueryBuilder = (function() {
                         btn.toggleClass('active', pos === -1);
                         updateButtons();
                     });
-                    columnList.append($('<div class="qb-item"></div>').append(btn));
+                    columnRows.append($('<div class="qb-item"></div>').append(btn));
                 });
+                if (!shown) { columnRows.append($('<div class="qb-empty"></div>').text('No matching columns.')); }
+                fillBadges();
                 updateButtons();
             }
 
@@ -537,11 +822,15 @@ window.LionQueryBuilder = (function() {
                         .append(input)
                         .append(remove));
                 });
+                fillBadges();
                 refresh();
             }
 
+            search.on('input', renderColumnList);
             selectAll.on('click', function() {
-                state.aggCols = state.cols.slice();
+                state.cols.filter(matches).forEach(function(c) {
+                    if (state.aggCols.indexOf(c) === -1) { state.aggCols.push(c); }
+                });
                 renderColumnList();
             });
             clearAll.on('click', function() {
@@ -571,6 +860,253 @@ window.LionQueryBuilder = (function() {
             renderAggs();
         }
 
+        // names an ORDER BY can refer to, given the chosen columns and aggregates
+        function sortableNames() {
+            var names = [];
+            var add = function(n) {
+                var lower = names.map(function(x) { return x.toLowerCase(); });
+                if (lower.indexOf(n.toLowerCase()) === -1) { names.push(n); }
+            };
+            if (!state.aggs.length && (state.star || !selectedCols().length)) {
+                state.cols.forEach(function(c) { if (notMap(c)) { add(c.name); } });
+            }
+            selectedCols().forEach(function(c) { if (notMap(c)) { add(outName(c)); } });
+            state.aggs.forEach(function(a) { add(aggAlias(a)); });
+            return names;
+        }
+
+        function aggNumeric(a) {
+            return a.fn === 'min' || a.fn === 'max' ? a.col.numeric : true;
+        }
+
+        // the columns and aggregates a filter on the result can refer to
+        function resultColumns() {
+            var cols = [];
+            var add = function(c) {
+                if (!cols.some(function(x) { return x.name.toLowerCase() === c.name.toLowerCase(); })) { cols.push(c); }
+            };
+            var fromColumn = function(c, name) {
+                if (typeKind(c.type) === 'simple') { add({ name: name, numeric: c.numeric, type: c.type, sql: quoteIdent(c.name) }); }
+            };
+            if (!state.aggs.length && (state.star || !selectedCols().length)) {
+                state.cols.forEach(function(c) { fromColumn(c, c.name); });
+            }
+            selectedCols().forEach(function(c) { fromColumn(c, outName(c)); });
+            state.aggs.forEach(function(a) {
+                var numeric = a.col === null ? true : aggNumeric(a);
+                add({
+                    name: aggAlias(a),
+                    numeric: numeric,
+                    type: numeric ? 'double' : a.col.type,
+                    sql: aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name))
+                });
+            });
+            return cols;
+        }
+
+        // useExpressions: refer to the source expressions (HAVING / WHERE) instead of the output names
+        function resultFilterList(useExpressions) {
+            var cols = resultColumns();
+            return state.rconds.filter(isComplete).map(function(cond) {
+                var col = cols.filter(function(c) { return c.name.toLowerCase() === String(cond.name).toLowerCase(); })[0];
+                return col ? opDef(cond.op).sql(useExpressions ? col.sql : quoteIdent(col.name), cond.value, col) : null;
+            }).filter(Boolean);
+        }
+
+        // an OR group needs parentheses to be combined with other conditions
+        function groupConds(list, combine) {
+            var joined = list.join(combine === 'or' ? ' OR ' : ' AND ');
+            return list.length > 1 && combine === 'or' ? '(' + joined + ')' : joined;
+        }
+
+        function effectiveSorts() {
+            var sortable = sortableNames();
+            var lower = sortable.map(function(n) { return n.toLowerCase(); });
+            var result = [];
+            var push = function(name, dir) {
+                var i = lower.indexOf(name.toLowerCase());
+                if (i !== -1) { result.push({ name: sortable[i], dir: dir }); }
+            };
+            if (state.useTableSort) {
+                state.tableSort.forEach(function(s) {
+                    var sel = selectedCols().filter(function(c) { return c.name === s.name; })[0];
+                    push(sel ? outName(sel) : s.name, s.dir);
+                });
+            }
+            state.sorts.forEach(function(s) { push(s.name, s.dir); });
+            return result;
+        }
+
+        function makeSelect(options, value, onChange) {
+            var select = $('<select></select>');
+            options.forEach(function(o) { select.append($('<option></option>').val(o.value).text(o.label)); });
+            select.val(value);
+            select.on('change', function() { onChange($(this).val()); });
+            return select;
+        }
+
+        function checkRow(label, checked, onChange) {
+            var box = $('<input type="checkbox">').prop('checked', checked);
+            box.on('change', function() { onChange(this.checked); });
+            return $('<div class="qb-section-note"></div>').append($('<label class="qb-check"></label>').append(box).append($('<span></span>').text(label)));
+        }
+
+        function renderRefine() {
+            body.append($('<p class="qb-hint"></p>').text('Optionally filter the input rows, filter the result, sort it or limit the number of rows.'));
+
+            var inputBox = $('<div class="qb-section"></div>');
+            var resultBox = $('<div class="qb-section"></div>');
+            var sortBox = $('<div class="qb-section"></div>');
+            var limitBox = $('<div class="qb-section"></div>');
+
+            function sectionHead(title, tools) {
+                return $('<div class="qb-section-head"></div>')
+                    .append($('<span class="qb-section-title"></span>').text(title))
+                    .append(tools);
+            }
+
+            function smallButton(label, onClick, disabled) {
+                return $('<button type="button" class="qb-btn"></button>').text(label).prop('disabled', !!disabled).on('click', onClick);
+            }
+
+            function renderConditions(box, opts) {
+                box.empty();
+                var options = opts.options();
+                var tools = $('<span class="qb-section-tools"></span>');
+                if (opts.list.length > 1) {
+                    tools.append('Match')
+                        .append(makeSelect([{ value: 'and', label: 'all' }, { value: 'or', label: 'any' }], state[opts.combineKey], function(v) { state[opts.combineKey] = v; refresh(); }))
+                        .append('conditions');
+                }
+                tools.append(smallButton('Add condition', function() {
+                    opts.list.push(opts.create(options));
+                    renderConditions(box, opts);
+                }, !options.length));
+                box.append(sectionHead(opts.title, tools));
+                box.append($('<div class="qb-section-note"></div>').text(opts.note));
+
+                if (opts.tableFilter) {
+                    box.append(checkRow('Use the table filter: ' + describeTableFilter(opts.tableFilter), state.useTableFilter, function(v) {
+                        state.useTableFilter = v;
+                        refresh();
+                    }));
+                }
+                opts.list.forEach(function(cond) {
+                    if (opts.normalize) { opts.normalize(cond, options); }
+                    var def = opDef(cond.op);
+                    var row = $('<div class="qb-cond"></div>');
+                    row.append(makeSelect(options, opts.getValue(cond), function(v) {
+                        opts.setValue(cond, v);
+                        renderConditions(box, opts);
+                    }));
+                    row.append(makeSelect(OPS.map(function(o) { return { value: o.id, label: o.label }; }), cond.op, function(v) {
+                        cond.op = v;
+                        renderConditions(box, opts);
+                    }));
+                    if (def.noValue) {
+                        row.append('<span></span>');
+                    } else {
+                        var input = $('<input type="text" autocomplete="off" aria-label="Value">')
+                            .attr('placeholder', cond.op === 'in' ? 'a, b, c' : (opts.suggest ? 'type or pick a value' : 'value')).val(cond.value);
+                        input.on('input', function() { cond.value = $(this).val(); refresh(); });
+                        row.append(input);
+                        // a native datalist suggests the data's values while still accepting free text
+                        if (opts.suggest && cond.op !== 'in') {
+                            var listId = 'qb-values-' + (listCounter++);
+                            var list = $('<datalist></datalist>').attr('id', listId);
+                            opts.suggest(cond).forEach(function(v) { list.append($('<option></option>').val(v)); });
+                            input.attr('list', listId);
+                            row.append(list);
+                        }
+                    }
+                    row.append($('<button type="button" class="qb-remove" aria-label="Remove condition">&times;</button>').on('click', function() {
+                        opts.list.splice(opts.list.indexOf(cond), 1);
+                        renderConditions(box, opts);
+                    }));
+                    box.append(row);
+                });
+                refresh();
+            }
+
+            function renderInputFilter() {
+                renderConditions(inputBox, {
+                    title: 'Filter input',
+                    note: 'Filters the source rows, before any grouping.',
+                    list: state.conds,
+                    combineKey: 'combine',
+                    tableFilter: state.tableFilter,
+                    options: function() { return filterableCols().map(function(c) { return { value: String(state.cols.indexOf(c)), label: c.name }; }); },
+                    getValue: function(cond) { return String(state.cols.indexOf(cond.col)); },
+                    setValue: function(cond, v) { cond.col = state.cols[parseInt(v, 10)]; },
+                    create: function(options) { return { col: state.cols[parseInt(options[0].value, 10)], op: 'eq', value: '' }; },
+                    suggest: function(cond) { return distinctValues(cond.col); }
+                });
+            }
+
+            function renderResultFilter() {
+                renderConditions(resultBox, {
+                    title: 'Filter result',
+                    note: 'Filters the result, after a possible group by. Only the selected columns and aggregates can be used.',
+                    list: state.rconds,
+                    combineKey: 'rcombine',
+                    options: function() { return resultColumns().map(function(c) { return { value: c.name, label: c.name }; }); },
+                    getValue: function(cond) { return cond.name; },
+                    setValue: function(cond, v) { cond.name = v; },
+                    create: function(options) { return { name: options[0].value, op: 'eq', value: '' }; },
+                    // a condition on a column that is no longer in the result moves to the first available one
+                    normalize: function(cond, options) {
+                        var known = options.some(function(o) { return o.value.toLowerCase() === String(cond.name).toLowerCase(); });
+                        if (!known && options.length) { cond.name = options[0].value; }
+                    }
+                });
+            }
+
+            function renderSort() {
+                sortBox.empty();
+                var sortable = sortableNames();
+                sortBox.append(sectionHead('Sort', smallButton('Add sort', function() {
+                    state.sorts.push({ name: sortable[0], dir: 'asc' });
+                    renderSort();
+                }, !sortable.length)));
+
+                if (state.tableSort.length) {
+                    sortBox.append(checkRow('Use the table sort: ' + describeTableSort(state.tableSort), state.useTableSort, function(v) {
+                        state.useTableSort = v;
+                        refresh();
+                    }));
+                }
+                if (!state.sorts.length && !state.tableSort.length) {
+                    sortBox.append($('<div class="qb-section-note"></div>').text('No sort: the row order is not defined.'));
+                }
+                state.sorts.forEach(function(s) {
+                    if (sortable.indexOf(s.name) === -1) { s.name = sortable[0]; }
+                    var row = $('<div class="qb-sortrow"></div>');
+                    row.append(makeSelect(sortable.map(function(n) { return { value: n, label: n }; }), s.name, function(v) { s.name = v; refresh(); }));
+                    row.append(makeSelect([{ value: 'asc', label: 'ascending' }, { value: 'desc', label: 'descending' }], s.dir, function(v) { s.dir = v; refresh(); }));
+                    row.append($('<button type="button" class="qb-remove" aria-label="Remove sort">&times;</button>').on('click', function() {
+                        state.sorts.splice(state.sorts.indexOf(s), 1);
+                        renderSort();
+                    }));
+                    sortBox.append(row);
+                });
+                refresh();
+            }
+
+            function renderLimit() {
+                limitBox.empty();
+                var input = $('<input type="text" class="qb-limit" inputmode="numeric" autocomplete="off" placeholder="no limit" aria-label="Limit">').val(state.limit);
+                input.on('input', function() { state.limit = $.trim($(this).val()); refresh(); });
+                limitBox.append(sectionHead('Limit', ''))
+                    .append($('<div class="qb-limit-row"></div>').append(input).append('<span>rows</span>'));
+            }
+
+            body.append($('<div class="qb-refine"></div>').append(inputBox).append(resultBox).append(sortBox).append(limitBox));
+            renderInputFilter();
+            renderResultFilter();
+            renderSort();
+            renderLimit();
+        }
+
         function rawFilterValue(filter, colMeta) {
             var found = filter.value;
             var rows = table.rows().indexes().toArray();
@@ -593,11 +1129,7 @@ window.LionQueryBuilder = (function() {
             return quoteString(found);
         }
 
-        function buildWhere() {
-            var filter = ctx.getFilter ? ctx.getFilter() : null;
-            if (!filter || filter.colIdx < 0 || filter.mode === '__all__' || !meta.columns[filter.colIdx]) {
-                return '';
-            }
+        function tableFilterSql(filter) {
             var colMeta = meta.columns[filter.colIdx];
             var c = quoteIdent(colMeta.name);
             if (filter.mode === '__empty__') {
@@ -607,6 +1139,20 @@ window.LionQueryBuilder = (function() {
                 return colMeta.numeric ? c + ' IS NOT NULL' : '(' + c + " IS NOT NULL AND " + c + " <> '')";
             }
             return c + ' = ' + rawFilterValue(filter, colMeta);
+        }
+
+        function buildWhere() {
+            var parts = [];
+            if (state.useTableFilter && state.tableFilter) {
+                parts.push(tableFilterSql(state.tableFilter));
+            }
+            var conds = state.conds.filter(isComplete).map(function(cond) {
+                return opDef(cond.op).sql(quoteIdent(cond.col.name), cond.value, cond.col);
+            });
+            if (conds.length) {
+                parts.push(groupConds(conds, state.combine));
+            }
+            return parts.join(' AND ');
         }
 
         function buildSql() {
@@ -622,32 +1168,171 @@ window.LionQueryBuilder = (function() {
             });
             var aggs = state.aggs;
             aggs.forEach(function(a) {
-                var alias = a.alias.trim() || defaultAlias(a.col, a.fn);
-                select.push(aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name)) + ' AS ' + quoteIdent(alias));
+                select.push(aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name)) + ' AS ' + quoteIdent(aggAlias(a)));
             });
 
             if (!select.length) { select.push('*'); }
-            var sql = 'SELECT\n  ' + select.join(',\n  ') + '\nFROM ' + meta.tableName;
+            var sql = 'SELECT\n  ' + select.join(',\n  ') + '\nFROM ' + (state.source.sql || meta.tableName);
             var where = buildWhere();
+            var resultConds = groupConds(resultFilterList(true), state.rcombine);
+            // without aggregation the result filter is a plain row filter on the source columns
+            if (resultConds && !aggs.length) { where = where ? where + ' AND ' + resultConds : resultConds; }
             if (where) { sql += '\nWHERE ' + where; }
             if (aggs.length && group.length) { sql += '\nGROUP BY ' + group.join(', '); }
+            if (resultConds && aggs.length) { sql += '\nHAVING ' + resultConds; }
+            var sorts = effectiveSorts();
+            if (sorts.length) {
+                sql += '\nORDER BY ' + sorts.map(function(s) { return quoteIdent(s.name) + (s.dir === 'desc' ? ' DESC' : ''); }).join(', ');
+            }
+            if (state.limit !== '' && limitValid()) { sql += '\nLIMIT ' + state.limit; }
             return sql;
         }
 
+        function buildPyspark() {
+            var usesF = false;
+            var cols = [];
+            state.order.forEach(function(col) {
+                if (col.star) {
+                    cols.push(JSON.stringify('*'));
+                    return;
+                }
+                var ref = pyRef(col.name);
+                var out = outName(col);
+                if (out !== col.name) {
+                    usesF = true;
+                    cols.push('F.col(' + ref + ').alias(' + JSON.stringify(out) + ')');
+                } else {
+                    cols.push(ref);
+                }
+            });
+            var aggs = state.aggs.map(function(a) {
+                usesF = true;
+                var ref = a.col === null ? '' : pyRef(a.col.name);
+                return aggFunc(a.fn).py(ref) + '.alias(' + JSON.stringify(aggAlias(a)) + ')';
+            });
+
+            var calls = [];
+            var where = buildWhere();
+            if (where) { calls.push('.where(' + JSON.stringify(where) + ')'); }
+            if (aggs.length) {
+                if (cols.length) { calls.push('.groupBy(' + cols.join(', ') + ')'); }
+                calls.push('.agg(\n        ' + aggs.join(',\n        ') + ',\n    )');
+            } else if (cols.length) {
+                calls.push('.select(' + cols.join(', ') + ')');
+            }
+            var resultWhere = groupConds(resultFilterList(false), state.rcombine);
+            if (resultWhere) { calls.push('.where(' + JSON.stringify(resultWhere) + ')'); }
+            var sorts = effectiveSorts();
+            if (sorts.length) {
+                calls.push('.orderBy(' + sorts.map(function(s) {
+                    if (s.dir !== 'desc') { return pyRef(s.name); }
+                    usesF = true;
+                    return 'F.col(' + pyRef(s.name) + ').desc()';
+                }).join(', ') + ')');
+            }
+            if (state.limit !== '' && limitValid()) { calls.push('.limit(' + state.limit + ')'); }
+            var source = state.source.pyspark || pyDefault;
+            if (!calls.length) { return source; }
+            return (usesF && state.includeImport ? 'import pyspark.sql.functions as F\n\n' : '') + '(\n    ' + source + '\n    ' + calls.join('\n    ') + '\n)';
+        }
+
         function renderSql() {
-            body.append($('<p class="qb-hint"></p>').text('Edit the query if needed. Done copies it to the clipboard.'));
-            var box = $('<textarea class="qb-sql" spellcheck="false"></textarea>').val(buildSql());
-            box.on('input', refresh);
-            body.append(box);
+            var lang = state.language;
+            var isPyspark = lang === 'pyspark';
+            var build = isPyspark ? buildPyspark : buildSql;
+
+            var seg = $('<div class="qb-seg" role="group" aria-label="Output format"></div>');
+            [['pyspark', 'PySpark'], ['sql', 'SQL']].forEach(function(option) {
+                var btn = $('<button type="button" class="qb-seg-btn"></button>')
+                    .text(option[1])
+                    .attr('aria-pressed', lang === option[0] ? 'true' : 'false');
+                btn.on('click', function() {
+                    if (lang === option[0]) { return; }
+                    state.language = option[0];
+                    renderStep();
+                });
+                seg.append(btn);
+            });
+
+            var box = $('<textarea class="qb-sql" spellcheck="false"></textarea>');
+            var noticeText = $('<span></span>');
+            var regenerate = $('<button type="button" class="qb-btn"></button>');
+            var notice = $('<div class="qb-notice"></div>').append(noticeText).append(regenerate).hide();
+
+            function updateNotice(generated) {
+                if (state.edits[lang] === null) {
+                    notice.hide();
+                    return;
+                }
+                var stale = generated !== state.lastGen[lang];
+                noticeText.text(stale
+                    ? 'Your edits are kept, but the selection or options changed since. Regenerate to apply them (this discards your edits).'
+                    : 'You edited this text.');
+                regenerate.text(stale ? 'Regenerate' : 'Discard edits');
+                notice.show();
+            }
+
+            // edits survive option changes; only an explicit regenerate discards them
+            function sync() {
+                var generated = build();
+                if (state.edits[lang] === null) {
+                    box.val(generated);
+                    state.lastGen[lang] = generated;
+                } else {
+                    box.val(state.edits[lang]);
+                }
+                updateNotice(generated);
+                refresh();
+            }
+
+            var sourceInput = $('<input type="text" class="qb-source" autocomplete="off">')
+                .attr('placeholder', isPyspark ? pyDefault : meta.tableName)
+                .attr('aria-label', isPyspark ? 'DataFrame name' : 'Table name')
+                .val(state.source[lang]);
+            sourceInput.on('input', function() {
+                state.source[lang] = $.trim($(this).val());
+                sync();
+            });
+
+            var options = $('<div class="qb-sql-options"></div>')
+                .append($('<label class="qb-check"></label>').append($('<span></span>').text(isPyspark ? 'DataFrame' : 'Table')).append(sourceInput));
+            if (isPyspark) {
+                var importCheck = $('<input type="checkbox">').prop('checked', state.includeImport);
+                importCheck.on('change', function() {
+                    state.includeImport = this.checked;
+                    sync();
+                });
+                options.append($('<label class="qb-check"></label>').append(importCheck).append(' Include import F'));
+            }
+            options.append(seg);
+
+            box.on('input', function() {
+                var generated = build();
+                if (state.edits[lang] === null) { state.lastGen[lang] = generated; }
+                state.edits[lang] = box.val() === generated ? null : box.val();
+                updateNotice(generated);
+                refresh();
+            });
+            regenerate.on('click', function() {
+                state.edits[lang] = null;
+                sync();
+            });
+
+            body.append($('<div class="qb-sql-head"></div>')
+                .append($('<p class="qb-hint"></p>').text((isPyspark ? 'Edit the code' : 'Edit the query') + ' if needed. Copy & close copies it to the clipboard.'))
+                .append(options));
+            body.append(notice).append(box);
+            sync();
         }
 
         function renderStep() {
             body.empty();
             renderStepper();
-            [renderColumns, renderAggregates, renderSql][step]();
+            [renderColumns, renderAggregates, renderRefine, renderSql][step]();
             backBtn.toggle(step > 0);
-            nextBtn.toggle(step < STEPS.length - 1);
-            doneBtn.toggle(step === STEPS.length - 1);
+            skipBtn.toggle(step < STEP_REFINE);
+            nextBtn.toggle(step < LAST_STEP);
+            doneBtn.toggle(step === LAST_STEP);
             refresh();
             body.scrollTop(0);
         }
@@ -692,7 +1377,16 @@ window.LionQueryBuilder = (function() {
         }
 
         function open() {
-            state = { cols: visibleColumns(), star: false, aggs: [], order: [], aggCols: [], starItem: { star: true, name: '*', type: 'all columns' } };
+            state = {
+                cols: visibleColumns(), star: false, aggs: [], order: [], aggCols: [],
+                conds: [], combine: 'and', rconds: [], rcombine: 'and', sorts: [], limit: '',
+                tableFilter: snapshotTableFilter(), useTableFilter: true,
+                tableSort: snapshotTableSort(), useTableSort: false,
+                language: 'pyspark', includeImport: false,
+                source: { pyspark: pyDefault, sql: meta.tableName },
+                edits: { pyspark: null, sql: null }, lastGen: { pyspark: null, sql: null },
+                starItem: { star: true, name: '*', type: 'all columns' }
+            };
             step = 0;
             lastFocus = document.activeElement;
             // capture phase so Escape works even when focus was lost by a re-render
@@ -732,6 +1426,7 @@ window.LionQueryBuilder = (function() {
         cancelBtn.on('click', close);
         backBtn.on('click', function() { goTo(step - 1); });
         nextBtn.on('click', function() { goTo(step + 1); });
+        skipBtn.on('click', function() { goTo(LAST_STEP); });
         doneBtn.on('click', function() {
             if (validate()) { return; }
             var text = sqlBox().val();
@@ -749,8 +1444,20 @@ window.LionQueryBuilder = (function() {
         // keep keystrokes away from the DataTables key handling
         overlay.on('keydown keyup keypress', function(e) {
             if (e.type === 'keydown') {
+                if (e.key === 'Enter') {
+                    if (e.metaKey || e.ctrlKey) {
+                        e.preventDefault();
+                        (step === LAST_STEP ? doneBtn : nextBtn).trigger('click');
+                    } else if (e.target.tagName === 'INPUT' && e.target.type === 'text' && !$(e.target).hasClass('qb-search')) {
+                        // Enter moves to the next field, like in a form
+                        e.preventDefault();
+                        var fields = dialog.find('input[type="text"]:not(.qb-search), select').filter(':visible:not(:disabled)');
+                        var next = fields.eq(fields.index(e.target) + 1);
+                        if (next.length) { next.trigger('focus'); }
+                    }
+                }
                 if (e.key === 'Tab') {
-                    var items = dialog.find('button, input, textarea').filter(':visible:not(:disabled)');
+                    var items = dialog.find('button, input, select, textarea').filter(':visible:not(:disabled)');
                     var first = items.first()[0], last = items.last()[0];
                     if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog[0])) {
                         e.preventDefault();

@@ -385,6 +385,7 @@ class DataFrameDisplay():
         display(display_HTML(self.iframe_html), clear=True)
 
     def html_title_from_source(self):
+        print(DataFrameOther.sources(self.df))
         if self.html_title is None:
             name = DataFrameOther.name(self.df, levels_to_skip=3)
 
@@ -588,6 +589,7 @@ class DataFrameDisplay():
         table_name = self.html_title if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*', self.html_title or '') else 'your_table'
         meta = {
             'tableName': table_name,
+            'title': self.html_title or '',
             'columns': [
                 {'name': col, 'type': dtype, 'numeric': i in self.nummeric_columns_indexes}
                 for i, (col, dtype) in enumerate(self.dtypes)

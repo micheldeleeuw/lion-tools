@@ -782,6 +782,9 @@ $(document).ready(function() {
         showToast: showToast,
         getFilter: function() {
             return { colIdx: filterColumnIndex, mode: filterMode, value: filterValue };
+        },
+        getSort: function() {
+            return table.order();
         }
     });
 
