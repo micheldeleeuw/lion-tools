@@ -60,7 +60,7 @@
     }
     
     /* Toolbar buttons */
-    #resetBtn, #columnBtn, #exportBtn {
+    #resetBtn, #columnBtn, #exportBtn, #queryBtn {
         height: 28px;
         padding: 0 12px;
         background: #f6f8fc;
@@ -71,7 +71,7 @@
         font-size: 12px;
         margin: 0;
     }
-    #resetBtn:hover, #columnBtn:hover, #exportBtn:hover {
+    #resetBtn:hover, #columnBtn:hover, #exportBtn:hover, #queryBtn:hover {
         background: #eef2f9;
     }
     .export-wrapper, .column-wrapper {
@@ -322,7 +322,7 @@
         border-color: #5f7ea8;
         box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
     }
-    #resetBtn:focus-visible, #columnBtn:focus-visible, #exportBtn:focus-visible,
+    #resetBtn:focus-visible, #columnBtn:focus-visible, #exportBtn:focus-visible, #queryBtn:focus-visible,
     .select-btn:focus-visible, .copy-btn:focus-visible, .apply-btn:focus-visible {
         position: relative;
         outline: none;
@@ -343,6 +343,7 @@
 
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+{query_builder_assets}
 <script>
 $(document).ready(function() {
     var filterEnabled = {column_filter};
@@ -416,6 +417,7 @@ $(document).ready(function() {
     var exportWrapper = $('<span class="export-wrapper"></span>').append(exportBtn).append(exportMenu);
     var exportToast = $('<div id="exportToast"></div>');
     $('body').append(exportToast);
+    var queryBtn = $('<button id="queryBtn">Query</button>');
     var filterSelect = null;
     
     var selectButtonsDiv = $('<div class="select-buttons"></div>');
@@ -581,6 +583,7 @@ $(document).ready(function() {
         .append(wrapper.find('.dataTables_length'))
         .append(columnWrapper)
         .append(exportWrapper)
+        .append(queryBtn)
         .append(resetBtn);
     var toolbarRight = $('<div class="dt-toolbar-right"></div>');
     if (filterEnabled && filterSelect) {
@@ -772,6 +775,16 @@ $(document).ready(function() {
         exportToast.text(message).stop(true, true).fadeIn(150).delay(2000).fadeOut(300);
     }
 
+    LionQueryBuilder.init({
+        table: table,
+        meta: {query_builder_meta},
+        button: queryBtn,
+        showToast: showToast,
+        getFilter: function() {
+            return { colIdx: filterColumnIndex, mode: filterMode, value: filterValue };
+        }
+    });
+
     function cellToText(raw) {
         if (raw === null || raw === undefined) {
             return '';
@@ -916,6 +929,11 @@ $(document).ready(function() {
         e.stopPropagation();
         columnList.removeClass('show');
         exportMenu.toggleClass('show');
+    });
+
+    queryBtn.on('click', function() {
+        columnList.removeClass('show');
+        exportMenu.removeClass('show');
     });
 
     exportMenu.on('click', '.export-item', function(e) {

@@ -1,4 +1,5 @@
 from operator import le
+import json
 import pathlib
 import html
 from pprint import pprint
@@ -576,8 +577,24 @@ class DataFrameDisplay():
         html_content = html_content.replace('{page_length}', self.page_length)
         html_content = html_content.replace('{length_menu}', self.length_menu)
         html_content = html_content.replace('{column_filter}', 'true' if self.column_filter else 'false')
-        
+
+        # inserted last so that the fragment is not touched by the other replacements
+        html_content = html_content.replace('{query_builder_meta}', self.query_builder_meta())
+        html_content = html_content.replace('{query_builder_assets}', Tools.load_file('query_builder_template.html'))
+
         self.html_content = html_content
+
+    def query_builder_meta(self):
+        table_name = self.html_title if re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*', self.html_title or '') else 'your_table'
+        meta = {
+            'tableName': table_name,
+            'columns': [
+                {'name': col, 'type': dtype, 'numeric': i in self.nummeric_columns_indexes}
+                for i, (col, dtype) in enumerate(self.dtypes)
+            ],
+        }
+        # '</' would end the surrounding script tag
+        return json.dumps(meta).replace('</', '<\\/')
 
     def save_to_file(self):
         # save to file

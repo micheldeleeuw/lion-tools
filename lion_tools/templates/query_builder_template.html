@@ -1,0 +1,770 @@
+<style>
+    .qb-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(30, 41, 59, 0.45);
+        z-index: 1500;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+    }
+    .qb-overlay.show { display: flex; }
+    .qb-dialog {
+        display: flex;
+        flex-direction: column;
+        width: min(900px, calc(100vw - 24px));
+        max-height: calc(100vh - 24px);
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        font-size: 12px;
+        color: #2c3e50;
+        outline: none;
+    }
+    .qb-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 10px 14px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .qb-title { font-size: 14px; font-weight: bold; }
+    .qb-stepper {
+        display: flex;
+        flex: 1;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .qb-stepper li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px 3px 4px;
+        border-radius: 12px;
+        color: #8a97a8;
+    }
+    .qb-stepper .qb-step {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0;
+        border: none;
+        background: none;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+    }
+    .qb-stepper li:hover { background: #eef2f9; }
+    .qb-stepper .qb-step:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.35); border-radius: 12px; }
+    .qb-stepper .qb-step-num {
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        text-align: center;
+        border-radius: 50%;
+        background: #e5e9f0;
+        font-size: 11px;
+    }
+    .qb-stepper li.active { color: #5f7ea8; font-weight: bold; background: #eef2f9; }
+    .qb-stepper li.active .qb-step-num { background: #5f7ea8; color: white; }
+    .qb-stepper li.done .qb-step-num { background: #9db4d3; color: white; }
+    .qb-close {
+        border: none;
+        background: none;
+        font-size: 20px;
+        line-height: 1;
+        color: #6b7a8f;
+        cursor: pointer;
+    }
+    .qb-close:hover { color: #2c3e50; }
+    .qb-body {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 12px 14px;
+    }
+    .qb-hint { color: #6b7a8f; margin: 0 0 8px 0; }
+    .qb-list { border: 1px solid #e5e7eb; border-radius: 4px; }
+    .qb-dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .qb-pane-head { display: flex; align-items: center; justify-content: space-between; min-height: 24px; margin-bottom: 6px; }
+    .qb-pane-head .qb-panel-title { margin: 0; }
+    .qb-pane-head .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
+    .qb-pane-list { height: 300px; overflow: auto; }
+    .qb-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 4px 0 0;
+        border-bottom: 1px solid #f0f2f5;
+    }
+    .qb-item:last-child { border-bottom: none; }
+    .qb-item-btn {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        padding: 6px 8px;
+        border: none;
+        background: none;
+        font-size: 12px;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+    .qb-item-btn:hover { background: #eef2f9; }
+    .qb-item-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
+    .qb-item .qb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .qb-item .qb-type { margin-left: auto; color: #8a97a8; white-space: nowrap; }
+    .qb-item input.qb-alias { flex: 0 0 45%; }
+    .qb-pane-selected .qb-item-btn { flex: 0 1 50%; }
+    .qb-agg-layout { display: grid; grid-template-columns: 1fr 120px 1.5fr; gap: 12px; }
+    .qb-agg-buttons { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+    .qb-agg-buttons .qb-btn { width: calc(100% - 12px); align-self: center; padding: 0 8px; }
+    .qb-agg-separator { width: 100%; margin: 4px 0; border: none; border-top: 1px solid #d5dbe5; }
+    .qb-item-btn.active { background: #dfe8f5; }
+    .qb-panel-title { font-weight: bold; margin: 0 0 6px 0; }
+    .qb-agg-head, .qb-selected-agg {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 22px;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 6px 4px 10px;
+    }
+    .qb-agg-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        background: #f6f8fc;
+        border-bottom: 1px solid #e5e7eb;
+        color: #6b7a8f;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    .qb-agg-head.qb-col-head { grid-template-columns: minmax(0, 1fr) auto; padding-left: 8px; padding-right: 12px; }
+    .qb-selected-agg { border-bottom: 1px solid #f0f2f5; }
+    .qb-selected-agg:last-child { border-bottom: none; }
+    .qb-selected-agg:hover { background: #f6f8fc; }
+    .qb-selected-agg .qb-expr { color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .qb-remove { border: none; background: none; color: #8a97a8; font-size: 16px; cursor: pointer; }
+    .qb-remove:hover { color: #c0392b; }
+    .qb-empty { padding: 10px; color: #8a97a8; }
+    .qb-overlay input[type="text"] {
+        height: 24px;
+        padding: 0 6px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 12px;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+    .qb-overlay input[type="text"]:focus, .qb-sql:focus {
+        outline: none;
+        border-color: #5f7ea8;
+        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
+    }
+    .qb-overlay input[type="text"]:disabled { background: #f4f4f4; color: #aaa; }
+    .qb-overlay input.qb-invalid { border-color: #c0392b; }
+    .qb-overlay input.qb-default { color: #9aa5b5; }
+    .qb-sql {
+        width: 100%;
+        min-height: 220px;
+        box-sizing: border-box;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: Menlo, Consolas, monospace;
+        font-size: 12px;
+        resize: vertical;
+    }
+    .qb-footer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-top: 1px solid #e5e7eb;
+    }
+    .qb-error { flex: 1; color: #c0392b; }
+    .qb-btn {
+        height: 28px;
+        padding: 0 14px;
+        background: #f6f8fc;
+        color: #5f7ea8;
+        border: 1px solid #5f7ea8;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .qb-btn:hover { background: #eef2f9; }
+    .qb-btn.primary { background: #5f7ea8; color: white; }
+    .qb-btn.primary:hover { background: #4f6d95; }
+    .qb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .qb-btn:focus-visible, .qb-close:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.35);
+    }
+</style>
+<script>
+window.LionQueryBuilder = (function() {
+    var MIN_FRAME_HEIGHT = 560;
+    var STEPS = ['Columns (optional)', 'Aggregates (optional)', 'Query'];
+    var AGG_FUNCS = [
+        { id: 'min', label: 'min', prefix: 'min', sql: function(c) { return 'min(' + c + ')'; } },
+        { id: 'max', label: 'max', prefix: 'max', sql: function(c) { return 'max(' + c + ')'; } },
+        { id: 'avg', label: 'avg', prefix: 'avg', numericOnly: true, sql: function(c) { return 'avg(' + c + ')'; } },
+        { id: 'count_null', label: 'count null', prefix: 'count_null', sql: function(c) { return 'count_if(' + c + ' IS NULL)'; } },
+        { id: 'count_not_null', label: 'count not null', prefix: 'count_not_null', sql: function(c) { return 'count(' + c + ')'; } },
+        { id: 'count_distinct', label: 'count distinct', prefix: 'count_distinct', sql: function(c) { return 'count(DISTINCT ' + c + ')'; } },
+        { id: 'approx_count_distinct', label: 'apprx cnt dstnct', prefix: 'approx_count_distinct', sql: function(c) { return 'approx_count_distinct(' + c + ')'; } }
+    ];
+    var STAR_AGG = { id: 'count_star', label: 'count(*)', sql: function() { return 'count(*)'; } };
+
+    function quoteIdent(name) {
+        return '`' + String(name).replace(/`/g, '``') + '`';
+    }
+
+    function quoteString(value) {
+        return "'" + String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+    }
+
+    function aggFunc(id) {
+        return id === STAR_AGG.id ? STAR_AGG : AGG_FUNCS.filter(function(f) { return f.id === id; })[0];
+    }
+
+    function init(ctx) {
+        var table = ctx.table;
+        var meta = ctx.meta;
+        var state = null;
+        var step = 0;
+        var frameRestore = null;
+        var lastFocus = null;
+
+        var overlay = $('<div class="qb-overlay"></div>');
+        var dialog = $('<div class="qb-dialog" role="dialog" aria-modal="true" aria-labelledby="qbTitle" tabindex="-1"></div>');
+        var stepper = $('<ol class="qb-stepper"></ol>');
+        var closeBtn = $('<button type="button" class="qb-close" aria-label="Close">&times;</button>');
+        var body = $('<div class="qb-body"></div>');
+        var errorBox = $('<div class="qb-error" role="alert"></div>');
+        var cancelBtn = $('<button type="button" class="qb-btn">Cancel</button>');
+        var backBtn = $('<button type="button" class="qb-btn">Back</button>');
+        var nextBtn = $('<button type="button" class="qb-btn primary">Next</button>');
+        var doneBtn = $('<button type="button" class="qb-btn primary">Done</button>');
+
+        dialog
+            .append($('<div class="qb-header"></div>')
+                .append('<div class="qb-title" id="qbTitle">Query builder</div>')
+                .append(stepper)
+                .append(closeBtn))
+            .append(body)
+            .append($('<div class="qb-footer"></div>').append(errorBox).append(cancelBtn).append(backBtn).append(nextBtn).append(doneBtn));
+        overlay.append(dialog);
+        $('body').append(overlay);
+
+        function visibleColumns() {
+            var cols = [];
+            meta.columns.forEach(function(col, idx) {
+                if (table.column(idx).visible()) {
+                    cols.push({ idx: idx, name: col.name, type: col.type, numeric: col.numeric, alias: '' });
+                }
+            });
+            return cols;
+        }
+
+        function outName(col) {
+            return col.alias.trim() || col.name;
+        }
+
+        function findAgg(col, fn) {
+            return state.aggs.filter(function(a) { return a.col === col && a.fn === fn; })[0];
+        }
+
+        function defaultAlias(col, fn) {
+            return fn === STAR_AGG.id ? 'count' : aggFunc(fn).prefix + '_' + col.name;
+        }
+
+        function selectedCols() {
+            return state.order.filter(function(c) { return !c.star; });
+        }
+
+        function outputNames() {
+            var names = selectedCols().map(outName);
+            state.aggs.forEach(function(a) { names.push(a.alias.trim() || defaultAlias(a.col, a.fn)); });
+            return names;
+        }
+
+        function duplicateNames(names) {
+            var seen = {}, dups = {};
+            names.forEach(function(n) {
+                var key = n.toLowerCase();
+                if (seen[key]) { dups[key] = true; }
+                seen[key] = true;
+            });
+            return dups;
+        }
+
+        function validate() {
+            if (step === 0) {
+                if (Object.keys(duplicateNames(selectedCols().map(outName))).length) {
+                    return 'Column names must be unique.';
+                }
+            } else if (step === 1) {
+                if (state.aggs.length && state.star) {
+                    return 'Deselect * in step 1 when using aggregates.';
+                }
+                var names = outputNames();
+                if (Object.keys(duplicateNames(names)).length) {
+                    return 'Column and aggregate names must be unique.';
+                }
+            } else if (!$.trim(sqlBox().val())) {
+                return 'The query is empty.';
+            }
+            return '';
+        }
+
+        function sqlBox() {
+            return body.find('.qb-sql');
+        }
+
+        function refresh() {
+            var error = validate();
+            errorBox.text(error);
+            nextBtn.prop('disabled', !!error);
+            nextBtn.text((step === 0 && !state.order.length) || (step === 1 && !state.aggs.length) ? 'Skip' : 'Next');
+            doneBtn.prop('disabled', !!error);
+            // mark duplicated alias inputs
+            var dups = duplicateNames(outputNames());
+            body.find('input.qb-alias').each(function() {
+                var value = $.trim($(this).val()) || $(this).attr('placeholder') || '';
+                $(this).toggleClass('qb-invalid', !!dups[value.toLowerCase()]);
+            });
+        }
+
+        function renderStepper() {
+            stepper.empty();
+            STEPS.forEach(function(label, i) {
+                stepper.append($('<li></li>')
+                    .toggleClass('active', i === step)
+                    .toggleClass('done', i < step)
+                    .append($('<button type="button" class="qb-step"></button>')
+                        .attr('aria-current', i === step ? 'step' : null)
+                        .append($('<span class="qb-step-num"></span>').text(i + 1))
+                        .append($('<span></span>').text(label))
+                        .on('click', function() { goTo(i); })));
+            });
+        }
+
+        function renderColumns() {
+            body.append($('<p class="qb-hint"></p>').text('Select columns to add to the query.'));
+
+            var items = [state.starItem].concat(state.cols);
+            var isSelected = function(item) { return state.order.indexOf(item) !== -1; };
+            var setSelected = function(item, value) {
+                var pos = state.order.indexOf(item);
+                if (value && pos === -1) {
+                    state.order.push(item);
+                } else if (!value && pos !== -1) {
+                    state.order.splice(pos, 1);
+                }
+                state.star = isSelected(state.starItem);
+            };
+
+            var availableTitle = $('<p class="qb-panel-title"></p>');
+            var selectedTitle = $('<p class="qb-panel-title"></p>');
+            var addAll = $('<button type="button" class="qb-btn">Add all</button>');
+            var removeAll = $('<button type="button" class="qb-btn">Remove all</button>');
+            var availableList = $('<div class="qb-list qb-pane-list"></div>');
+            var selectedList = $('<div class="qb-list qb-pane-list"></div>');
+
+            function makeItem(item, selected) {
+                var btn = $('<button type="button" class="qb-item-btn"></button>')
+                    .attr('title', selected ? 'Remove ' + item.name : 'Add ' + item.name)
+                    .append($('<span class="qb-name"></span>').text(item.name));
+                if (!selected) {
+                    btn.append($('<span class="qb-type"></span>').text(item.type));
+                }
+                btn.on('click', function() {
+                    setSelected(item, !selected);
+                    renderLists();
+                });
+                var row = $('<div class="qb-item"></div>').append(btn);
+                if (selected && !item.star) {
+                    var alias = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Alias">')
+                        .attr('placeholder', item.name).val(item.alias || item.name);
+                    var markDefault = function() { alias.toggleClass('qb-default', $.trim(alias.val()) === item.name || !$.trim(alias.val())); };
+                    markDefault();
+                    alias.on('input', function() {
+                        item.alias = $.trim($(this).val()) === item.name ? '' : $(this).val();
+                        markDefault();
+                        refresh();
+                    });
+                    alias.on('blur', function() {
+                        if (!$.trim($(this).val())) { $(this).val(item.name); item.alias = ''; markDefault(); refresh(); }
+                    });
+                    row.append(alias);
+                }
+                return row;
+            }
+
+            function renderLists() {
+                availableList.empty();
+                selectedList.empty();
+                var available = 0;
+                items.forEach(function(item) {
+                    if (!isSelected(item)) {
+                        available++;
+                        availableList.append(makeItem(item, false));
+                    }
+                });
+                var selected = state.order.length;
+                state.order.forEach(function(item) { selectedList.append(makeItem(item, true)); });
+                if (!available) { availableList.append($('<div class="qb-empty"></div>').text('All columns selected.')); }
+                if (!selected) { selectedList.append($('<div class="qb-empty"></div>').text('No columns selected.')); }
+                availableTitle.text('Available (' + available + ')');
+                selectedTitle.text('Selected (' + selected + ')');
+                refresh();
+            }
+
+            addAll.on('click', function() { state.cols.forEach(function(c) { setSelected(c, true); }); renderLists(); });
+            removeAll.on('click', function() { items.forEach(function(i) { setSelected(i, false); }); renderLists(); });
+
+            var availablePane = $('<div></div>')
+                .append($('<div class="qb-pane-head"></div>')
+                    .append(availableTitle).append(addAll))
+                .append(availableList);
+            var selectedPane = $('<div class="qb-pane-selected"></div>')
+                .append($('<div class="qb-pane-head"></div>')
+                    .append(selectedTitle).append(removeAll))
+                .append(selectedList);
+            body.append($('<div class="qb-dual"></div>').append(availablePane).append(selectedPane));
+            renderLists();
+        }
+
+        function renderAggregates() {
+            body.append($('<p class="qb-hint"></p>').text('Select one or more columns, then click an aggregate to add it for each of them.'));
+
+            var columnsTitle = $('<p class="qb-panel-title"></p>').text('Columns (' + state.cols.length + ')');
+            var aggsTitle = $('<p class="qb-panel-title"></p>');
+            var selectAll = $('<button type="button" class="qb-btn">Select all</button>');
+            var clearAll = $('<button type="button" class="qb-btn">Clear</button>');
+            var removeAllAggs = $('<button type="button" class="qb-btn">Remove all</button>');
+            var columnList = $('<div class="qb-list qb-pane-list"></div>');
+            var aggList = $('<div class="qb-list qb-pane-list"></div>');
+            var buttonsBox = $('<div class="qb-agg-buttons"></div>');
+            var aggButtons = [];
+
+            function activeCols() {
+                return state.cols.filter(function(c) { return state.aggCols.indexOf(c) !== -1; });
+            }
+
+            function addAgg(col, fn) {
+                if (!findAgg(col, fn)) {
+                    state.aggs.push({ col: col, fn: fn, alias: defaultAlias(col, fn) });
+                }
+            }
+
+            function addButton(func) {
+                var btn = $('<button type="button" class="qb-btn"></button>').text(func.label);
+                btn.on('click', function() {
+                    if (func.id === STAR_AGG.id) {
+                        addAgg(null, func.id);
+                    } else {
+                        activeCols().forEach(function(col) {
+                            if (!func.numericOnly || col.numeric) { addAgg(col, func.id); }
+                        });
+                    }
+                    renderAggs();
+                });
+                aggButtons.push({ btn: btn, func: func });
+                buttonsBox.append(btn);
+            }
+
+            function updateButtons() {
+                var active = activeCols();
+                aggButtons.forEach(function(b) {
+                    var enabled = b.func.id === STAR_AGG.id
+                        || (b.func.numericOnly ? active.some(function(c) { return c.numeric; }) : active.length > 0);
+                    b.btn.prop('disabled', !enabled);
+                });
+            }
+
+            function renderColumnList() {
+                columnList.empty();
+                columnList.append($('<div class="qb-agg-head qb-col-head"></div>')
+                    .append('<span>Column</span>').append('<span>Data type</span>'));
+                state.cols.forEach(function(col) {
+                    var btn = $('<button type="button" class="qb-item-btn"></button>')
+                        .toggleClass('active', state.aggCols.indexOf(col) !== -1)
+                        .append($('<span class="qb-name"></span>').text(col.name))
+                        .append($('<span class="qb-type"></span>').text(col.type));
+                    btn.on('click', function() {
+                        var pos = state.aggCols.indexOf(col);
+                        if (pos === -1) { state.aggCols.push(col); } else { state.aggCols.splice(pos, 1); }
+                        btn.toggleClass('active', pos === -1);
+                        updateButtons();
+                    });
+                    columnList.append($('<div class="qb-item"></div>').append(btn));
+                });
+                updateButtons();
+            }
+
+            function renderAggs() {
+                aggList.empty();
+                aggsTitle.text('Aggregates (' + state.aggs.length + ')');
+                if (!state.aggs.length) {
+                    aggList.append($('<div class="qb-empty"></div>').text('No aggregates selected.'));
+                } else {
+                    aggList.append($('<div class="qb-agg-head"></div>')
+                        .append('<span>Aggregate</span>').append('<span>Alias</span>').append('<span></span>'));
+                }
+                state.aggs.forEach(function(a) {
+                    var expr = aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name));
+                    var shortExpr = aggFunc(a.fn).sql(a.col === null ? '' : a.col.name);
+                    var input = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Alias">')
+                        .attr('placeholder', defaultAlias(a.col, a.fn)).val(a.alias);
+                    input.on('input', function() { a.alias = $(this).val(); refresh(); });
+                    var remove = $('<button type="button" class="qb-remove" aria-label="Remove aggregate">&times;</button>');
+                    remove.on('click', function() {
+                        state.aggs.splice(state.aggs.indexOf(a), 1);
+                        renderAggs();
+                    });
+                    aggList.append($('<div class="qb-selected-agg"></div>')
+                        .append($('<div class="qb-expr"></div>').text(shortExpr).attr('title', expr))
+                        .append(input)
+                        .append(remove));
+                });
+                refresh();
+            }
+
+            selectAll.on('click', function() {
+                state.aggCols = state.cols.slice();
+                renderColumnList();
+            });
+            clearAll.on('click', function() {
+                state.aggCols = [];
+                renderColumnList();
+            });
+            removeAllAggs.on('click', function() {
+                state.aggs = [];
+                renderAggs();
+            });
+
+            addButton(STAR_AGG);
+            buttonsBox.append('<hr class="qb-agg-separator">');
+            AGG_FUNCS.forEach(addButton);
+
+            var columnsPane = $('<div></div>')
+                .append($('<div class="qb-pane-head"></div>').append(columnsTitle).append($('<span></span>').append(selectAll).append(' ').append(clearAll)))
+                .append(columnList);
+            var aggsPane = $('<div></div>')
+                .append($('<div class="qb-pane-head"></div>').append(aggsTitle).append(removeAllAggs))
+                .append(aggList);
+            body.append($('<div class="qb-agg-layout"></div>')
+                .append(columnsPane)
+                .append(buttonsBox)
+                .append(aggsPane));
+            renderColumnList();
+            renderAggs();
+        }
+
+        function rawFilterValue(filter, colMeta) {
+            var found = filter.value;
+            var rows = table.rows().indexes().toArray();
+            for (var i = 0; i < rows.length; i++) {
+                var cell = table.cell(rows[i], filter.colIdx);
+                var node = cell.node();
+                var text = node ? $(node).text().replace(/\u00a0/g, ' ').trim() : '';
+                if (text === filter.value) {
+                    var data = String(cell.data());
+                    // data holding markup or entities is not usable as a literal
+                    if (data.indexOf('<') === -1 && data.indexOf('&') === -1) {
+                        found = data.trim();
+                    }
+                    break;
+                }
+            }
+            if (colMeta.numeric && /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(found)) {
+                return found;
+            }
+            return quoteString(found);
+        }
+
+        function buildWhere() {
+            var filter = ctx.getFilter ? ctx.getFilter() : null;
+            if (!filter || filter.colIdx < 0 || filter.mode === '__all__' || !meta.columns[filter.colIdx]) {
+                return '';
+            }
+            var colMeta = meta.columns[filter.colIdx];
+            var c = quoteIdent(colMeta.name);
+            if (filter.mode === '__empty__') {
+                return colMeta.numeric ? c + ' IS NULL' : '(' + c + " IS NULL OR " + c + " = '')";
+            }
+            if (filter.mode === '__non_empty__') {
+                return colMeta.numeric ? c + ' IS NOT NULL' : '(' + c + " IS NOT NULL AND " + c + " <> '')";
+            }
+            return c + ' = ' + rawFilterValue(filter, colMeta);
+        }
+
+        function buildSql() {
+            var select = [], group = [];
+            state.order.forEach(function(col) {
+                if (col.star) {
+                    select.push('*');
+                    return;
+                }
+                var out = outName(col);
+                select.push(quoteIdent(col.name) + (out !== col.name ? ' AS ' + quoteIdent(out) : ''));
+                group.push(quoteIdent(col.name));
+            });
+            var aggs = state.aggs;
+            aggs.forEach(function(a) {
+                var alias = a.alias.trim() || defaultAlias(a.col, a.fn);
+                select.push(aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name)) + ' AS ' + quoteIdent(alias));
+            });
+
+            if (!select.length) { select.push('*'); }
+            var sql = 'SELECT\n  ' + select.join(',\n  ') + '\nFROM ' + meta.tableName;
+            var where = buildWhere();
+            if (where) { sql += '\nWHERE ' + where; }
+            if (aggs.length && group.length) { sql += '\nGROUP BY ' + group.join(', '); }
+            return sql;
+        }
+
+        function renderSql() {
+            body.append($('<p class="qb-hint"></p>').text('Edit the query if needed. Done copies it to the clipboard.'));
+            var box = $('<textarea class="qb-sql" spellcheck="false"></textarea>').val(buildSql());
+            box.on('input', refresh);
+            body.append(box);
+        }
+
+        function renderStep() {
+            body.empty();
+            renderStepper();
+            [renderColumns, renderAggregates, renderSql][step]();
+            backBtn.toggle(step > 0);
+            nextBtn.toggle(step < STEPS.length - 1);
+            doneBtn.toggle(step === STEPS.length - 1);
+            refresh();
+            body.scrollTop(0);
+        }
+
+        function copyText(text) {
+            var box = sqlBox();
+            box[0].focus();
+            box[0].select();
+            var ok = false;
+            try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+            if (ok) { return $.Deferred().resolve().promise(); }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+            return $.Deferred().reject().promise();
+        }
+
+        function growFrame() {
+            try {
+                var frame = window.frameElement;
+                if (frame && frame.offsetHeight < MIN_FRAME_HEIGHT) {
+                    frameRestore = { frame: frame, height: frame.style.height };
+                    frame.style.height = MIN_FRAME_HEIGHT + 'px';
+                }
+            } catch (err) {
+                frameRestore = null;
+            }
+        }
+
+        function restoreFrame() {
+            if (frameRestore) {
+                frameRestore.frame.style.height = frameRestore.height;
+                frameRestore = null;
+            }
+        }
+
+        function onEscape(e) {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                close();
+            }
+        }
+
+        function open() {
+            state = { cols: visibleColumns(), star: false, aggs: [], order: [], aggCols: [], starItem: { star: true, name: '*', type: 'all columns' } };
+            step = 0;
+            lastFocus = document.activeElement;
+            // capture phase so Escape works even when focus was lost by a re-render
+            document.addEventListener('keydown', onEscape, true);
+            growFrame();
+            overlay.addClass('show');
+            renderStep();
+            dialog.trigger('focus');
+        }
+
+        function close() {
+            document.removeEventListener('keydown', onEscape, true);
+            overlay.removeClass('show');
+            restoreFrame();
+            if (lastFocus && lastFocus.focus) { lastFocus.focus(); }
+        }
+
+        // moving forward requires every step in between to be valid; stops at the first invalid one
+        function goTo(target) {
+            for (var s = step; s < target; s++) {
+                step = s;
+                if (validate()) {
+                    renderStep();
+                    return;
+                }
+            }
+            step = target;
+            renderStep();
+        }
+
+        ctx.button.on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            open();
+        });
+        closeBtn.on('click', close);
+        cancelBtn.on('click', close);
+        backBtn.on('click', function() { goTo(step - 1); });
+        nextBtn.on('click', function() { goTo(step + 1); });
+        doneBtn.on('click', function() {
+            if (validate()) { return; }
+            var text = sqlBox().val();
+            copyText(text).then(function() {
+                close();
+                ctx.showToast('Query copied to clipboard');
+            }, function() {
+                errorBox.text('Copy failed. Select the text and copy it manually.');
+            });
+        });
+        overlay.on('mousedown', function(e) {
+            if (e.target === overlay[0]) { close(); }
+        });
+
+        // keep keystrokes away from the DataTables key handling
+        overlay.on('keydown keyup keypress', function(e) {
+            if (e.type === 'keydown') {
+                if (e.key === 'Tab') {
+                    var items = dialog.find('button, input, textarea').filter(':visible:not(:disabled)');
+                    var first = items.first()[0], last = items.last()[0];
+                    if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog[0])) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            }
+            e.stopPropagation();
+        });
+    }
+
+    return { init: init };
+})();
+</script>
