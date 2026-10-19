@@ -401,6 +401,8 @@ class DataFrameDisplay():
                 elif len(sources) > 1:
                     self.html_title = self.html_title or sources[0].split(".")[-1] + f" (+{len(sources)-1})"
 
+        self.html_title = self.html_title or "DataFrame"
+
 
     def gather_column_information(self):
         # define some variables that are needed down the road
