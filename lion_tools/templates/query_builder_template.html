@@ -132,7 +132,8 @@
     .qb-item .qb-type { margin-left: auto; color: #8a97a8; white-space: nowrap; }
     .qb-item input.qb-alias { flex: 0 0 38%; }
     .qb-pane-selected .qb-item-btn { flex: 1 1 0; }
-    .qb-move { width: 20px; height: 20px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 9px; cursor: pointer; }
+    .qb-move { width: 14px; height: 20px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 9px; cursor: pointer; }
+    .qb-move + .qb-move { margin-left: -4px; }
     .qb-move:hover:not(:disabled) { color: #5f7ea8; }
     .qb-move:disabled { opacity: 0.3; cursor: default; }
     .qb-badges { display: inline-flex; flex: none; gap: 3px; margin-left: auto; }
@@ -146,7 +147,7 @@
     .qb-panel-title { font-weight: bold; margin: 0 0 6px 0; }
     .qb-agg-head, .qb-selected-agg {
         display: grid;
-        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 22px;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 14px 14px 14px;
         align-items: center;
         gap: 8px;
         padding: 4px 6px 4px 10px;
@@ -168,7 +169,7 @@
     .qb-selected-agg:last-child { border-bottom: none; }
     .qb-selected-agg:hover { background: #f6f8fc; }
     .qb-selected-agg .qb-expr { color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .qb-remove { border: none; background: none; color: #8a97a8; font-size: 16px; cursor: pointer; }
+    .qb-remove { width: 14px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 15px; cursor: pointer; }
     .qb-remove:hover { color: #c0392b; }
     .qb-empty { padding: 10px; color: #8a97a8; }
     .qb-refine { display: flex; flex-direction: column; gap: 12px; }
@@ -708,11 +709,19 @@ window.LionQueryBuilder = (function() {
         function renderAggregates() {
             body.append($('<p class="qb-hint"></p>').text('Select one or more columns, then click an aggregate to add it for each of them.'));
 
-            var columnsTitle = $('<p class="qb-panel-title"></p>').text('Columns (' + state.cols.length + ')');
+            var groupCols = selectedCols();
+            var candidates = state.cols.filter(function(c) { return groupCols.indexOf(c) === -1; });
+            // columns chosen in step 1 are group-by columns; drop leftovers from an earlier visit
+            state.aggCols = state.aggCols.filter(function(c) { return groupCols.indexOf(c) === -1; });
+            state.aggs = state.aggs.filter(function(a) { return a.col === null || groupCols.indexOf(a.col) === -1; });
+
+            var columnsTitle = $('<p class="qb-panel-title"></p>').text('Columns (' + candidates.length + ')');
             var aggsTitle = $('<p class="qb-panel-title"></p>');
             var selectAll = $('<button type="button" class="qb-btn">Select all</button>');
             var clearAll = $('<button type="button" class="qb-btn">Clear</button>');
             var removeAllAggs = $('<button type="button" class="qb-btn">Remove all</button>');
+            var sortByColumn = $('<button type="button" class="qb-btn">By column</button>');
+            var sortByAgg = $('<button type="button" class="qb-btn">By aggregate</button>');
             var search = searchInput();
             var matches = nameMatcher(search);
             var columnRows = $('<div></div>');
@@ -734,6 +743,13 @@ window.LionQueryBuilder = (function() {
             }
             function activeCols() {
                 return state.cols.filter(function(c) { return state.aggCols.indexOf(c) !== -1; });
+            }
+
+            // stable sort: equal keys keep their current relative order
+            function sortAggs(key) {
+                var pos = new Map(state.aggs.map(function(a, i) { return [a, i]; }));
+                state.aggs.sort(function(x, y) { return (key(x) - key(y)) || (pos.get(x) - pos.get(y)); });
+                renderAggs();
             }
 
             function addAgg(col, fn) {
@@ -775,7 +791,7 @@ window.LionQueryBuilder = (function() {
                     .append('<span>Column</span>').append('<span>Data type</span>'));
                 badgeBoxes = [];
                 var shown = 0;
-                state.cols.filter(matches).forEach(function(col) {
+                candidates.filter(matches).forEach(function(col) {
                     shown++;
                     var badges = $('<span class="qb-badges"></span>');
                     badgeBoxes.push({ col: col, box: badges });
@@ -797,6 +813,11 @@ window.LionQueryBuilder = (function() {
                 updateButtons();
             }
 
+            function moveAgg(from, delta) {
+                state.aggs.splice(from + delta, 0, state.aggs.splice(from, 1)[0]);
+                renderAggs();
+            }
+
             function renderAggs() {
                 aggList.empty();
                 aggsTitle.text('Aggregates (' + state.aggs.length + ')');
@@ -804,9 +825,9 @@ window.LionQueryBuilder = (function() {
                     aggList.append($('<div class="qb-empty"></div>').text('No aggregates selected.'));
                 } else {
                     aggList.append($('<div class="qb-agg-head"></div>')
-                        .append('<span>Aggregate</span>').append('<span>Alias</span>').append('<span></span>'));
+                        .append('<span>Aggregate</span>').append('<span>Alias</span>').append('<span></span><span></span><span></span>'));
                 }
-                state.aggs.forEach(function(a) {
+                state.aggs.forEach(function(a, i) {
                     var expr = aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name));
                     var shortExpr = aggFunc(a.fn).sql(a.col === null ? '' : a.col.name);
                     var input = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Alias">')
@@ -817,18 +838,33 @@ window.LionQueryBuilder = (function() {
                         state.aggs.splice(state.aggs.indexOf(a), 1);
                         renderAggs();
                     });
+                    var up = $('<button type="button" class="qb-move" aria-label="Move up" title="Move up">\u25B2</button>')
+                        .prop('disabled', i === 0).on('click', function() { moveAgg(i, -1); });
+                    var down = $('<button type="button" class="qb-move" aria-label="Move down" title="Move down">\u25BC</button>')
+                        .prop('disabled', i === state.aggs.length - 1).on('click', function() { moveAgg(i, 1); });
                     aggList.append($('<div class="qb-selected-agg"></div>')
                         .append($('<div class="qb-expr"></div>').text(shortExpr).attr('title', expr))
                         .append(input)
+                        .append(up)
+                        .append(down)
                         .append(remove));
                 });
+                sortByColumn.add(sortByAgg).prop('disabled', state.aggs.length < 2);
                 fillBadges();
                 refresh();
             }
 
+            sortByColumn.on('click', function() {
+                sortAggs(function(a) { return a.col === null ? -1 : state.cols.indexOf(a.col); });
+            });
+            sortByAgg.on('click', function() {
+                sortAggs(function(a) {
+                    return a.fn === STAR_AGG.id ? -1 : AGG_FUNCS.map(function(f) { return f.id; }).indexOf(a.fn);
+                });
+            });
             search.on('input', renderColumnList);
             selectAll.on('click', function() {
-                state.cols.filter(matches).forEach(function(c) {
+                candidates.filter(matches).forEach(function(c) {
                     if (state.aggCols.indexOf(c) === -1) { state.aggCols.push(c); }
                 });
                 renderColumnList();
@@ -850,7 +886,8 @@ window.LionQueryBuilder = (function() {
                 .append($('<div class="qb-pane-head"></div>').append(columnsTitle).append($('<span></span>').append(selectAll).append(' ').append(clearAll)))
                 .append(columnList);
             var aggsPane = $('<div></div>')
-                .append($('<div class="qb-pane-head"></div>').append(aggsTitle).append(removeAllAggs))
+                .append($('<div class="qb-pane-head"></div>').append(aggsTitle)
+                    .append($('<span></span>').append(sortByColumn).append(' ').append(sortByAgg).append(' ').append(removeAllAggs)))
                 .append(aggList);
             body.append($('<div class="qb-agg-layout"></div>')
                 .append(columnsPane)
