@@ -548,7 +548,7 @@ class DataFrameDisplay():
             total_width += max(header_0_width, group_column_width)
             
         # minimal width at which the toolbar (entries, buttons, filter, search) fits on one row
-        min_width = 620 + 30 + 7*max([len(col) for col in self.table_cols if col != '_rownum']) if self.column_filter else 620
+        min_width = 680 + 7*max([len(col) for col in self.table_cols if col != '_rownum']) if self.column_filter else 620
         if total_width * 9 + 50 < min_width:
             self.max_width = f'{min_width}px'
         else:
