@@ -549,7 +549,7 @@ class DataFrameDisplay():
             
         # minimal width at which the toolbar (entries, buttons, filter, search) fits on one row
         # the filter select grows with the longest column name but is capped by max-width: 260px in the template
-        min_width = 700 + min(260, 7*max([len(col) for col in self.table_cols if col != '_rownum'])) if self.column_filter else 620
+        min_width = 700 + min(260, 7*max([len(col) for col in self.table_cols if col != '_rownum'])) if self.column_filter else 700
         if total_width * 9 + 50 < min_width:
             self.max_width = f'{min_width}px'
         else:
