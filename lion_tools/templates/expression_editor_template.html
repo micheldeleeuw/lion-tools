@@ -1,5 +1,11 @@
 <style>
     .ee-overlay {
+        --ee-text: var(--dt-text, #2c3e50);
+        --ee-muted: var(--dt-muted, #657487);
+        --ee-border: var(--dt-border, #dce2e8);
+        --ee-surface: var(--dt-surface, #f6f8fa);
+        --ee-accent: var(--dt-accent, #5f7ea8);
+        --ee-hover: var(--dt-hover, #eef2f9);
         display: none;
         position: fixed;
         inset: 0;
@@ -13,55 +19,64 @@
     .ee-dialog {
         display: flex;
         flex-direction: column;
-        width: min(760px, calc(100vw - 24px));
+        width: min(860px, calc(100vw - 24px));
+        height: min(560px, calc(100vh - 24px));
         max-height: calc(100vh - 24px);
         background: white;
         border-radius: 8px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         font-size: 12px;
-        color: #2c3e50;
+        color: var(--ee-text);
         outline: none;
     }
-    .ee-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #e5e7eb; }
-    .ee-title { font-size: 14px; font-weight: bold; }
-    .ee-close { border: none; background: none; font-size: 20px; line-height: 1; color: #6b7a8f; cursor: pointer; }
-    .ee-close:hover { color: #2c3e50; }
-    .ee-body { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; min-height: 0; overflow: auto; padding: 12px 14px; }
-    .ee-label { display: block; margin: 0 0 4px 0; font-weight: bold; }
-    .ee-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .ee-header { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--ee-border); }
+    .ee-title { min-width: 0; overflow-wrap: anywhere; font-size: 14px; font-weight: bold; }
+    .ee-close { flex: none; width: 28px; height: 28px; border: none; border-radius: 4px; background: none; font-size: 20px; line-height: 1; color: var(--ee-muted); cursor: pointer; }
+    .ee-close:hover { color: var(--ee-text); background: var(--ee-hover); }
+    .ee-body { display: flex; flex-direction: column; flex: 1; gap: 16px; min-height: 0; overflow: auto; padding: 16px; }
+    .ee-label { display: block; flex: none; margin: 0; font-weight: bold; }
+    .ee-name-field { display: flex; flex: none; align-items: center; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--ee-border); }
+    .ee-name-field input { flex: 1; min-width: 0; }
+    .ee-workspace { display: grid; flex: 1; min-height: 260px; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; }
+    .ee-main, .ee-columns { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
     .ee-overlay input[type="text"] {
         width: 100%;
-        height: 24px;
-        padding: 0 6px;
-        border: 1px solid #ccc;
+        height: 28px;
+        padding: 0 8px;
+        border: 1px solid var(--ee-border);
         border-radius: 4px;
         font-size: 12px;
         box-sizing: border-box;
     }
     .ee-expression {
+        flex: 1 0 auto;
         width: 100%;
-        height: 240px;
-        padding: 8px;
-        border: 1px solid #ccc;
+        height: 220px;
+        min-height: 180px;
+        padding: 12px;
+        border: 1px solid var(--ee-border);
         border-radius: 4px;
         box-sizing: border-box;
         font-family: Menlo, Consolas, monospace;
         font-size: 12px;
+        line-height: 1.6;
         resize: vertical;
     }
     .ee-overlay input[type="text"]:focus, .ee-expression:focus {
         outline: none;
-        border-color: #5f7ea8;
+        border-color: var(--ee-accent);
         box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
     }
-    .ee-columns { display: flex; flex-direction: column; min-width: 0; }
-    .ee-list { height: 276px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 4px; }
-    .ee-search-row { position: sticky; top: 0; padding: 4px 6px; background: white; border-bottom: 1px solid #e5e7eb; }
+    .ee-list { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; border: 1px solid var(--ee-border); border-radius: 4px; }
+    .ee-search-row { position: sticky; top: 0; z-index: 2; box-sizing: border-box; height: 37px; padding: 4px 6px; background: white; border-bottom: 1px solid var(--ee-border); }
+    .ee-list-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 37px; z-index: 1; padding: 6px 8px; background: var(--ee-surface); color: var(--ee-muted); border-bottom: 1px solid var(--ee-border); font-size: 11px; }
     .ee-item {
-        display: flex;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
         align-items: center;
-        gap: 8px;
+        gap: 12px;
         width: 100%;
+        min-height: 28px;
         padding: 6px 8px;
         border: none;
         border-bottom: 1px solid #f0f2f5;
@@ -71,32 +86,38 @@
         text-align: left;
         cursor: pointer;
     }
-    .ee-item:hover { background: #eef2f9; }
+    .ee-item:hover { background: var(--ee-hover); }
     .ee-item:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
     .ee-item .ee-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ee-item .ee-type { margin-left: auto; color: #8a97a8; white-space: nowrap; }
-    .ee-empty { padding: 10px; color: #8a97a8; }
-    .ee-footer { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid #e5e7eb; }
-    .ee-error { flex: 1; color: #c0392b; }
+    .ee-item .ee-type { max-width: 100px; overflow: hidden; text-overflow: ellipsis; color: var(--ee-muted); white-space: nowrap; text-align: right; }
+    .ee-empty { padding: 12px; color: var(--ee-muted); }
+    .ee-footer { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--ee-border); }
+    .ee-footer .primary { margin-left: auto; }
+    .ee-error { flex: none; max-height: 72px; overflow: auto; overflow-wrap: anywhere; padding: 8px 16px; color: #a63327; background: #fff8e6; border-top: 1px solid #f0d9a0; }
+    .ee-error:empty { display: none; }
     .ee-btn {
         height: 28px;
         padding: 0 14px;
-        background: #f6f8fc;
-        color: #5f7ea8;
-        border: 1px solid #5f7ea8;
+        background: white;
+        color: var(--ee-text);
+        border: 1px solid var(--ee-border);
         border-radius: 4px;
         font-size: 12px;
         cursor: pointer;
+        white-space: nowrap;
     }
-    .ee-btn:hover { background: #eef2f9; }
-    .ee-btn.primary { background: #5f7ea8; color: white; }
+    .ee-btn:hover { background: var(--ee-hover); }
+    .ee-btn.primary { background: var(--ee-accent); border-color: var(--ee-accent); color: white; }
     .ee-btn.primary:hover { background: #4f6d95; }
-    .ee-btn.quiet { background: none; border-color: transparent; }
+    .ee-btn.quiet { background: none; border-color: transparent; color: var(--ee-muted); }
     .ee-btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .ee-btn:focus-visible, .ee-close:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.35); }
     @media (max-width: 760px) {
-        .ee-body { grid-template-columns: 1fr; }
-        .ee-list { height: 160px; }
+        .ee-header, .ee-footer { padding: 10px 12px; }
+        .ee-body { padding: 12px; }
+        .ee-workspace { flex: none; grid-template-columns: 1fr; }
+        .ee-expression { flex: none; height: clamp(150px, 28vh, 220px); min-height: 150px; }
+        .ee-list { flex: none; height: clamp(120px, 28vh, 200px); }
     }
 </style>
 <script>
@@ -115,26 +136,30 @@ window.LionExpressionEditor = (function() {
         dialog = $('<div class="ee-dialog" role="dialog" aria-modal="true" aria-labelledby="eeTitle" tabindex="-1"></div>');
         titleEl = $('<div class="ee-title" id="eeTitle"></div>');
         closeBtn = $('<button type="button" class="ee-close" aria-label="Close">&times;</button>');
-        nameInput = $('<input type="text" autocomplete="off" aria-label="Name">');
-        textarea = $('<textarea class="ee-expression" spellcheck="false" aria-label="SQL expression"></textarea>');
+        nameInput = $('<input type="text" id="eeName" autocomplete="off" aria-label="Name">');
+        textarea = $('<textarea class="ee-expression" id="eeExpression" spellcheck="false" aria-label="SQL expression"></textarea>');
         search = $('<input type="text" placeholder="Search columns..." autocomplete="off" aria-label="Search columns">');
         listEl = $('<div></div>');
         errorBox = $('<div class="ee-error" role="alert"></div>');
         cancelBtn = $('<button type="button" class="ee-btn quiet">Cancel</button>');
         submitBtn = $('<button type="button" class="ee-btn primary" title="Ctrl/Cmd+Enter"></button>');
 
+        var nameField = $('<div class="ee-name-field"></div>')
+            .append('<label class="ee-label" for="eeName">Name</label>').append(nameInput);
         var main = $('<div class="ee-main"></div>')
-            .append($('<div></div>').append('<label class="ee-label">Name</label>').append(nameInput))
-            .append($('<div></div>').append('<label class="ee-label">SQL expression</label>').append(textarea));
+            .append('<label class="ee-label" for="eeExpression">SQL expression</label>').append(textarea);
         var columns = $('<div class="ee-columns"></div>')
-            .append('<label class="ee-label">Columns</label>')
-            .append($('<div class="ee-list"></div>')
+            .append('<div class="ee-label" id="eeColumnsTitle">Columns</div>')
+            .append($('<div class="ee-list" role="group" aria-labelledby="eeColumnsTitle"></div>')
                 .append($('<div class="ee-search-row"></div>').append(search))
+                .append('<div class="ee-list-head"><span>Name</span><span>Data type</span></div>')
                 .append(listEl));
         dialog
             .append($('<div class="ee-header"></div>').append(titleEl).append(closeBtn))
-            .append($('<div class="ee-body"></div>').append(main).append(columns))
-            .append($('<div class="ee-footer"></div>').append(errorBox).append(cancelBtn).append(submitBtn));
+            .append($('<div class="ee-body"></div>').append(nameField)
+                .append($('<div class="ee-workspace"></div>').append(main).append(columns)))
+            .append(errorBox)
+            .append($('<div class="ee-footer"></div>').append(cancelBtn).append(submitBtn));
         overlay.append(dialog);
         $('body').append(overlay);
 
@@ -196,7 +221,7 @@ window.LionExpressionEditor = (function() {
             listEl.append($('<button type="button" class="ee-item"></button>')
                 .attr('title', 'Insert ' + col.name)
                 .append($('<span class="ee-name"></span>').text(col.name))
-                .append($('<span class="ee-type"></span>').text(col.type || ''))
+                .append($('<span class="ee-type"></span>').text(col.type || '').attr('title', col.type || ''))
                 .on('click', function() { insertAtCursor(quoteIdent(col.name)); }));
         });
         if (!shown) { listEl.append($('<div class="ee-empty"></div>').text('No matching columns.')); }
