@@ -1,0 +1,1745 @@
+<style>
+    .qb-overlay {
+        --qb-text: var(--dt-text, #2c3e50);
+        --qb-muted: var(--dt-muted, #657487);
+        --qb-border: var(--dt-border, #dce2e8);
+        --qb-surface: var(--dt-surface, #f6f8fa);
+        --qb-accent: var(--dt-accent, #5f7ea8);
+        --qb-hover: var(--dt-hover, #eef2f9);
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(30, 41, 59, 0.45);
+        z-index: 1500;
+        align-items: center;
+        justify-content: center;
+        font-family: Arial, sans-serif;
+    }
+    .qb-overlay.show { display: flex; }
+    .qb-dialog {
+        display: flex;
+        flex-direction: column;
+        width: min(1040px, calc(100vw - 24px));
+        height: min(660px, calc(100vh - 24px));
+        max-height: calc(100vh - 24px);
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        font-size: 12px;
+        color: var(--qb-text);
+        outline: none;
+    }
+    .qb-header {
+        display: flex;
+        flex: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 12px 16px;
+    }
+    .qb-title { font-size: 14px; font-weight: bold; }
+    .qb-stepper {
+        display: flex;
+        flex: none;
+        gap: 4px;
+        margin: 0;
+        padding: 0 12px;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--qb-border);
+        list-style: none;
+    }
+    .qb-stepper li {
+        display: flex;
+        flex: 1;
+        min-width: max-content;
+        align-items: center;
+        border-radius: 4px 4px 0 0;
+        color: var(--qb-muted);
+    }
+    .qb-stepper .qb-step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 44px;
+        padding: 8px 12px;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: none;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+    }
+    .qb-stepper li:hover { background: var(--qb-hover); }
+    .qb-stepper .qb-step:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
+    .qb-stepper .qb-step-num {
+        width: 18px;
+        height: 18px;
+        line-height: 18px;
+        text-align: center;
+        border-radius: 50%;
+        background: #e5e9f0;
+        font-size: 11px;
+    }
+    .qb-stepper li.active { color: var(--qb-accent); font-weight: bold; background: var(--qb-hover); }
+    .qb-stepper li.active .qb-step { border-bottom-color: var(--qb-accent); }
+    .qb-stepper li.active .qb-step-num { background: #5f7ea8; color: white; }
+    .qb-stepper li.done .qb-step-num { background: #9db4d3; color: white; }
+    .qb-close {
+        flex: none;
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 4px;
+        background: none;
+        font-size: 20px;
+        line-height: 1;
+        color: #6b7a8f;
+        cursor: pointer;
+    }
+    .qb-close:hover { color: var(--qb-text); background: var(--qb-hover); }
+    .qb-body {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        gap: 12px;
+        min-height: 0;
+        overflow: auto;
+        padding: 16px;
+    }
+    .qb-hint { flex: none; color: var(--qb-muted); margin: 0; }
+    .qb-list { border: 1px solid var(--qb-border); border-radius: 4px; }
+    .qb-dual { display: grid; flex: 1; min-height: 240px; grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr); gap: 16px; }
+    .qb-pane { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
+    .qb-pane-head { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
+    .qb-pane-head .qb-panel-title { margin: 0; }
+    .qb-pane-actions, .qb-pane-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+    .qb-pane-actions { margin-left: auto; }
+    .qb-pane-head .qb-btn, .qb-pane-tools .qb-btn { height: 28px; padding: 0 8px; font-size: 11px; }
+    .qb-pane-list { flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+    .qb-search-row {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        box-sizing: border-box;
+        height: 37px;
+        padding: 4px 6px;
+        background: white;
+        border-bottom: 1px solid var(--qb-border);
+    }
+    .qb-overlay input.qb-search { width: 100%; }
+    .qb-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 4px 0 0;
+        border-bottom: 1px solid #f0f2f5;
+    }
+    .qb-item:last-child { border-bottom: none; }
+    .qb-item-btn {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+        padding: 6px 8px;
+        border: none;
+        background: none;
+        font-size: 12px;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+    }
+    .qb-item-btn:hover { background: #eef2f9; }
+    .qb-item-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
+    .qb-item .qb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .qb-item .qb-type { margin-left: auto; max-width: 40%; overflow: hidden; text-overflow: ellipsis; color: var(--qb-muted); white-space: nowrap; }
+    .qb-item .qb-expr-preview { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; }
+    .qb-selected-list { --qb-column-tracks: minmax(0, 1.15fr) minmax(0, 1fr) 22px 22px; --qb-up-column: 3; --qb-down-column: 4; }
+    .qb-selected-list.has-computed { --qb-column-tracks: minmax(0, 1.15fr) minmax(0, 1fr) 22px 22px 22px; --qb-up-column: 4; --qb-down-column: 5; }
+    .qb-selected-column, .qb-selected-head { display: grid; grid-template-columns: var(--qb-column-tracks); align-items: center; gap: 6px; padding: 4px 8px; }
+    .qb-selected-column .qb-item-btn { grid-column: 1; padding: 4px 0; }
+    .qb-selected-column input.qb-alias { grid-column: 2; width: 100%; }
+    .qb-selected-column .qb-remove { grid-column: 3; }
+    .qb-selected-column .qb-column-up { grid-column: var(--qb-up-column); }
+    .qb-selected-column .qb-column-down { grid-column: var(--qb-down-column); }
+    .qb-star-column .qb-item-btn { grid-column: 1 / var(--qb-up-column); }
+    .qb-selected-column > * { grid-row: 1; }
+    .qb-selected-head { position: sticky; top: 0; z-index: 1; min-height: 29px; background: var(--qb-surface); color: var(--qb-muted); border-bottom: 1px solid var(--qb-border); font-size: 11px; }
+    .qb-move { width: 22px; height: 24px; padding: 0; border: none; border-radius: 4px; background: none; color: var(--qb-muted); font-size: 9px; cursor: pointer; }
+    .qb-move:hover:not(:disabled) { color: #5f7ea8; }
+    .qb-move:disabled { opacity: 0.3; cursor: default; }
+    .qb-badges { display: inline-flex; flex: 0 1 auto; min-width: 0; overflow: hidden; gap: 3px; margin-left: auto; }
+    .qb-badge { padding: 0 5px; border-radius: 8px; background: #e3eaf5; color: #5f7ea8; font-size: 10px; line-height: 15px; }
+    .qb-badges + .qb-type { margin-left: 8px; }
+    .qb-agg-layout { display: grid; flex: 1; min-height: 334px; grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); gap: 8px 16px; }
+    .qb-agg-columns-head { grid-area: 1 / 1; }
+    .qb-agg-results-head { grid-area: 1 / 3; }
+    .qb-agg-columns-tools { grid-area: 2 / 1; }
+    .qb-agg-results-tools { grid-area: 2 / 3; justify-content: flex-end; }
+    .qb-agg-columns-list { grid-area: 3 / 1; }
+    .qb-agg-results-list { grid-area: 3 / 3; }
+    .qb-agg-buttons { grid-area: 3 / 2; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+    .qb-agg-buttons .qb-btn { flex: none; width: 100%; padding: 0 8px; }
+    .qb-overlay .qb-agg-buttons select { flex: none; width: 100%; height: 28px; background: white; color: var(--qb-text); border-color: var(--qb-border); cursor: pointer; text-align: center; text-align-last: center; }
+    .qb-overlay .qb-agg-buttons select:disabled { opacity: 0.45; cursor: not-allowed; }
+    .qb-agg-separator { flex: none; width: 100%; margin: 0; border: none; border-top: 1px solid var(--qb-border); }
+    .qb-item-btn.active { background: #dfe8f5; }
+    .qb-panel-title { font-weight: bold; margin: 0 0 6px 0; }
+    .qb-agg-head, .qb-selected-agg {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 22px 22px 22px;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+    }
+    .qb-agg-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        padding-top: 6px;
+        padding-bottom: 6px;
+        background: var(--qb-surface);
+        border-bottom: 1px solid var(--qb-border);
+        color: var(--qb-muted);
+        font-size: 11px;
+        font-weight: bold;
+    }
+    .qb-agg-head.qb-col-head { top: 37px; grid-template-columns: minmax(0, 1fr) auto; }
+    .qb-agg-columns-list .qb-col-head { top: 0; }
+    .qb-selected-agg { border-bottom: 1px solid #f0f2f5; }
+    .qb-selected-agg:last-child { border-bottom: none; }
+    .qb-selected-agg:hover { background: #f6f8fc; }
+    .qb-selected-agg .qb-expr-custom { cursor: pointer; }
+    .qb-selected-agg .qb-expr { color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .qb-remove { width: 22px; height: 24px; padding: 0; border: none; border-radius: 4px; background: none; color: var(--qb-muted); font-size: 15px; cursor: pointer; }
+    .qb-move:hover:not(:disabled), .qb-remove:hover { background: var(--qb-hover); }
+    .qb-move:focus-visible, .qb-remove:focus-visible { outline: 2px solid var(--qb-accent); outline-offset: -2px; }
+    .qb-remove:hover { color: #c0392b; }
+    .qb-empty { padding: 12px; color: var(--qb-muted); }
+    .qb-refine { display: flex; flex: none; flex-direction: column; gap: 16px; }
+    .qb-section { min-width: 0; border-bottom: 1px solid var(--qb-border); padding-bottom: 16px; }
+    .qb-section:last-child { border-bottom: none; padding-bottom: 0; }
+    .qb-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; margin-bottom: 8px; }
+    .qb-section-title { font-weight: bold; }
+    .qb-section-tools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--qb-muted); }
+    .qb-section-tools .qb-btn { height: 28px; padding: 0 8px; font-size: 11px; }
+    .qb-cond, .qb-sortrow { display: grid; align-items: center; gap: 8px; padding: 3px 0; }
+    .qb-cond { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.2fr) 22px; }
+    .qb-sortrow { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.6fr) 22px; max-width: 520px; }
+    .qb-section-note { padding: 2px 0 8px; color: var(--qb-muted); overflow-wrap: anywhere; }
+    .qb-limit-row { display: flex; align-items: center; gap: 8px; }
+    .qb-overlay input.qb-limit { width: 110px; }
+    .qb-overlay select {
+        height: 28px;
+        padding: 0 6px;
+        border: 1px solid var(--qb-border);
+        border-radius: 4px;
+        background: white;
+        font-size: 12px;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+    .qb-overlay select:focus {
+        outline: none;
+        border-color: #5f7ea8;
+        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
+    }
+    .qb-overlay input[type="text"] {
+        height: 28px;
+        padding: 0 8px;
+        border: 1px solid var(--qb-border);
+        border-radius: 4px;
+        font-size: 12px;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+    .qb-overlay input[type="text"]:focus, .qb-sql:focus {
+        outline: none;
+        border-color: #5f7ea8;
+        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
+    }
+    .qb-overlay input[type="text"]:disabled { background: #f4f4f4; color: #aaa; }
+    .qb-overlay input.qb-invalid { border-color: #c0392b; }
+    .qb-overlay input.qb-default { color: #9aa5b5; }
+    .qb-sql-head { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+    .qb-sql-head .qb-hint { flex: 0 1 auto; }
+    .qb-sql-options { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; flex: none; padding-bottom: 12px; border-bottom: 1px solid var(--qb-border); }
+    .qb-overlay input.qb-source { flex: 1; width: 100%; }
+    .qb-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; min-width: 0; }
+    .qb-check input[type="checkbox"] { flex: none; }
+    .qb-source-setting { flex: 1 1 260px; }
+    .qb-source-setting span { flex: none; }
+    .qb-seg { display: inline-flex; border: 1px solid #5f7ea8; border-radius: 4px; overflow: hidden; flex: none; }
+    .qb-seg-btn { height: 26px; padding: 0 12px; border: none; background: #f6f8fc; color: #5f7ea8; font-size: 12px; cursor: pointer; }
+    .qb-seg-btn + .qb-seg-btn { border-left: 1px solid #5f7ea8; }
+    .qb-seg-btn[aria-pressed="true"] { background: #5f7ea8; color: white; }
+    .qb-seg-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7); }
+    .qb-notice {
+        display: flex;
+        flex: none;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 10px;
+        background: #fff8e6;
+        border: 1px solid #f0d9a0;
+        border-radius: 4px;
+        color: #7a5b00;
+    }
+    .qb-notice span { flex: 1 1 220px; overflow-wrap: anywhere; }
+    .qb-notice .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
+    .qb-sql {
+        flex: 1 0 auto;
+        width: 100%;
+        height: 220px;
+        min-height: 180px;
+        box-sizing: border-box;
+        padding: 8px;
+        border: 1px solid var(--qb-border);
+        border-radius: 4px;
+        font-family: Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.6;
+        resize: vertical;
+    }
+    .qb-footer {
+        display: flex;
+        flex: none;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 16px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--qb-border);
+    }
+    .qb-footer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .qb-footer-actions:last-child { margin-left: auto; }
+    .qb-error { flex: none; max-height: 72px; overflow: auto; overflow-wrap: anywhere; padding: 8px 16px; color: #a63327; background: #fff8e6; border-top: 1px solid #f0d9a0; }
+    .qb-error:empty { display: none; }
+    .qb-btn {
+        height: 28px;
+        padding: 0 14px;
+        background: white;
+        color: var(--qb-text);
+        border: 1px solid var(--qb-border);
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .qb-btn:hover { background: var(--qb-hover); }
+    .qb-btn.primary { background: var(--qb-accent); border-color: var(--qb-accent); color: white; }
+    .qb-btn.primary:hover { background: #4f6d95; }
+    .qb-btn.quiet { background: none; border-color: transparent; color: var(--qb-muted); }
+    .qb-btn.quiet:hover { background: #eef2f9; }
+    .qb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .qb-btn:focus-visible, .qb-close:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.35);
+    }
+    @media (max-width: 760px) {
+        .qb-body { --qb-pane-height: clamp(120px, 30vh, 220px); }
+        .qb-dual, .qb-agg-layout { grid-template-columns: 1fr; }
+        .qb-dual { flex: none; }
+        .qb-pane-list { height: var(--qb-pane-height); flex: none; }
+        .qb-agg-layout { flex: none; grid-template-rows: auto auto var(--qb-pane-height) auto auto auto var(--qb-pane-height); }
+        .qb-agg-columns-head { grid-area: 1 / 1; }
+        .qb-agg-columns-tools { grid-area: 2 / 1; }
+        .qb-agg-columns-list { grid-area: 3 / 1; }
+        .qb-agg-buttons { grid-area: 4 / 1; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
+        .qb-agg-results-head { grid-area: 5 / 1; }
+        .qb-agg-results-tools { grid-area: 6 / 1; }
+        .qb-agg-results-list { grid-area: 7 / 1; }
+        .qb-agg-separator { display: none; }
+        .qb-agg-buttons .qb-btn, .qb-overlay .qb-agg-buttons select { width: auto; }
+        .qb-header, .qb-footer { padding: 10px 12px; }
+        .qb-body { padding: 12px; }
+        .qb-stepper { padding: 0 8px; }
+    }
+    @media (max-width: 480px) {
+        .qb-cond { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 22px; }
+        .qb-cond > select:first-child { grid-column: 1; }
+        .qb-cond > select:nth-child(2) { grid-column: 2; }
+        .qb-cond > input, .qb-cond > span { grid-column: 1 / 3; grid-row: 2; }
+        .qb-cond > .qb-remove { grid-column: 3; grid-row: 1; }
+        .qb-selected-head { font-size: 10px; }
+    }
+</style>
+<script>
+window.LionQueryBuilder = (function() {
+    var MIN_FRAME_HEIGHT = 560;
+    var STEPS = ['Columns', 'Aggregates', 'Filter & sort', 'Query'];
+    var STEP_REFINE = 2;
+    var MAX_SUGGESTIONS = 300;
+    var LAST_STEP = STEPS.length - 1;
+
+    function typeKind(type) {
+        var t = String(type).toLowerCase();
+        if (t.indexOf('map') === 0) { return 'map'; }
+        if (t.indexOf('array') === 0 || t.indexOf('struct') === 0) { return 'complex'; }
+        return 'simple';
+    }
+
+    // Spark cannot compare or hash map values
+    function notMap(col) { return typeKind(col.type) !== 'map'; }
+    function isNumeric(col) { return col.numeric; }
+
+    var AGG_FUNCS = [
+        { id: 'min', label: 'min', short: 'min', prefix: 'min', accepts: notMap, sql: function(c) { return 'min(' + c + ')'; }, py: function(c) { return 'F.min(' + c + ')'; } },
+        { id: 'max', label: 'max', short: 'max', prefix: 'max', accepts: notMap, sql: function(c) { return 'max(' + c + ')'; }, py: function(c) { return 'F.max(' + c + ')'; } },
+        { id: 'sum', label: 'sum', short: 'sum', prefix: 'sum', accepts: isNumeric, sql: function(c) { return 'sum(' + c + ')'; }, py: function(c) { return 'F.sum(' + c + ')'; } },
+        { id: 'avg', label: 'avg', short: 'avg', prefix: 'avg', accepts: isNumeric, sql: function(c) { return 'avg(' + c + ')'; }, py: function(c) { return 'F.avg(' + c + ')'; } },
+        { id: 'first', label: 'first', short: 'first', prefix: 'first', sql: function(c) { return 'first(' + c + ')'; }, py: function(c) { return 'F.first(' + c + ')'; } },
+        { id: 'count_null', label: 'count null', short: 'null', prefix: 'count_null', menu: 'Counts', sql: function(c) { return 'count_if(' + c + ' IS NULL)'; }, py: function(c) { return 'F.count(F.when(F.col(' + c + ').isNull(), 1))'; } },
+        { id: 'count_not_null', label: 'count not null', short: 'not null', prefix: 'count_not_null', menu: 'Counts', sql: function(c) { return 'count(' + c + ')'; }, py: function(c) { return 'F.count(' + c + ')'; } },
+        { id: 'count_distinct', label: 'count distinct', short: 'distinct', prefix: 'count_distinct', menu: 'Counts', accepts: notMap, sql: function(c) { return 'count(DISTINCT ' + c + ')'; }, py: function(c) { return 'F.countDistinct(' + c + ')'; } },
+        { id: 'approx_count_distinct', label: 'apprx cnt dstnct', short: 'approx', prefix: 'approx_count_distinct', menu: 'Counts', accepts: notMap, sql: function(c) { return 'approx_count_distinct(' + c + ')'; }, py: function(c) { return 'F.approx_count_distinct(' + c + ')'; } },
+        { id: 'collect_list', label: 'collect_list', short: 'list', prefix: 'collect_list', menu: 'Collect', sql: function(c) { return 'collect_list(' + c + ')'; }, py: function(c) { return 'F.collect_list(' + c + ')'; } },
+        { id: 'collect_set', label: 'collect_set', short: 'set', prefix: 'collect_set', menu: 'Collect', accepts: notMap, sql: function(c) { return 'collect_set(' + c + ')'; }, py: function(c) { return 'F.collect_set(' + c + ')'; } }
+    ];
+    var STAR_AGG = { id: 'count_star', label: 'count(*)', sql: function() { return 'count(*)'; }, py: function() { return 'F.count("*")'; } };
+    // an aggregate typed as a SQL expression; it has no column and no AGG_FUNCS entry
+    var CUSTOM_AGG_ID = 'custom';
+
+    function quoteIdent(name) {
+        return '`' + String(name).replace(/`/g, '``') + '`';
+    }
+
+    function quoteString(value) {
+        return "'" + String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+    }
+
+    // PySpark only needs backticks when the name contains a dot or a backtick
+    function pyRef(name) {
+        return JSON.stringify(/[.`]/.test(name) ? quoteIdent(name) : name);
+    }
+
+    function aggFunc(id) {
+        return id === STAR_AGG.id ? STAR_AGG : AGG_FUNCS.filter(function(f) { return f.id === id; })[0];
+    }
+
+    function accepts(func, col) {
+        return !func.accepts || func.accepts(col);
+    }
+
+    function literal(value, col) {
+        var v = String(value).trim();
+        if (col.numeric && /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(v)) { return v; }
+        if (String(col.type).toLowerCase() === 'boolean' && /^(true|false)$/i.test(v)) { return v.toLowerCase(); }
+        return quoteString(value);
+    }
+
+    function likeOp(prefix, suffix) {
+        return function(c, v, col) {
+            var left = String(col.type).toLowerCase() === 'string' ? c : 'CAST(' + c + ' AS STRING)';
+            return left + ' LIKE ' + quoteString(prefix + v + suffix);
+        };
+    }
+
+    function compareOp(symbol) {
+        return function(c, v, col) { return c + ' ' + symbol + ' ' + literal(v, col); };
+    }
+
+    var OPS = [
+        { id: 'eq', label: '=', sql: compareOp('=') },
+        { id: 'ne', label: '<>', sql: compareOp('<>') },
+        { id: 'gt', label: '>', sql: compareOp('>') },
+        { id: 'ge', label: '>=', sql: compareOp('>=') },
+        { id: 'lt', label: '<', sql: compareOp('<') },
+        { id: 'le', label: '<=', sql: compareOp('<=') },
+        { id: 'contains', label: 'contains', sql: likeOp('%', '%') },
+        { id: 'starts', label: 'starts with', sql: likeOp('', '%') },
+        { id: 'ends', label: 'ends with', sql: likeOp('%', '') },
+        { id: 'in', label: 'in list', sql: function(c, v, col) {
+            var items = String(v).split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+            return c + ' IN (' + items.map(function(s) { return literal(s, col); }).join(', ') + ')';
+        } },
+        { id: 'null', label: 'is null', noValue: true, sql: function(c) { return c + ' IS NULL'; } },
+        { id: 'notnull', label: 'is not null', noValue: true, sql: function(c) { return c + ' IS NOT NULL'; } }
+    ];
+
+    function opDef(id) {
+        return OPS.filter(function(o) { return o.id === id; })[0];
+    }
+
+    function init(ctx) {
+        var table = ctx.table;
+        var meta = ctx.meta;
+        // the DataFrame's variable name, or spark.table(...) of the table it was read from
+        var pyDefault = meta.pySource || 'df';
+        var state = null;
+        var step = 0;
+        var frameRestore = null;
+        var lastFocus = null;
+
+        var overlay = $('<div class="qb-overlay"></div>');
+        var dialog = $('<div class="qb-dialog" role="dialog" aria-modal="true" aria-labelledby="qbTitle" tabindex="-1"></div>');
+        var stepper = $('<ol class="qb-stepper" aria-label="Query steps"></ol>');
+        var closeBtn = $('<button type="button" class="qb-close" aria-label="Close">&times;</button>');
+        var body = $('<div class="qb-body"></div>');
+        var errorBox = $('<div class="qb-error" role="alert"></div>');
+        var cancelBtn = $('<button type="button" class="qb-btn quiet">Cancel</button>');
+        var backBtn = $('<button type="button" class="qb-btn">Back</button>');
+        var skipBtn = $('<button type="button" class="qb-btn quiet" title="Go directly to the query">Skip to query</button>');
+        var nextBtn = $('<button type="button" class="qb-btn primary" title="Ctrl/Cmd+Enter">Next</button>');
+        var doneBtn = $('<button type="button" class="qb-btn primary" title="Ctrl/Cmd+Enter">Copy &amp; close</button>');
+
+        dialog
+            .append($('<div class="qb-header"></div>')
+                .append('<div class="qb-title" id="qbTitle">Query builder</div>')
+                .append(closeBtn))
+            .append(stepper)
+            .append(body)
+            .append(errorBox)
+            .append($('<div class="qb-footer"></div>')
+                .append($('<div class="qb-footer-actions"></div>').append(cancelBtn).append(skipBtn))
+                .append($('<div class="qb-footer-actions"></div>').append(backBtn).append(nextBtn).append(doneBtn)));
+        overlay.append(dialog);
+        $('body').append(overlay);
+
+        function visibleColumns() {
+            var cols = [];
+            meta.columns.forEach(function(col, idx) {
+                if (table.column(idx).visible()) {
+                    cols.push({ idx: idx, name: col.name, type: col.type, numeric: col.numeric, alias: '' });
+                }
+            });
+            return cols;
+        }
+
+        function outName(col) {
+            return col.alias.trim() || col.name;
+        }
+
+        // a computed column is a user-typed SQL expression; it is not part of state.cols
+        function colSql(col) {
+            return col.computed ? '(' + col.expr + ')' : quoteIdent(col.name);
+        }
+
+        function allCols() {
+            return state.cols.concat(state.order.filter(function(c) { return c.computed; }));
+        }
+
+        function findAgg(col, fn) {
+            return state.aggs.filter(function(a) { return a.col === col && a.fn === fn; })[0];
+        }
+
+        function defaultAlias(col, fn) {
+            if (fn === STAR_AGG.id) { return 'count'; }
+            if (fn === CUSTOM_AGG_ID) { return 'expression'; }
+            var base = col.name.replace(/[^\p{L}\p{N}_]+/gu, '_').replace(/^_+|_+$/g, '') || 'col';
+            return aggFunc(fn).prefix + '_' + base;
+        }
+
+        function aggAlias(a) {
+            return a.alias.trim() || defaultAlias(a.col, a.fn);
+        }
+
+        function aggSql(a) {
+            return a.custom ? a.expr : aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name));
+        }
+
+        function aggPy(a) {
+            return a.custom ? 'F.expr(' + JSON.stringify(a.expr) + ')' : aggFunc(a.fn).py(a.col === null ? '' : pyRef(a.col.name));
+        }
+
+        function selectedCols() {
+            return state.order.filter(function(c) { return !c.star; });
+        }
+
+        function outputNames() {
+            var names = selectedCols().map(outName);
+            state.aggs.forEach(function(a) { names.push(aggAlias(a)); });
+            return names;
+        }
+
+        // maps lower-cased name to the name as typed
+        function duplicateNames(names) {
+            var seen = {}, dups = {};
+            names.forEach(function(n) {
+                var key = n.toLowerCase();
+                if (seen[key]) { dups[key] = n; }
+                seen[key] = true;
+            });
+            return dups;
+        }
+
+        function duplicateError(names) {
+            var dups = duplicateNames(names);
+            var list = Object.keys(dups).map(function(k) { return dups[k]; });
+            return list.length ? 'Names must be unique: ' + list.join(', ') + '.' : '';
+        }
+
+        var listCounter = 0;
+        var valueCache = {};
+
+        // distinct values of the loaded data, as suggestions for filter values
+        function distinctValues(col) {
+            if (col.computed) { return []; }
+            if (valueCache[col.idx]) { return valueCache[col.idx]; }
+            var seen = Object.create(null), values = [];
+            var rows = table.rows().indexes().toArray();
+            for (var i = 0; i < rows.length && values.length < MAX_SUGGESTIONS; i++) {
+                var cell = table.cell(rows[i], col.idx);
+                var data = cell.data();
+                if (data === null || data === undefined) { continue; }
+                var text = String(data);
+                if (text.indexOf('<') !== -1 || text.indexOf('&') !== -1) {
+                    var node = cell.node();
+                    text = node ? $(node).text().replace(/\u00a0/g, ' ') : '';
+                }
+                text = text.trim();
+                if (text && !seen[text]) {
+                    seen[text] = true;
+                    values.push(text);
+                }
+            }
+            values.sort(function(a, b) {
+                return col.numeric ? parseFloat(a) - parseFloat(b) : a.localeCompare(b);
+            });
+            valueCache[col.idx] = values;
+            return values;
+        }
+
+        function filterableCols() {
+            return allCols().filter(function(c) { return typeKind(c.type) === 'simple'; });
+        }
+
+        function isComplete(cond) {
+            return opDef(cond.op).noValue || $.trim(cond.value) !== '';
+        }
+
+        function limitValid() {
+            return state.limit === '' || /^[1-9]\d*$/.test(state.limit);
+        }
+
+        function describeTableFilter(f) {
+            var name = meta.columns[f.colIdx].name;
+            if (f.mode === '__empty__') { return name + ' is empty'; }
+            if (f.mode === '__non_empty__') { return name + ' is not empty'; }
+            return name + ' = ' + f.value;
+        }
+
+        function describeTableSort(sorts) {
+            return sorts.map(function(s) { return s.name + (s.dir === 'desc' ? ' \u2193' : ' \u2191'); }).join(', ');
+        }
+
+        function snapshotTableFilter() {
+            var f = ctx.getFilter ? ctx.getFilter() : null;
+            if (!f || f.colIdx < 0 || f.mode === '__all__' || !meta.columns[f.colIdx]) { return null; }
+            return { colIdx: f.colIdx, mode: f.mode, value: f.value };
+        }
+
+        function snapshotTableSort() {
+            var order = ctx.getSort ? ctx.getSort() : [];
+            return order
+                .filter(function(o) { return meta.columns[o[0]]; })
+                .map(function(o) { return { name: meta.columns[o[0]].name, dir: o[1] }; });
+        }
+
+        function hasRefinements() {
+            return (state.tableFilter && state.useTableFilter) || state.conds.length || state.rconds.length || state.sorts.length
+                || (state.tableSort.length && state.useTableSort) || state.limit !== '';
+        }
+
+        function validate() {
+            if (step === 0) {
+                return duplicateError(selectedCols().map(outName));
+            }
+            if (step === 1) {
+                if (state.aggs.length && state.star) { return 'Deselect * in step 1 when using aggregates.'; }
+                return duplicateError(outputNames());
+            }
+            if (step === STEP_REFINE) {
+                if (!state.conds.every(isComplete) || !state.rconds.every(isComplete)) { return 'Fill in or remove the incomplete filter conditions.'; }
+                if (!limitValid()) { return 'Limit must be a positive whole number.'; }
+                return '';
+            }
+            return $.trim(sqlBox().val()) ? '' : 'The query is empty.';
+        }
+
+        function sqlBox() {
+            return body.find('.qb-sql');
+        }
+
+        function refresh() {
+            var error = validate();
+            errorBox.text(error);
+            nextBtn.prop('disabled', !!error);
+            var skip = (step === 0 && !state.order.length) || (step === 1 && !state.aggs.length) || (step === STEP_REFINE && !hasRefinements());
+            nextBtn.text(skip ? 'Skip' : 'Next');
+            doneBtn.prop('disabled', !!error);
+            // mark duplicated alias inputs
+            var dups = duplicateNames(outputNames());
+            body.find('input.qb-alias').each(function() {
+                var value = $.trim($(this).val()) || $(this).attr('placeholder') || '';
+                $(this).toggleClass('qb-invalid', !!dups[value.toLowerCase()]);
+            });
+        }
+
+        function renderStepper() {
+            stepper.empty();
+            STEPS.forEach(function(label, i) {
+                stepper.append($('<li></li>')
+                    .toggleClass('active', i === step)
+                    .toggleClass('done', i < step)
+                    .append($('<button type="button" class="qb-step"></button>')
+                        .attr('aria-current', i === step ? 'step' : null)
+                        .append($('<span class="qb-step-num"></span>').text(i + 1))
+                        .append($('<span></span>').text(label))
+                        .on('click', function() { goTo(i); })));
+            });
+        }
+
+        function searchInput() {
+            return $('<input type="text" class="qb-search" placeholder="Search columns..." autocomplete="off" aria-label="Search columns">');
+        }
+
+        function nameMatcher(search) {
+            return function(item) {
+                var term = $.trim(search.val()).toLowerCase();
+                return !term || item.name.toLowerCase().indexOf(term) !== -1;
+            };
+        }
+
+        function renderColumns() {
+            body.append($('<p class="qb-hint"></p>').text('Select columns to add to the query.'));
+
+            var items = [state.starItem].concat(state.cols);
+            var isSelected = function(item) { return state.order.indexOf(item) !== -1; };
+            var setSelected = function(item, value) {
+                var pos = state.order.indexOf(item);
+                if (value && pos === -1) {
+                    state.order.push(item);
+                } else if (!value && pos !== -1) {
+                    state.order.splice(pos, 1);
+                }
+                state.star = isSelected(state.starItem);
+            };
+
+            var availableTitle = $('<p class="qb-panel-title"></p>');
+            var selectedTitle = $('<p class="qb-panel-title"></p>');
+            var addAll = $('<button type="button" class="qb-btn">Add all</button>');
+            var removeAll = $('<button type="button" class="qb-btn">Remove all</button>');
+            var newColumn = $('<button type="button" class="qb-btn">New column</button>');
+            var search = searchInput();
+            var matches = nameMatcher(search);
+            var availableRows = $('<div></div>');
+            var availableList = $('<div class="qb-list qb-pane-list"></div>')
+                .append($('<div class="qb-search-row"></div>').append(search))
+                .append(availableRows);
+            var selectedList = $('<div class="qb-list qb-pane-list qb-selected-list"></div>');
+
+            function removeComputed(item) {
+                state.order.splice(state.order.indexOf(item), 1);
+                state.conds = state.conds.filter(function(cond) { return cond.col !== item; });
+            }
+
+            // item is null for a new column
+            function editComputed(item) {
+                LionExpressionEditor.open({
+                    title: item ? 'Edit column' : 'New column',
+                    columns: state.cols,
+                    name: item ? item.name : '',
+                    expression: item ? item.expr : '',
+                    submitLabel: item ? 'Save' : 'Create',
+                    validateName: function(name) {
+                        var taken = selectedCols().filter(function(c) { return c !== item; }).map(function(c) { return outName(c).toLowerCase(); });
+                        return taken.indexOf(name.toLowerCase()) === -1 ? '' : 'A selected column already has this name.';
+                    },
+                    onSubmit: function(result) {
+                        if (item) {
+                            item.name = result.name;
+                            item.expr = result.expression;
+                        } else {
+                            state.order.push({ computed: true, name: result.name, expr: result.expression, type: 'expression', numeric: false, alias: '' });
+                        }
+                        renderLists();
+                    }
+                });
+            }
+
+            function makeItem(item, selected) {
+                var btn = $('<button type="button" class="qb-item-btn"></button>')
+                    .attr('title', item.computed ? 'Edit ' + item.name + ': ' + item.expr : (selected ? 'Remove ' : 'Add ') + item.name);
+                if (item.computed) {
+                    btn.append($('<span class="qb-expr-preview"></span>').text(item.expr));
+                } else {
+                    btn.append($('<span class="qb-name"></span>').text(item.name));
+                    if (!selected) {
+                        btn.append($('<span class="qb-type"></span>').text(item.type));
+                    }
+                }
+                btn.on('click', function() {
+                    if (item.computed) {
+                        editComputed(item);
+                        return;
+                    }
+                    setSelected(item, !selected);
+                    renderLists();
+                });
+                var row = $('<div class="qb-item"></div>')
+                    .toggleClass('qb-selected-column', selected)
+                    .toggleClass('qb-star-column', selected && !!item.star)
+                    .append(btn);
+                if (selected && item.computed) {
+                    var nameInput = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Name">').val(item.name);
+                    nameInput.on('input', function() {
+                        if ($.trim($(this).val())) { item.name = $.trim($(this).val()); }
+                        refresh();
+                    });
+                    nameInput.on('blur', function() { $(this).val(item.name); });
+                    row.append(nameInput);
+                }
+                if (selected && !item.star && !item.computed) {
+                    var alias = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Alias">')
+                        .attr('placeholder', item.name).val(item.alias || item.name);
+                    var markDefault = function() { alias.toggleClass('qb-default', $.trim(alias.val()) === item.name || !$.trim(alias.val())); };
+                    markDefault();
+                    alias.on('input', function() {
+                        item.alias = $.trim($(this).val()) === item.name ? '' : $(this).val();
+                        markDefault();
+                        refresh();
+                    });
+                    alias.on('blur', function() {
+                        if (!$.trim($(this).val())) { $(this).val(item.name); item.alias = ''; markDefault(); refresh(); }
+                    });
+                    row.append(alias);
+                }
+                if (selected) {
+                    var pos = state.order.indexOf(item);
+                    if (item.computed) {
+                        row.append($('<button type="button" class="qb-remove" aria-label="Remove column" title="Remove">&times;</button>')
+                            .on('click', function() { removeComputed(item); renderLists(); }));
+                    }
+                    row.append($('<button type="button" class="qb-move qb-column-up" aria-label="Move up" title="Move up">\u25B2</button>')
+                        .prop('disabled', pos === 0).on('click', function() { moveItem(item, -1); }));
+                    row.append($('<button type="button" class="qb-move qb-column-down" aria-label="Move down" title="Move down">\u25BC</button>')
+                        .prop('disabled', pos === state.order.length - 1).on('click', function() { moveItem(item, 1); }));
+                }
+                return row;
+            }
+
+            function moveItem(item, delta) {
+                var from = state.order.indexOf(item);
+                var to = from + delta;
+                if (to < 0 || to >= state.order.length) { return; }
+                state.order.splice(to, 0, state.order.splice(from, 1)[0]);
+                renderLists();
+            }
+
+            function renderLists() {
+                availableRows.empty();
+                selectedList.empty();
+                availableRows.append('<div class="qb-agg-head qb-col-head"><span>Column</span><span>Data type</span></div>');
+                selectedList.toggleClass('has-computed', state.order.some(function(item) { return item.computed; }));
+                selectedList.append('<div class="qb-selected-head"><span>Column / expression</span><span>Alias</span></div>');
+                var available = 0, shown = 0;
+                items.forEach(function(item) {
+                    if (!isSelected(item)) {
+                        available++;
+                        if (matches(item)) {
+                            shown++;
+                            availableRows.append(makeItem(item, false));
+                        }
+                    }
+                });
+                var selected = state.order.length;
+                state.order.forEach(function(item) { selectedList.append(makeItem(item, true)); });
+                if (!shown) { availableRows.append($('<div class="qb-empty"></div>').text(available ? 'No matching columns.' : 'All columns selected.')); }
+                if (!selected) { selectedList.append($('<div class="qb-empty"></div>').text('No columns selected.')); }
+                availableTitle.text('Available (' + available + ')');
+                selectedTitle.text('Selected (' + selected + ')');
+                refresh();
+            }
+
+            search.on('input', renderLists);
+            addAll.on('click', function() { state.cols.filter(matches).forEach(function(c) { setSelected(c, true); }); renderLists(); });
+            removeAll.on('click', function() {
+                items.forEach(function(i) { setSelected(i, false); });
+                state.order = state.order.filter(function(i) { return !i.computed; });
+                state.conds = state.conds.filter(function(cond) { return !cond.col.computed; });
+                renderLists();
+            });
+            newColumn.on('click', function() { editComputed(null); });
+
+            var availablePane = $('<div class="qb-pane"></div>')
+                .append($('<div class="qb-pane-head"></div>')
+                    .append(availableTitle).append(addAll))
+                .append(availableList);
+            var selectedPane = $('<div class="qb-pane qb-pane-selected"></div>')
+                .append($('<div class="qb-pane-head"></div>')
+                    .append(selectedTitle).append($('<span class="qb-pane-actions"></span>').append(newColumn).append(removeAll)))
+                .append(selectedList);
+            body.append($('<div class="qb-dual"></div>').append(availablePane).append(selectedPane));
+            renderLists();
+        }
+
+        function renderAggregates() {
+            body.append($('<p class="qb-hint"></p>').text('Select one or more columns, then click an aggregate to add it for each of them.'));
+
+            var groupCols = selectedCols();
+            var candidates = state.cols.filter(function(c) { return groupCols.indexOf(c) === -1; });
+            // columns chosen in step 1 are group-by columns; drop leftovers from an earlier visit
+            state.aggCols = state.aggCols.filter(function(c) { return groupCols.indexOf(c) === -1; });
+            state.aggs = state.aggs.filter(function(a) { return a.col === null || groupCols.indexOf(a.col) === -1; });
+
+            var columnsTitle = $('<p class="qb-panel-title"></p>').text('Columns (' + candidates.length + ')');
+            var aggsTitle = $('<p class="qb-panel-title"></p>');
+            var selectAll = $('<button type="button" class="qb-btn">Select all</button>');
+            var clearAll = $('<button type="button" class="qb-btn">Clear</button>');
+            var removeAllAggs = $('<button type="button" class="qb-btn">Remove all</button>');
+            var sqlExpression = $('<button type="button" class="qb-btn" title="Add an aggregate typed as a SQL expression, e.g. sum(a * b)">SQL Expression</button>');
+            var sortByColumn = $('<button type="button" class="qb-btn">Sort by column</button>');
+            var sortByAgg = $('<button type="button" class="qb-btn">Sort by aggregate</button>');
+            var search = searchInput();
+            var matches = nameMatcher(search);
+            var columnRows = $('<div></div>');
+            var columnList = $('<div class="qb-list qb-pane-list qb-agg-columns-list"></div>').append(columnRows);
+            var aggList = $('<div class="qb-list qb-pane-list qb-agg-results-list"></div>');
+            var buttonsBox = $('<div class="qb-agg-buttons"></div>');
+            var aggButtons = [];
+            var badgeBoxes = [];
+            var menus = [];
+
+            function fillBadges() {
+                badgeBoxes.forEach(function(b) {
+                    b.box.empty();
+                    state.aggs.filter(function(a) { return a.col === b.col; }).forEach(function(a) {
+                        b.box.append($('<span class="qb-badge"></span>').text(aggFunc(a.fn).short));
+                    });
+                });
+            }
+            function activeCols() {
+                return state.cols.filter(function(c) { return state.aggCols.indexOf(c) !== -1; });
+            }
+
+            // stable sort: equal keys keep their current relative order
+            function sortAggs(key) {
+                var pos = new Map(state.aggs.map(function(a, i) { return [a, i]; }));
+                state.aggs.sort(function(x, y) { return (key(x) - key(y)) || (pos.get(x) - pos.get(y)); });
+                renderAggs();
+            }
+
+            function addAgg(col, fn) {
+                if (!findAgg(col, fn)) {
+                    state.aggs.push({ col: col, fn: fn, alias: defaultAlias(col, fn) });
+                }
+            }
+
+            function applyAgg(func) {
+                if (func.id === STAR_AGG.id) {
+                    addAgg(null, func.id);
+                } else {
+                    activeCols().forEach(function(col) {
+                        if (accepts(func, col)) { addAgg(col, func.id); }
+                    });
+                }
+                renderAggs();
+            }
+
+            function addButton(func) {
+                var btn = $('<button type="button" class="qb-btn"></button>')
+                    .text(func.label)
+                    .attr('title', func.sql(func.id === STAR_AGG.id ? '' : 'column'));
+                btn.on('click', function() { applyAgg(func); });
+                aggButtons.push({ btn: btn, func: func });
+                buttonsBox.append(btn);
+            }
+
+            function addMenu(title) {
+                var select = $('<select></select>').attr('aria-label', title + ' aggregates').append($('<option value=""></option>').text(title + '...'));
+                AGG_FUNCS.filter(function(f) { return f.menu === title; }).forEach(function(func) {
+                    var option = $('<option></option>').val(func.id).text(func.label).attr('title', func.sql('column'));
+                    aggButtons.push({ btn: option, func: func });
+                    select.append(option);
+                });
+                select.on('change', function() {
+                    var func = aggFunc($(this).val());
+                    $(this).val('');
+                    if (func) { applyAgg(func); }
+                });
+                menus.push(select);
+                buttonsBox.append(select);
+            }
+
+            function updateButtons() {
+                var active = activeCols();
+                aggButtons.forEach(function(b) {
+                    var enabled = b.func.id === STAR_AGG.id
+                        || active.some(function(c) { return accepts(b.func, c); });
+                    b.btn.prop('disabled', !enabled);
+                });
+                menus.forEach(function(s) { s.prop('disabled', !s.find('option[value!=""]:not(:disabled)').length); });
+            }
+
+            function renderColumnList() {
+                columnRows.empty();
+                columnRows.append($('<div class="qb-agg-head qb-col-head"></div>')
+                    .append('<span>Column</span>').append('<span>Data type</span>'));
+                badgeBoxes = [];
+                var shown = 0;
+                candidates.filter(matches).forEach(function(col) {
+                    shown++;
+                    var badges = $('<span class="qb-badges"></span>');
+                    badgeBoxes.push({ col: col, box: badges });
+                    var btn = $('<button type="button" class="qb-item-btn"></button>')
+                        .toggleClass('active', state.aggCols.indexOf(col) !== -1)
+                        .append($('<span class="qb-name"></span>').text(col.name))
+                        .append(badges)
+                        .append($('<span class="qb-type"></span>').text(col.type));
+                    btn.on('click', function() {
+                        var pos = state.aggCols.indexOf(col);
+                        if (pos === -1) { state.aggCols.push(col); } else { state.aggCols.splice(pos, 1); }
+                        btn.toggleClass('active', pos === -1);
+                        updateButtons();
+                    });
+                    columnRows.append($('<div class="qb-item"></div>').append(btn));
+                });
+                if (!shown) { columnRows.append($('<div class="qb-empty"></div>').text('No matching columns.')); }
+                fillBadges();
+                updateButtons();
+            }
+
+            // a is null for a new aggregate
+            function editCustomAgg(a) {
+                LionExpressionEditor.open({
+                    title: a ? 'Edit aggregate' : 'New aggregate',
+                    columns: state.cols,
+                    name: a ? aggAlias(a) : '',
+                    expression: a ? a.expr : '',
+                    submitLabel: a ? 'Save' : 'Create',
+                    validateName: function(name) {
+                        var taken = selectedCols().map(outName)
+                            .concat(state.aggs.filter(function(x) { return x !== a; }).map(aggAlias))
+                            .map(function(n) { return n.toLowerCase(); });
+                        return taken.indexOf(name.toLowerCase()) === -1 ? '' : 'This name is already used in the result.';
+                    },
+                    onSubmit: function(result) {
+                        if (a) {
+                            a.expr = result.expression;
+                            a.alias = result.name;
+                        } else {
+                            state.aggs.push({ col: null, fn: CUSTOM_AGG_ID, custom: true, expr: result.expression, alias: result.name });
+                        }
+                        renderAggs();
+                    }
+                });
+            }
+
+            function moveAgg(from, delta) {
+                state.aggs.splice(from + delta, 0, state.aggs.splice(from, 1)[0]);
+                renderAggs();
+            }
+
+            function renderAggs() {
+                aggList.empty();
+                aggsTitle.text('Aggregates (' + state.aggs.length + ')');
+                if (!state.aggs.length) {
+                    aggList.append($('<div class="qb-empty"></div>').text('No aggregates selected.'));
+                } else {
+                    aggList.append($('<div class="qb-agg-head"></div>')
+                        .append('<span>Aggregate</span>').append('<span>Alias</span>').append('<span></span><span></span><span></span>'));
+                }
+                state.aggs.forEach(function(a, i) {
+                    var expr = aggSql(a);
+                    var shortExpr = a.custom ? a.expr : aggFunc(a.fn).sql(a.col === null ? '' : a.col.name);
+                    var input = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Alias">')
+                        .attr('placeholder', defaultAlias(a.col, a.fn)).val(a.alias);
+                    input.on('input', function() { a.alias = $(this).val(); refresh(); });
+                    var remove = $('<button type="button" class="qb-remove" aria-label="Remove aggregate">&times;</button>');
+                    remove.on('click', function() {
+                        state.aggs.splice(state.aggs.indexOf(a), 1);
+                        renderAggs();
+                    });
+                    var up = $('<button type="button" class="qb-move" aria-label="Move up" title="Move up">\u25B2</button>')
+                        .prop('disabled', i === 0).on('click', function() { moveAgg(i, -1); });
+                    var down = $('<button type="button" class="qb-move" aria-label="Move down" title="Move down">\u25BC</button>')
+                        .prop('disabled', i === state.aggs.length - 1).on('click', function() { moveAgg(i, 1); });
+                    aggList.append($('<div class="qb-selected-agg"></div>')
+                        .append($('<div class="qb-expr"></div>').text(shortExpr).attr('title', a.custom ? 'Edit ' + expr : expr)
+                            .toggleClass('qb-expr-custom', !!a.custom)
+                            .on('click', function() { if (a.custom) { editCustomAgg(a); } }))
+                        .append(input)
+                        .append(up)
+                        .append(down)
+                        .append(remove));
+                });
+                sortByColumn.add(sortByAgg).prop('disabled', state.aggs.length < 2);
+                fillBadges();
+                refresh();
+            }
+
+            sortByColumn.on('click', function() {
+                sortAggs(function(a) { return a.col === null ? -1 : state.cols.indexOf(a.col); });
+            });
+            sortByAgg.on('click', function() {
+                sortAggs(function(a) {
+                    return a.fn === STAR_AGG.id ? -1 : a.custom ? AGG_FUNCS.length : AGG_FUNCS.map(function(f) { return f.id; }).indexOf(a.fn);
+                });
+            });
+            search.on('input', renderColumnList);
+            selectAll.on('click', function() {
+                candidates.filter(matches).forEach(function(c) {
+                    if (state.aggCols.indexOf(c) === -1) { state.aggCols.push(c); }
+                });
+                renderColumnList();
+            });
+            clearAll.on('click', function() {
+                state.aggCols = [];
+                renderColumnList();
+            });
+            removeAllAggs.on('click', function() {
+                state.aggs = [];
+                renderAggs();
+            });
+
+            sqlExpression.on('click', function() { editCustomAgg(null); });
+            addButton(STAR_AGG);
+            buttonsBox.append('<hr class="qb-agg-separator">');
+            AGG_FUNCS.filter(function(f) { return !f.menu; }).forEach(addButton);
+            buttonsBox.append('<hr class="qb-agg-separator">');
+            addMenu('Counts');
+            addMenu('Collect');
+            updateButtons();
+
+            var columnsHead = $('<div class="qb-pane-head qb-agg-columns-head"></div>')
+                .append(columnsTitle).append($('<span class="qb-pane-actions"></span>').append(selectAll).append(clearAll));
+            var aggsHead = $('<div class="qb-pane-head qb-agg-results-head"></div>')
+                .append(aggsTitle).append($('<span class="qb-pane-actions"></span>').append(sqlExpression).append(removeAllAggs));
+            body.append($('<div class="qb-agg-layout"></div>')
+                .append(columnsHead)
+                .append($('<div class="qb-pane-tools qb-agg-columns-tools"></div>').append(search))
+                .append(columnList)
+                .append(buttonsBox)
+                .append(aggsHead)
+                .append($('<div class="qb-pane-tools qb-agg-results-tools"></div>').append(sortByColumn).append(sortByAgg))
+                .append(aggList));
+            renderColumnList();
+            renderAggs();
+        }
+
+        // names an ORDER BY can refer to, given the chosen columns and aggregates
+        function sortableNames() {
+            var names = [];
+            var add = function(n) {
+                var lower = names.map(function(x) { return x.toLowerCase(); });
+                if (lower.indexOf(n.toLowerCase()) === -1) { names.push(n); }
+            };
+            if (!state.aggs.length && (state.star || !selectedCols().length)) {
+                state.cols.forEach(function(c) { if (notMap(c)) { add(c.name); } });
+            }
+            selectedCols().forEach(function(c) { if (notMap(c)) { add(outName(c)); } });
+            state.aggs.forEach(function(a) { add(aggAlias(a)); });
+            return names;
+        }
+
+        function aggNumeric(a) {
+            return a.fn === 'min' || a.fn === 'max' ? a.col.numeric : true;
+        }
+
+        // the columns and aggregates a filter on the result can refer to
+        function resultColumns() {
+            var cols = [];
+            var add = function(c) {
+                if (!cols.some(function(x) { return x.name.toLowerCase() === c.name.toLowerCase(); })) { cols.push(c); }
+            };
+            var fromColumn = function(c, name) {
+                if (typeKind(c.type) === 'simple') { add({ name: name, numeric: c.numeric, type: c.type, sql: colSql(c) }); }
+            };
+            if (!state.aggs.length && (state.star || !selectedCols().length)) {
+                state.cols.forEach(function(c) { fromColumn(c, c.name); });
+            }
+            selectedCols().forEach(function(c) { fromColumn(c, outName(c)); });
+            state.aggs.forEach(function(a) {
+                if (a.custom) {
+                    add({ name: aggAlias(a), numeric: false, type: 'expression', sql: '(' + a.expr + ')' });
+                    return;
+                }
+                var numeric = a.col === null ? true : aggNumeric(a);
+                add({
+                    name: aggAlias(a),
+                    numeric: numeric,
+                    type: numeric ? 'double' : a.col.type,
+                    sql: aggSql(a)
+                });
+            });
+            return cols;
+        }
+
+        // useExpressions: refer to the source expressions (HAVING / WHERE) instead of the output names
+        function resultFilterList(useExpressions) {
+            var cols = resultColumns();
+            return state.rconds.filter(isComplete).map(function(cond) {
+                var col = cols.filter(function(c) { return c.name.toLowerCase() === String(cond.name).toLowerCase(); })[0];
+                return col ? opDef(cond.op).sql(useExpressions ? col.sql : quoteIdent(col.name), cond.value, col) : null;
+            }).filter(Boolean);
+        }
+
+        // an OR group needs parentheses to be combined with other conditions
+        function groupConds(list, combine) {
+            var joined = list.join(combine === 'or' ? ' OR ' : ' AND ');
+            return list.length > 1 && combine === 'or' ? '(' + joined + ')' : joined;
+        }
+
+        function effectiveSorts() {
+            var sortable = sortableNames();
+            var lower = sortable.map(function(n) { return n.toLowerCase(); });
+            var result = [];
+            var push = function(name, dir) {
+                var i = lower.indexOf(name.toLowerCase());
+                if (i !== -1) { result.push({ name: sortable[i], dir: dir }); }
+            };
+            if (state.useTableSort) {
+                state.tableSort.forEach(function(s) {
+                    var sel = selectedCols().filter(function(c) { return c.name === s.name; })[0];
+                    push(sel ? outName(sel) : s.name, s.dir);
+                });
+            }
+            state.sorts.forEach(function(s) { push(s.name, s.dir); });
+            return result;
+        }
+
+        function makeSelect(options, value, onChange) {
+            var select = $('<select></select>');
+            options.forEach(function(o) { select.append($('<option></option>').val(o.value).text(o.label)); });
+            select.val(value);
+            select.on('change', function() { onChange($(this).val()); });
+            return select;
+        }
+
+        function checkRow(label, checked, onChange) {
+            var box = $('<input type="checkbox">').prop('checked', checked);
+            box.on('change', function() { onChange(this.checked); });
+            return $('<div class="qb-section-note"></div>').append($('<label class="qb-check"></label>').append(box).append($('<span></span>').text(label)));
+        }
+
+        function renderRefine() {
+            body.append($('<p class="qb-hint"></p>').text('Optionally filter the input rows, filter the result, sort it or limit the number of rows.'));
+
+            var inputBox = $('<div class="qb-section"></div>');
+            var resultBox = $('<div class="qb-section"></div>');
+            var sortBox = $('<div class="qb-section"></div>');
+            var limitBox = $('<div class="qb-section"></div>');
+
+            function sectionHead(title, tools) {
+                return $('<div class="qb-section-head"></div>')
+                    .append($('<span class="qb-section-title"></span>').text(title))
+                    .append(tools);
+            }
+
+            function smallButton(label, onClick, disabled) {
+                return $('<button type="button" class="qb-btn"></button>').text(label).prop('disabled', !!disabled).on('click', onClick);
+            }
+
+            function renderConditions(box, opts) {
+                box.empty();
+                var options = opts.options();
+                var tools = $('<span class="qb-section-tools"></span>');
+                if (opts.list.length > 1) {
+                    tools.append('Match')
+                        .append(makeSelect([{ value: 'and', label: 'all' }, { value: 'or', label: 'any' }], state[opts.combineKey], function(v) { state[opts.combineKey] = v; refresh(); }))
+                        .append('conditions');
+                }
+                tools.append(smallButton('Add condition', function() {
+                    opts.list.push(opts.create(options));
+                    renderConditions(box, opts);
+                }, !options.length));
+                box.append(sectionHead(opts.title, tools));
+                box.append($('<div class="qb-section-note"></div>').text(opts.note));
+
+                if (opts.tableFilter) {
+                    box.append(checkRow('Use the table filter: ' + describeTableFilter(opts.tableFilter), state.useTableFilter, function(v) {
+                        state.useTableFilter = v;
+                        refresh();
+                    }));
+                }
+                opts.list.forEach(function(cond) {
+                    if (opts.normalize) { opts.normalize(cond, options); }
+                    var def = opDef(cond.op);
+                    var row = $('<div class="qb-cond"></div>');
+                    row.append(makeSelect(options, opts.getValue(cond), function(v) {
+                        opts.setValue(cond, v);
+                        renderConditions(box, opts);
+                    }));
+                    row.append(makeSelect(OPS.map(function(o) { return { value: o.id, label: o.label }; }), cond.op, function(v) {
+                        cond.op = v;
+                        renderConditions(box, opts);
+                    }));
+                    if (def.noValue) {
+                        row.append('<span></span>');
+                    } else {
+                        var input = $('<input type="text" autocomplete="off" aria-label="Value">')
+                            .attr('placeholder', cond.op === 'in' ? 'a, b, c' : (opts.suggest ? 'type or pick a value' : 'value')).val(cond.value);
+                        input.on('input', function() { cond.value = $(this).val(); refresh(); });
+                        row.append(input);
+                        // a native datalist suggests the data's values while still accepting free text
+                        if (opts.suggest && cond.op !== 'in') {
+                            var listId = 'qb-values-' + (listCounter++);
+                            var list = $('<datalist></datalist>').attr('id', listId);
+                            opts.suggest(cond).forEach(function(v) { list.append($('<option></option>').val(v)); });
+                            input.attr('list', listId);
+                            row.append(list);
+                        }
+                    }
+                    row.append($('<button type="button" class="qb-remove" aria-label="Remove condition">&times;</button>').on('click', function() {
+                        opts.list.splice(opts.list.indexOf(cond), 1);
+                        renderConditions(box, opts);
+                    }));
+                    box.append(row);
+                });
+                refresh();
+            }
+
+            function renderInputFilter() {
+                renderConditions(inputBox, {
+                    title: 'Filter input',
+                    note: 'Filters the source rows, before any grouping.',
+                    list: state.conds,
+                    combineKey: 'combine',
+                    tableFilter: state.tableFilter,
+                    options: function() { return filterableCols().map(function(c) { return { value: String(allCols().indexOf(c)), label: c.name }; }); },
+                    getValue: function(cond) { return String(allCols().indexOf(cond.col)); },
+                    setValue: function(cond, v) { cond.col = allCols()[parseInt(v, 10)]; },
+                    create: function(options) { return { col: allCols()[parseInt(options[0].value, 10)], op: 'eq', value: '' }; },
+                    suggest: function(cond) { return distinctValues(cond.col); }
+                });
+            }
+
+            function renderResultFilter() {
+                renderConditions(resultBox, {
+                    title: 'Filter result',
+                    note: 'Filters the result, after a possible group by. Only the selected columns and aggregates can be used.',
+                    list: state.rconds,
+                    combineKey: 'rcombine',
+                    options: function() { return resultColumns().map(function(c) { return { value: c.name, label: c.name }; }); },
+                    getValue: function(cond) { return cond.name; },
+                    setValue: function(cond, v) { cond.name = v; },
+                    create: function(options) { return { name: options[0].value, op: 'eq', value: '' }; },
+                    // a condition on a column that is no longer in the result moves to the first available one
+                    normalize: function(cond, options) {
+                        var known = options.some(function(o) { return o.value.toLowerCase() === String(cond.name).toLowerCase(); });
+                        if (!known && options.length) { cond.name = options[0].value; }
+                    }
+                });
+            }
+
+            function renderSort() {
+                sortBox.empty();
+                var sortable = sortableNames();
+                sortBox.append(sectionHead('Sort', smallButton('Add sort', function() {
+                    state.sorts.push({ name: sortable[0], dir: 'asc' });
+                    renderSort();
+                }, !sortable.length)));
+
+                if (state.tableSort.length) {
+                    sortBox.append(checkRow('Use the table sort: ' + describeTableSort(state.tableSort), state.useTableSort, function(v) {
+                        state.useTableSort = v;
+                        refresh();
+                    }));
+                }
+                if (!state.sorts.length && !state.tableSort.length) {
+                    sortBox.append($('<div class="qb-section-note"></div>').text('No sort: the row order is not defined.'));
+                }
+                state.sorts.forEach(function(s) {
+                    if (sortable.indexOf(s.name) === -1) { s.name = sortable[0]; }
+                    var row = $('<div class="qb-sortrow"></div>');
+                    row.append(makeSelect(sortable.map(function(n) { return { value: n, label: n }; }), s.name, function(v) { s.name = v; refresh(); }));
+                    row.append(makeSelect([{ value: 'asc', label: 'ascending' }, { value: 'desc', label: 'descending' }], s.dir, function(v) { s.dir = v; refresh(); }));
+                    row.append($('<button type="button" class="qb-remove" aria-label="Remove sort">&times;</button>').on('click', function() {
+                        state.sorts.splice(state.sorts.indexOf(s), 1);
+                        renderSort();
+                    }));
+                    sortBox.append(row);
+                });
+                refresh();
+            }
+
+            function renderLimit() {
+                limitBox.empty();
+                var input = $('<input type="text" class="qb-limit" inputmode="numeric" autocomplete="off" placeholder="no limit" aria-label="Limit">').val(state.limit);
+                input.on('input', function() { state.limit = $.trim($(this).val()); refresh(); });
+                limitBox.append(sectionHead('Limit', ''))
+                    .append($('<div class="qb-limit-row"></div>').append(input).append('<span>rows</span>'));
+            }
+
+            body.append($('<div class="qb-refine"></div>').append(inputBox).append(resultBox).append(sortBox).append(limitBox));
+            renderInputFilter();
+            renderResultFilter();
+            renderSort();
+            renderLimit();
+        }
+
+        function rawFilterValue(filter, colMeta) {
+            var found = filter.value;
+            var rows = table.rows().indexes().toArray();
+            for (var i = 0; i < rows.length; i++) {
+                var cell = table.cell(rows[i], filter.colIdx);
+                var node = cell.node();
+                var text = node ? $(node).text().replace(/\u00a0/g, ' ').trim() : '';
+                if (text === filter.value) {
+                    var data = String(cell.data());
+                    // data holding markup or entities is not usable as a literal
+                    if (data.indexOf('<') === -1 && data.indexOf('&') === -1) {
+                        found = data.trim();
+                    }
+                    break;
+                }
+            }
+            if (colMeta.numeric && /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(found)) {
+                return found;
+            }
+            return quoteString(found);
+        }
+
+        function tableFilterSql(filter) {
+            var colMeta = meta.columns[filter.colIdx];
+            var c = quoteIdent(colMeta.name);
+            if (filter.mode === '__empty__') {
+                return colMeta.numeric ? c + ' IS NULL' : '(' + c + " IS NULL OR " + c + " = '')";
+            }
+            if (filter.mode === '__non_empty__') {
+                return colMeta.numeric ? c + ' IS NOT NULL' : '(' + c + " IS NOT NULL AND " + c + " <> '')";
+            }
+            return c + ' = ' + rawFilterValue(filter, colMeta);
+        }
+
+        function buildWhere() {
+            var parts = [];
+            if (state.useTableFilter && state.tableFilter) {
+                parts.push(tableFilterSql(state.tableFilter));
+            }
+            var conds = state.conds.filter(isComplete).map(function(cond) {
+                return opDef(cond.op).sql(colSql(cond.col), cond.value, cond.col);
+            });
+            if (conds.length) {
+                parts.push(groupConds(conds, state.combine));
+            }
+            return parts.join(' AND ');
+        }
+
+        function buildSql() {
+            var select = [], group = [];
+            state.order.forEach(function(col) {
+                if (col.star) {
+                    select.push('*');
+                    return;
+                }
+                var out = outName(col);
+                select.push(colSql(col) + (out !== col.name || col.computed ? ' AS ' + quoteIdent(out) : ''));
+                group.push(colSql(col));
+            });
+            var aggs = state.aggs;
+            aggs.forEach(function(a) {
+                select.push(aggSql(a) + ' AS ' + quoteIdent(aggAlias(a)));
+            });
+
+            if (!select.length) { select.push('*'); }
+            var sql = 'SELECT\n  ' + select.join(',\n  ') + '\nFROM ' + (state.source.sql || meta.tableName);
+            var where = buildWhere();
+            var resultConds = groupConds(resultFilterList(true), state.rcombine);
+            // without aggregation the result filter is a plain row filter on the source columns
+            if (resultConds && !aggs.length) { where = where ? where + ' AND ' + resultConds : resultConds; }
+            if (where) { sql += '\nWHERE ' + where; }
+            if (aggs.length && group.length) { sql += '\nGROUP BY ' + group.join(', '); }
+            if (resultConds && aggs.length) { sql += '\nHAVING ' + resultConds; }
+            var sorts = effectiveSorts();
+            if (sorts.length) {
+                sql += '\nORDER BY ' + sorts.map(function(s) { return quoteIdent(s.name) + (s.dir === 'desc' ? ' DESC' : ''); }).join(', ');
+            }
+            if (state.limit !== '' && limitValid()) { sql += '\nLIMIT ' + state.limit; }
+            return sql;
+        }
+
+        function buildPyspark() {
+            var usesF = false;
+            var cols = [];
+            state.order.forEach(function(col) {
+                if (col.star) {
+                    cols.push(JSON.stringify('*'));
+                    return;
+                }
+                var out = outName(col);
+                if (col.computed) {
+                    usesF = true;
+                    cols.push('F.expr(' + JSON.stringify(col.expr) + ').alias(' + JSON.stringify(out) + ')');
+                    return;
+                }
+                var ref = pyRef(col.name);
+                if (out !== col.name) {
+                    usesF = true;
+                    cols.push('F.col(' + ref + ').alias(' + JSON.stringify(out) + ')');
+                } else {
+                    cols.push(ref);
+                }
+            });
+            var aggs = state.aggs.map(function(a) {
+                usesF = true;
+                return aggPy(a) + '.alias(' + JSON.stringify(aggAlias(a)) + ')';
+            });
+
+            var calls = [];
+            var where = buildWhere();
+            if (where) { calls.push('.where(' + JSON.stringify(where) + ')'); }
+            if (aggs.length) {
+                if (cols.length) { calls.push('.groupBy(' + cols.join(', ') + ')'); }
+                calls.push('.agg(\n        ' + aggs.join(',\n        ') + ',\n    )');
+            } else if (cols.length) {
+                calls.push('.select(' + cols.join(', ') + ')');
+            }
+            var resultWhere = groupConds(resultFilterList(false), state.rcombine);
+            if (resultWhere) { calls.push('.where(' + JSON.stringify(resultWhere) + ')'); }
+            var sorts = effectiveSorts();
+            if (sorts.length) {
+                calls.push('.orderBy(' + sorts.map(function(s) {
+                    if (s.dir !== 'desc') { return pyRef(s.name); }
+                    usesF = true;
+                    return 'F.col(' + pyRef(s.name) + ').desc()';
+                }).join(', ') + ')');
+            }
+            if (state.limit !== '' && limitValid()) { calls.push('.limit(' + state.limit + ')'); }
+            var source = state.source.pyspark || pyDefault;
+            if (!calls.length) { return source; }
+            return (usesF && state.includeImport ? 'import pyspark.sql.functions as F\n\n' : '') + '(\n    ' + source + '\n    ' + calls.join('\n    ') + '\n)';
+        }
+
+        function renderSql() {
+            var lang = state.language;
+            var isPyspark = lang === 'pyspark';
+            var build = isPyspark ? buildPyspark : buildSql;
+
+            var seg = $('<div class="qb-seg" role="group" aria-label="Output format"></div>');
+            [['pyspark', 'PySpark'], ['sql', 'SQL']].forEach(function(option) {
+                var btn = $('<button type="button" class="qb-seg-btn"></button>')
+                    .text(option[1])
+                    .attr('aria-pressed', lang === option[0] ? 'true' : 'false');
+                btn.on('click', function() {
+                    if (lang === option[0]) { return; }
+                    state.language = option[0];
+                    renderStep();
+                });
+                seg.append(btn);
+            });
+
+            var box = $('<textarea class="qb-sql" spellcheck="false"></textarea>')
+                .attr('aria-label', isPyspark ? 'PySpark code' : 'SQL query');
+            var noticeText = $('<span></span>');
+            var regenerate = $('<button type="button" class="qb-btn"></button>');
+            var notice = $('<div class="qb-notice"></div>').append(noticeText).append(regenerate).hide();
+
+            function updateNotice(generated) {
+                if (state.edits[lang] === null) {
+                    notice.hide();
+                    return;
+                }
+                var stale = generated !== state.lastGen[lang];
+                noticeText.text(stale
+                    ? 'Your edits are kept, but the selection or options changed since. Regenerate to apply them (this discards your edits).'
+                    : 'You edited this text.');
+                regenerate.text(stale ? 'Regenerate' : 'Discard edits');
+                notice.show();
+            }
+
+            // edits survive option changes; only an explicit regenerate discards them
+            function sync() {
+                var generated = build();
+                if (state.edits[lang] === null) {
+                    box.val(generated);
+                    state.lastGen[lang] = generated;
+                } else {
+                    box.val(state.edits[lang]);
+                }
+                updateNotice(generated);
+                refresh();
+            }
+
+            var sourceInput = $('<input type="text" class="qb-source" autocomplete="off">')
+                .attr('placeholder', isPyspark ? pyDefault : meta.tableName)
+                .attr('aria-label', isPyspark ? 'DataFrame name' : 'Table name')
+                .val(state.source[lang]);
+            sourceInput.on('input', function() {
+                state.source[lang] = $.trim($(this).val());
+                sync();
+            });
+
+            var options = $('<div class="qb-sql-options"></div>')
+                .append($('<label class="qb-check qb-source-setting"></label>').append($('<span></span>').text(isPyspark ? 'DataFrame' : 'Table')).append(sourceInput));
+            if (isPyspark) {
+                var importCheck = $('<input type="checkbox">').prop('checked', state.includeImport);
+                importCheck.on('change', function() {
+                    state.includeImport = this.checked;
+                    sync();
+                });
+                options.append($('<label class="qb-check"></label>').append(importCheck).append(' Include import F'));
+            }
+
+            box.on('input', function() {
+                var generated = build();
+                if (state.edits[lang] === null) { state.lastGen[lang] = generated; }
+                state.edits[lang] = box.val() === generated ? null : box.val();
+                updateNotice(generated);
+                refresh();
+            });
+            regenerate.on('click', function() {
+                state.edits[lang] = null;
+                sync();
+            });
+
+            body.append($('<div class="qb-sql-head"></div>')
+                .append(seg)
+                .append($('<p class="qb-hint"></p>').text((isPyspark ? 'Edit the code' : 'Edit the query') + ' if needed. Copy & close copies it to the clipboard.')));
+            body.append(options).append(notice).append(box);
+            sync();
+        }
+
+        function renderStep() {
+            body.empty();
+            renderStepper();
+            [renderColumns, renderAggregates, renderRefine, renderSql][step]();
+            backBtn.toggle(step > 0);
+            skipBtn.toggle(step < STEP_REFINE);
+            nextBtn.toggle(step < LAST_STEP);
+            doneBtn.toggle(step === LAST_STEP);
+            refresh();
+            body.scrollTop(0);
+        }
+
+        function copyText(text) {
+            var box = sqlBox();
+            box[0].focus();
+            box[0].select();
+            var ok = false;
+            try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+            if (ok) { return $.Deferred().resolve().promise(); }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text);
+            }
+            return $.Deferred().reject().promise();
+        }
+
+        function growFrame() {
+            try {
+                var frame = window.frameElement;
+                if (frame && frame.offsetHeight < MIN_FRAME_HEIGHT) {
+                    frameRestore = { frame: frame, height: frame.style.height };
+                    frame.style.height = MIN_FRAME_HEIGHT + 'px';
+                }
+            } catch (err) {
+                frameRestore = null;
+            }
+        }
+
+        function restoreFrame() {
+            if (frameRestore) {
+                frameRestore.frame.style.height = frameRestore.height;
+                frameRestore = null;
+            }
+        }
+
+        function onEscape(e) {
+            if (e.key === 'Escape' && !LionExpressionEditor.isOpen()) {
+                e.stopPropagation();
+                close();
+            }
+        }
+
+        function open() {
+            state = {
+                cols: visibleColumns(), star: false, aggs: [], order: [], aggCols: [],
+                conds: [], combine: 'and', rconds: [], rcombine: 'and', sorts: [], limit: '',
+                tableFilter: snapshotTableFilter(), useTableFilter: true,
+                tableSort: snapshotTableSort(), useTableSort: false,
+                language: 'pyspark', includeImport: false,
+                source: { pyspark: pyDefault, sql: meta.tableName },
+                edits: { pyspark: null, sql: null }, lastGen: { pyspark: null, sql: null },
+                starItem: { star: true, name: '*', type: 'all columns' }
+            };
+            step = 0;
+            lastFocus = document.activeElement;
+            // capture phase so Escape works even when focus was lost by a re-render
+            document.addEventListener('keydown', onEscape, true);
+            growFrame();
+            overlay.addClass('show');
+            renderStep();
+            dialog.trigger('focus');
+        }
+
+        function close() {
+            document.removeEventListener('keydown', onEscape, true);
+            overlay.removeClass('show');
+            restoreFrame();
+            if (lastFocus && lastFocus.focus) { lastFocus.focus(); }
+        }
+
+        // moving forward requires every step in between to be valid; stops at the first invalid one
+        function goTo(target) {
+            for (var s = step; s < target; s++) {
+                step = s;
+                if (validate()) {
+                    renderStep();
+                    return;
+                }
+            }
+            step = target;
+            renderStep();
+        }
+
+        ctx.button.on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            open();
+        });
+        closeBtn.on('click', close);
+        cancelBtn.on('click', close);
+        backBtn.on('click', function() { goTo(step - 1); });
+        nextBtn.on('click', function() { goTo(step + 1); });
+        skipBtn.on('click', function() { goTo(LAST_STEP); });
+        doneBtn.on('click', function() {
+            if (validate()) { return; }
+            var text = sqlBox().val();
+            copyText(text).then(function() {
+                close();
+                ctx.showToast('Query copied to clipboard');
+            }, function() {
+                errorBox.text('Copy failed. Select the text and copy it manually.');
+            });
+        });
+        overlay.on('mousedown', function(e) {
+            if (e.target === overlay[0]) { close(); }
+        });
+
+        // keep keystrokes away from the DataTables key handling
+        overlay.on('keydown keyup keypress', function(e) {
+            if (e.type === 'keydown') {
+                if (e.key === 'Enter') {
+                    if (e.metaKey || e.ctrlKey) {
+                        e.preventDefault();
+                        (step === LAST_STEP ? doneBtn : nextBtn).trigger('click');
+                    } else if (e.target.tagName === 'INPUT' && e.target.type === 'text' && !$(e.target).hasClass('qb-search')) {
+                        // Enter moves to the next field, like in a form
+                        e.preventDefault();
+                        var fields = dialog.find('input[type="text"]:not(.qb-search), select').filter(':visible:not(:disabled)');
+                        var next = fields.eq(fields.index(e.target) + 1);
+                        if (next.length) { next.trigger('focus'); }
+                    }
+                }
+                if (e.key === 'Tab') {
+                    var items = dialog.find('button, input, select, textarea').filter(':visible:not(:disabled)');
+                    var first = items.first()[0], last = items.last()[0];
+                    if (e.shiftKey && (document.activeElement === first || document.activeElement === dialog[0])) {
+                        e.preventDefault();
+                        last.focus();
+                    } else if (!e.shiftKey && document.activeElement === last) {
+                        e.preventDefault();
+                        first.focus();
+                    }
+                }
+            }
+            e.stopPropagation();
+        });
+    }
+
+    return { init: init };
+})();
+</script>

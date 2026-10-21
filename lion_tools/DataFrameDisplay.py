@@ -1,4 +1,5 @@
 from operator import le
+import json
 import pathlib
 import html
 from pprint import pprint
@@ -314,7 +315,8 @@ class DataFrameDisplay():
         self.html_title = title if title is not None else DataFrameDisplay.defaults['title']
         self.column_filter = column_filter if column_filter is not None else DataFrameDisplay.defaults['column_filter']
         self.display_hub_path = display_hub_path if display_hub_path is not None else DataFrameDisplay.defaults['display_hub_path']
-
+        self.primary_source = None
+        self.primary_source_is_table = False
         # allow overloading
         self.sort = [self.sort] if self.sort and not isinstance(self.sort, list) else self.sort
         self.color_rules = [self.color_rules] if self.color_rules and not isinstance(self.color_rules, list) else (
@@ -339,7 +341,7 @@ class DataFrameDisplay():
         assert isinstance(self.percentage_columns_pattern, str)
         assert isinstance(self.column_filter, bool)
 
-        self.html_title_from_source()
+        self.html_title_and_primary_source()
 
         if self.color_rules:
             assert all(isinstance(rule, dict) for rule in self.color_rules)
@@ -383,18 +385,24 @@ class DataFrameDisplay():
         self.put_in_iframe()
         display(display_HTML(self.iframe_html), clear=True)
 
-    def html_title_from_source(self):
-        if self.html_title is None:
-            name = DataFrameOther.name(self.df, levels_to_skip=3)
+    def html_title_and_primary_source(self):
+        name = DataFrameOther.name(self.df, levels_to_skip=3)
 
-            if name == "unnamed":
-                sources = DataFrameOther.sources(self.df)
+        if name != "unnamed":
+            self.html_title = self.html_title or name
+            self.primary_source = name
+        else:
+            sources = DataFrameOther.sources(self.df)
+            self.primary_source = sources[0] if sources else None
+            self.primary_source_is_table = bool(sources)
+            if self.html_title is None and sources:
                 if len(sources) == 1:
-                    name = sources[0].split(".")[-1]
+                    self.html_title = self.html_title or sources[0].split(".")[-1]
                 elif len(sources) > 1:
-                    name = sources[0].split(".")[-1] + f" (+{len(sources)-1})"
+                    self.html_title = self.html_title or sources[0].split(".")[-1] + f" (+{len(sources)-1})"
 
-            self.html_title = name
+        self.html_title = self.html_title or "DataFrame"
+
 
     def gather_column_information(self):
         # define some variables that are needed down the road
@@ -540,7 +548,8 @@ class DataFrameDisplay():
             total_width += max(header_0_width, group_column_width)
             
         # minimal width at which the toolbar (entries, buttons, filter, search) fits on one row
-        min_width = 620 + 30 + 7*max([len(col) for col in self.table_cols if col != '_rownum']) if self.column_filter else 620
+        # the filter select grows with the longest column name but is capped by max-width: 260px in the template
+        min_width = 700 + min(260, 7*max([len(col) for col in self.table_cols if col != '_rownum'])) if self.column_filter else 700
         if total_width * 9 + 50 < min_width:
             self.max_width = f'{min_width}px'
         else:
@@ -576,8 +585,42 @@ class DataFrameDisplay():
         html_content = html_content.replace('{page_length}', self.page_length)
         html_content = html_content.replace('{length_menu}', self.length_menu)
         html_content = html_content.replace('{column_filter}', 'true' if self.column_filter else 'false')
-        
+
+        # inserted last so that the fragment is not touched by the other replacements
+        html_content = html_content.replace('{query_builder_meta}', self.query_builder_meta())
+        html_content = html_content.replace('{expression_editor_assets}', Tools.load_file('expression_editor_template.html'))
+        html_content = html_content.replace('{query_builder_assets}', Tools.load_file('query_builder_template.html'))
+
         self.html_content = html_content
+
+    def query_builder_meta(self):
+        identifier = r'[A-Za-z_][A-Za-z0-9_]*'
+        source = self.primary_source or ''
+
+        # SQL: a table name with every part that is not a plain identifier quoted
+        table_name = '.'.join(
+            part if re.fullmatch(identifier, part) else '`' + part.replace('`', '``') + '`'
+            for part in source.split('.')
+        ) if source else 'your_table'
+
+        # PySpark: the variable name of the DataFrame, or the table it was read from
+        if self.primary_source_is_table:
+            py_source = f'spark.table({json.dumps(source)})'
+        elif re.fullmatch(identifier, source):
+            py_source = source
+        else:
+            py_source = 'df'
+
+        meta = {
+            'tableName': table_name,
+            'pySource': py_source,
+            'columns': [
+                {'name': col, 'type': dtype, 'numeric': i in self.nummeric_columns_indexes}
+                for i, (col, dtype) in enumerate(self.dtypes)
+            ],
+        }
+        # '</' would end the surrounding script tag
+        return json.dumps(meta).replace('</', '<\\/')
 
     def save_to_file(self):
         # save to file

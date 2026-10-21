@@ -346,7 +346,7 @@ class DataFrameOther:
 
     @staticmethod
     def name(_df: DataFrame, levels_to_skip: int = 0) -> str:
-        # we go up max 5 levels (inside out) to find a variable that holds the dataframe,
+        # we go up max 6 levels (inside out) to find a Python variable that holds the dataframe,
         # levels_to_skip ignores that many of the nearest calling frames first
         frames = []
         frame = inspect.currentframe().f_back
@@ -354,7 +354,7 @@ class DataFrameOther:
             if frame is None:
                 break
             frame = frame.f_back
-        for _ in range(5):
+        for _ in range(6):
             if frame is None:
                 break
             frames.append(frame)
