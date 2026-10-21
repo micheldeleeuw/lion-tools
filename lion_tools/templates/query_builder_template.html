@@ -140,8 +140,10 @@
     .qb-badge { padding: 0 5px; border-radius: 8px; background: #e3eaf5; color: #5f7ea8; font-size: 10px; line-height: 15px; }
     .qb-badges + .qb-type { margin-left: 8px; }
     .qb-agg-layout { display: grid; grid-template-columns: 1fr 120px 1.5fr; gap: 12px; }
-    .qb-agg-buttons { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+    .qb-agg-buttons { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding-top: 45px; }
     .qb-agg-buttons .qb-btn { width: calc(100% - 12px); align-self: center; padding: 0 8px; }
+    .qb-overlay .qb-agg-buttons select { width: calc(100% - 12px); align-self: center; height: 28px; background: #f6f8fc; color: #5f7ea8; border-color: #5f7ea8; cursor: pointer; text-align: center; text-align-last: center; }
+    .qb-overlay .qb-agg-buttons select:disabled { opacity: 0.45; cursor: not-allowed; }
     .qb-agg-separator { width: 100%; margin: 4px 0; border: none; border-top: 1px solid #d5dbe5; }
     .qb-item-btn.active { background: #dfe8f5; }
     .qb-panel-title { font-weight: bold; margin: 0 0 6px 0; }
@@ -280,8 +282,8 @@
     }
     @media (max-width: 760px) {
         .qb-dual, .qb-agg-layout { grid-template-columns: 1fr; }
-        .qb-agg-buttons { flex-direction: row; flex-wrap: wrap; }
-        .qb-agg-buttons .qb-btn { width: auto; }
+        .qb-agg-buttons { flex-direction: row; flex-wrap: wrap; padding-top: 0; }
+        .qb-agg-buttons .qb-btn, .qb-overlay .qb-agg-buttons select { width: auto; }
         .qb-pane-list { height: 220px; }
         .qb-stepper { flex-wrap: wrap; }
     }
@@ -310,10 +312,13 @@ window.LionQueryBuilder = (function() {
         { id: 'max', label: 'max', short: 'max', prefix: 'max', accepts: notMap, sql: function(c) { return 'max(' + c + ')'; }, py: function(c) { return 'F.max(' + c + ')'; } },
         { id: 'sum', label: 'sum', short: 'sum', prefix: 'sum', accepts: isNumeric, sql: function(c) { return 'sum(' + c + ')'; }, py: function(c) { return 'F.sum(' + c + ')'; } },
         { id: 'avg', label: 'avg', short: 'avg', prefix: 'avg', accepts: isNumeric, sql: function(c) { return 'avg(' + c + ')'; }, py: function(c) { return 'F.avg(' + c + ')'; } },
-        { id: 'count_null', label: 'count null', short: 'null', prefix: 'count_null', sql: function(c) { return 'count_if(' + c + ' IS NULL)'; }, py: function(c) { return 'F.count(F.when(F.col(' + c + ').isNull(), 1))'; } },
-        { id: 'count_not_null', label: 'count not null', short: 'not null', prefix: 'count_not_null', sql: function(c) { return 'count(' + c + ')'; }, py: function(c) { return 'F.count(' + c + ')'; } },
-        { id: 'count_distinct', label: 'count distinct', short: 'distinct', prefix: 'count_distinct', accepts: notMap, sql: function(c) { return 'count(DISTINCT ' + c + ')'; }, py: function(c) { return 'F.countDistinct(' + c + ')'; } },
-        { id: 'approx_count_distinct', label: 'apprx cnt dstnct', short: 'approx', prefix: 'approx_count_distinct', accepts: notMap, sql: function(c) { return 'approx_count_distinct(' + c + ')'; }, py: function(c) { return 'F.approx_count_distinct(' + c + ')'; } }
+        { id: 'first', label: 'first', short: 'first', prefix: 'first', sql: function(c) { return 'first(' + c + ')'; }, py: function(c) { return 'F.first(' + c + ')'; } },
+        { id: 'count_null', label: 'count null', short: 'null', prefix: 'count_null', menu: 'Counts', sql: function(c) { return 'count_if(' + c + ' IS NULL)'; }, py: function(c) { return 'F.count(F.when(F.col(' + c + ').isNull(), 1))'; } },
+        { id: 'count_not_null', label: 'count not null', short: 'not null', prefix: 'count_not_null', menu: 'Counts', sql: function(c) { return 'count(' + c + ')'; }, py: function(c) { return 'F.count(' + c + ')'; } },
+        { id: 'count_distinct', label: 'count distinct', short: 'distinct', prefix: 'count_distinct', menu: 'Counts', accepts: notMap, sql: function(c) { return 'count(DISTINCT ' + c + ')'; }, py: function(c) { return 'F.countDistinct(' + c + ')'; } },
+        { id: 'approx_count_distinct', label: 'apprx cnt dstnct', short: 'approx', prefix: 'approx_count_distinct', menu: 'Counts', accepts: notMap, sql: function(c) { return 'approx_count_distinct(' + c + ')'; }, py: function(c) { return 'F.approx_count_distinct(' + c + ')'; } },
+        { id: 'collect_list', label: 'collect_list', short: 'list', prefix: 'collect_list', menu: 'Collect', sql: function(c) { return 'collect_list(' + c + ')'; }, py: function(c) { return 'F.collect_list(' + c + ')'; } },
+        { id: 'collect_set', label: 'collect_set', short: 'set', prefix: 'collect_set', menu: 'Collect', accepts: notMap, sql: function(c) { return 'collect_set(' + c + ')'; }, py: function(c) { return 'F.collect_set(' + c + ')'; } }
     ];
     var STAR_AGG = { id: 'count_star', label: 'count(*)', sql: function() { return 'count(*)'; }, py: function() { return 'F.count("*")'; } };
 
@@ -732,6 +737,7 @@ window.LionQueryBuilder = (function() {
             var buttonsBox = $('<div class="qb-agg-buttons"></div>');
             var aggButtons = [];
             var badgeBoxes = [];
+            var menus = [];
 
             function fillBadges() {
                 badgeBoxes.forEach(function(b) {
@@ -758,22 +764,40 @@ window.LionQueryBuilder = (function() {
                 }
             }
 
+            function applyAgg(func) {
+                if (func.id === STAR_AGG.id) {
+                    addAgg(null, func.id);
+                } else {
+                    activeCols().forEach(function(col) {
+                        if (accepts(func, col)) { addAgg(col, func.id); }
+                    });
+                }
+                renderAggs();
+            }
+
             function addButton(func) {
                 var btn = $('<button type="button" class="qb-btn"></button>')
                     .text(func.label)
                     .attr('title', func.sql(func.id === STAR_AGG.id ? '' : 'column'));
-                btn.on('click', function() {
-                    if (func.id === STAR_AGG.id) {
-                        addAgg(null, func.id);
-                    } else {
-                        activeCols().forEach(function(col) {
-                            if (accepts(func, col)) { addAgg(col, func.id); }
-                        });
-                    }
-                    renderAggs();
-                });
+                btn.on('click', function() { applyAgg(func); });
                 aggButtons.push({ btn: btn, func: func });
                 buttonsBox.append(btn);
+            }
+
+            function addMenu(title) {
+                var select = $('<select></select>').attr('aria-label', title + ' aggregates').append($('<option value=""></option>').text(title + '...'));
+                AGG_FUNCS.filter(function(f) { return f.menu === title; }).forEach(function(func) {
+                    var option = $('<option></option>').val(func.id).text(func.label).attr('title', func.sql('column'));
+                    aggButtons.push({ btn: option, func: func });
+                    select.append(option);
+                });
+                select.on('change', function() {
+                    var func = aggFunc($(this).val());
+                    $(this).val('');
+                    if (func) { applyAgg(func); }
+                });
+                menus.push(select);
+                buttonsBox.append(select);
             }
 
             function updateButtons() {
@@ -783,6 +807,7 @@ window.LionQueryBuilder = (function() {
                         || active.some(function(c) { return accepts(b.func, c); });
                     b.btn.prop('disabled', !enabled);
                 });
+                menus.forEach(function(s) { s.prop('disabled', !s.find('option[value!=""]:not(:disabled)').length); });
             }
 
             function renderColumnList() {
@@ -880,7 +905,11 @@ window.LionQueryBuilder = (function() {
 
             addButton(STAR_AGG);
             buttonsBox.append('<hr class="qb-agg-separator">');
-            AGG_FUNCS.forEach(addButton);
+            AGG_FUNCS.filter(function(f) { return !f.menu; }).forEach(addButton);
+            buttonsBox.append('<hr class="qb-agg-separator">');
+            addMenu('Counts');
+            addMenu('Collect');
+            updateButtons();
 
             var columnsPane = $('<div></div>')
                 .append($('<div class="qb-pane-head"></div>').append(columnsTitle).append($('<span></span>').append(selectAll).append(' ').append(clearAll)))
