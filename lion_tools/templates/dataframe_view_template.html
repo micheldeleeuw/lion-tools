@@ -2,11 +2,22 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="created" content="{generation_date}" />
 <title>{html_title}</title>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
+    :root {
+        --dt-text: #2c3e50;
+        --dt-muted: #657487;
+        --dt-border: #dce2e8;
+        --dt-surface: #f6f8fa;
+        --dt-accent: #5f7ea8;
+        --dt-accent-hover: #4f6d95;
+        --dt-hover: #eef2f9;
+        --dt-focus: 0 0 0 2px rgba(95, 126, 168, 0.25);
+    }
     body { 
         font-family: Arial, sans-serif; 
         margin: 15px;
@@ -54,7 +65,7 @@
         vertical-align: middle;
     }
     .dataTables_wrapper {
-        padding: 20px;
+        padding: 16px;
         background: white;
         border-radius: 8px;
     }
@@ -63,23 +74,31 @@
     #resetBtn, #columnBtn, #exportBtn, #queryBtn {
         height: 28px;
         padding: 0 12px;
-        background: #f6f8fc;
-        color: #5f7ea8;
-        border: 1px solid #5f7ea8;
+        background: white;
+        color: var(--dt-text);
+        border: 1px solid var(--dt-border);
         border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
         margin: 0;
+        white-space: nowrap;
     }
     #resetBtn:hover, #columnBtn:hover, #exportBtn:hover, #queryBtn:hover {
-        background: #eef2f9;
+        background: var(--dt-hover);
+        border-color: var(--dt-accent);
+    }
+    #resetBtn {
+        background: transparent;
+        border-color: transparent;
+        color: var(--dt-muted);
+        margin-left: 4px;
+    }
+    #resetBtn:hover {
+        border-color: transparent;
     }
     .export-wrapper, .column-wrapper {
         position: relative;
         display: inline-block;
-    }
-    .column-wrapper {
-        margin-left: 3px;
     }
     #exportMenu {
         display: none;
@@ -122,58 +141,83 @@
     }
     #columnList {
         display: none;
-        position: absolute;
+        position: fixed;
+        flex-direction: column;
+        box-sizing: border-box;
+        width: min(380px, calc(100vw - 16px));
+        max-height: min(520px, calc(100vh - 16px));
+        overflow: auto;
         background: white;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        color: var(--dt-text);
+        border: 1px solid var(--dt-border);
+        border-radius: 6px;
+        box-shadow: 0 8px 24px rgba(30, 41, 59, 0.16);
         z-index: 1000;
-        min-width: 260px;
-        top: 100%;
-        margin-top: 5px;
-        left: 0;
     }
     #columnList.show {
-        display: block;
+        display: flex;
     }
     .column-search-container {
-        padding: 10px;
-        border-bottom: 1px solid #e0e0e0;
+        flex: none;
+        padding: 12px 12px 8px;
     }
     #columnSearch {
         width: 100%;
+        height: 28px;
         box-sizing: border-box;
         font-size: 12px;
         padding: 4px 8px;
-        border: 1px solid #ccc;
+        border: 1px solid var(--dt-border);
         border-radius: 4px;
     }
     .column-item.hidden {
         display: none;
     }
     .column-items-container {
-        max-height: 350px;
+        flex: 0 1 auto;
+        min-height: 0;
+        max-height: 288px;
         overflow-y: auto;
-        padding: 8px 10px;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        padding: 4px 8px;
+    }
+    .column-list-head {
+        display: flex;
+        justify-content: space-between;
+        flex: none;
+        padding: 6px 16px;
+        border-top: 1px solid var(--dt-border);
+        border-bottom: 1px solid var(--dt-border);
+        background: var(--dt-surface);
+        color: var(--dt-muted);
+        font-size: 11px;
     }
     .column-item {
-        padding: 5px 12px;
+        min-height: 28px;
+        padding: 5px 8px;
         font-size: 12px;
         cursor: pointer;
         display: grid;
-        grid-template-columns: 1fr auto;
-        gap: 15px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+        gap: 12px;
         align-items: center;
         user-select: none;
         border-radius: 3px;
-        transition: background 0.15s;
     }
     .column-name {
         text-align: left;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     .column-type {
         text-align: right;
-        color: #888;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--dt-muted);
         font-size: 11px;
     }
     .column-item.selected .column-type {
@@ -190,20 +234,18 @@
         background: #cfdcf0;
     }
     .buttons-container {
-        padding: 10px 12px 12px;
-        border-top: 1px solid #e0e0e0;
-        background: #fafbfd;
-        border-radius: 0 0 4px 4px;
-        position: sticky;
-        bottom: 0;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
+        flex: none;
+        padding: 12px;
+        border-top: 1px solid var(--dt-border);
+        background: var(--dt-surface);
     }
     .selection-row {
         display: flex;
+        flex: none;
+        flex-wrap: wrap;
         align-items: center;
         gap: 4px;
+        padding: 0 8px 8px;
     }
     .select-btn {
         padding: 2px 6px;
@@ -221,25 +263,41 @@
     }
     .selection-count {
         margin-left: auto;
-        color: #888;
+        color: var(--dt-muted);
         font-size: 11px;
         white-space: nowrap;
     }
+    .column-action-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+    }
+    .column-copy-actions {
+        flex: 1;
+        min-width: 0;
+    }
+    .column-copy-label {
+        display: block;
+        margin-bottom: 4px;
+        color: var(--dt-muted);
+        font-size: 11px;
+    }
     .apply-btn {
+        flex: none;
         height: 28px;
-        background: #f6f8fc;
-        color: #5f7ea8;
-        border: 1px solid #5f7ea8;
+        padding: 0 12px;
+        background: var(--dt-accent);
+        color: white;
+        border: 1px solid var(--dt-accent);
         border-radius: 4px;
         cursor: pointer;
         font-size: 12px;
-        transition: background 0.15s;
     }
     .apply-btn:hover {
-        background: #eef2f9;
+        background: var(--dt-accent-hover);
     }
     .apply-btn:active {
-        background: #e3eaf5;
+        background: #405c82;
     }
     .copy-group {
         display: flex;
@@ -250,9 +308,9 @@
         height: 28px;
         padding: 0 4px;
         margin-left: -1px;
-        background: #f6f8fc;
-        color: #5f7ea8;
-        border: 1px solid #5f7ea8;
+        background: white;
+        color: var(--dt-text);
+        border: 1px solid var(--dt-border);
         border-radius: 0;
         cursor: pointer;
         font-size: 12px;
@@ -278,22 +336,44 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 8px 16px;
-        margin-bottom: 15px;
+        gap: 12px 16px;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--dt-border);
     }
-    .dt-toolbar-left, .dt-toolbar-right {
+    .dt-toolbar-left, .dt-toolbar-right, .dt-footer, .dt-footer-navigation {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
         gap: 8px;
+        min-width: 0;
     }
-    .dt-toolbar .dataTables_length,
-    .dt-toolbar .dataTables_filter {
+    .dt-toolbar-right {
+        margin-left: auto;
+    }
+    .dt-footer {
+        justify-content: space-between;
+        gap: 12px 16px;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--dt-border);
+        color: var(--dt-muted);
+    }
+    .dt-footer-navigation {
+        justify-content: flex-end;
+        gap: 8px 16px;
+        margin-left: auto;
+    }
+    .dataTables_wrapper .dt-footer .dataTables_length,
+    .dataTables_wrapper .dt-footer .dataTables_info,
+    .dataTables_wrapper .dt-footer .dataTables_paginate,
+    .dataTables_wrapper .dt-toolbar .dataTables_filter {
         float: none;
+        clear: none;
         margin: 0;
         padding: 0;
     }
-    .dt-toolbar .dataTables_length label,
+    .dt-footer .dataTables_length label,
     .dt-toolbar .dataTables_filter label {
         display: flex;
         align-items: center;
@@ -302,36 +382,55 @@
         font-size: 12px;
     }
     .dt-toolbar select,
+    .dt-footer select,
     .dt-toolbar .dataTables_filter input {
         box-sizing: border-box;
         height: 28px;
         margin: 0;
         padding: 0 8px;
         font-size: 12px;
-        border: 1px solid #ccc;
+        border: 1px solid var(--dt-border);
         border-radius: 4px;
         background-color: white;
     }
     #valueFilter {
-        max-width: 260px;
+        max-width: min(260px, 100%);
+    }
+    .dt-toolbar .dataTables_filter {
+        min-width: 0;
+        max-width: 100%;
+    }
+    .dt-toolbar .dataTables_filter input {
+        width: 180px;
+        min-width: 0;
     }
     .dt-toolbar select:focus,
+    .dt-footer select:focus,
     .dt-toolbar .dataTables_filter input:focus,
     #columnSearch:focus {
         outline: none;
-        border-color: #5f7ea8;
-        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
+        border-color: var(--dt-accent);
+        box-shadow: var(--dt-focus);
     }
     #resetBtn:focus-visible, #columnBtn:focus-visible, #exportBtn:focus-visible, #queryBtn:focus-visible,
     .select-btn:focus-visible, .copy-btn:focus-visible, .apply-btn:focus-visible {
         position: relative;
         outline: none;
-        box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
+        box-shadow: var(--dt-focus);
     }
 
     .dataTables_wrapper .dataTables_info,
     .dataTables_wrapper .dataTables_paginate {
         font-size: 12px;
+    }
+    @media (max-width: 600px) {
+        body { margin: 8px; }
+        .dataTables_wrapper { padding: 12px; }
+        .dt-toolbar-right { width: 100%; margin-left: 0; }
+        .dt-footer-navigation { justify-content: flex-start; margin-left: 0; }
+    }
+    @media (max-width: 400px) {
+        .column-action-row { flex-direction: column; align-items: stretch; }
     }
 </style>
 </head>
@@ -438,6 +537,8 @@ $(document).ready(function() {
             '<span class="column-name">' + columnName + '</span>' +
             '<span class="column-type">' + columnType + '</span>' +
             '</div>');
+        item.find('.column-name').attr('title', columnName);
+        item.find('.column-type').attr('title', columnType);
         columnItemsContainer.append(item);
     });
     
@@ -452,10 +553,10 @@ $(document).ready(function() {
     selectButtonsRow.append(selectionCount);
     
     var applyBtn = $('<button class="apply-btn" title="Show only the selected columns">Apply</button>');
-    var copyButtonsRow = $('<div class="copy-group"></div>');
-    var copyBtn1 = $('<button class="copy-btn" data-format="simple" title="Copy names: a, b, c">Copy 1</button>');
-    var copyBtn2 = $('<button class="copy-btn" data-format="quoted" title="Copy names: &quot;a&quot;, &quot;b&quot;, &quot;c&quot;">Copy 2</button>');
-    var copyBtn3 = $('<button class="copy-btn" data-format="quoted-newline" title="Copy names: one quoted name per line">Copy 3</button>');
+    var copyButtonsRow = $('<div class="copy-group" role="group" aria-label="Copy column names"></div>');
+    var copyBtn1 = $('<button class="copy-btn" data-format="simple" title="Copy names: a, b, c">Plain</button>');
+    var copyBtn2 = $('<button class="copy-btn" data-format="quoted" title="Copy names: &quot;a&quot;, &quot;b&quot;, &quot;c&quot;">Quoted</button>');
+    var copyBtn3 = $('<button class="copy-btn" data-format="quoted-newline" title="Copy names: one quoted name per line">Lines</button>');
     copyButtonsRow.append(copyBtn1);
     copyButtonsRow.append(copyBtn2);
     copyButtonsRow.append(copyBtn3);
@@ -466,15 +567,18 @@ $(document).ready(function() {
     }
     updateSelectionCount();
     
-    buttonsContainer.append(selectButtonsRow);
-    buttonsContainer.append(applyBtn);
-    buttonsContainer.append(copyButtonsRow);
+    var copyActions = $('<div class="column-copy-actions"></div>')
+        .append('<span class="column-copy-label">Copy names</span>')
+        .append(copyButtonsRow);
+    buttonsContainer.append($('<div class="column-action-row"></div>').append(copyActions).append(applyBtn));
     
     var columnSearchContainer = $('<div class="column-search-container"></div>');
-    var columnSearch = $('<input type="text" id="columnSearch" placeholder="Search columns..." autocomplete="off">');
+    var columnSearch = $('<input type="text" id="columnSearch" placeholder="Search columns..." autocomplete="off" aria-label="Search columns">');
     columnSearchContainer.append(columnSearch);
 
     columnList.append(columnSearchContainer);
+    columnList.append(selectButtonsRow);
+    columnList.append('<div class="column-list-head"><span>Name</span><span>Data type</span></div>');
     columnList.append(columnItemsContainer);
     columnList.append(buttonsContainer);
     
@@ -581,7 +685,6 @@ $(document).ready(function() {
     var wrapper = $(table.table().container());
     var columnWrapper = $('<span class="column-wrapper"></span>').append(columnBtn).append(columnList);
     var toolbarLeft = $('<div class="dt-toolbar-left"></div>')
-        .append(wrapper.find('.dataTables_length'))
         .append(columnWrapper)
         .append(exportWrapper)
         .append(queryBtn)
@@ -592,6 +695,13 @@ $(document).ready(function() {
     }
     toolbarRight.append(wrapper.find('.dataTables_filter'));
     $('<div class="dt-toolbar"></div>').append(toolbarLeft).append(toolbarRight).prependTo(wrapper);
+    var footerNavigation = $('<div class="dt-footer-navigation"></div>')
+        .append(wrapper.find('.dataTables_length'))
+        .append(wrapper.find('.dataTables_paginate'));
+    $('<div class="dt-footer"></div>')
+        .append(wrapper.find('.dataTables_info'))
+        .append(footerNavigation)
+        .appendTo(wrapper);
     
     // Reset button logic
     resetBtn.on('click', function(e) {
@@ -622,12 +732,35 @@ $(document).ready(function() {
         table.draw();                  // Redraw the table to apply changes
     });
 
+    function positionColumnList() {
+        if (!columnList.hasClass('show')) { return; }
+        var anchor = columnBtn[0].getBoundingClientRect();
+        var viewport = document.documentElement;
+        var gap = 8;
+        var below = Math.max(0, viewport.clientHeight - anchor.bottom - gap * 2);
+        var above = Math.max(0, anchor.top - gap * 2);
+        var openAbove = below < 300 && above > below;
+        columnList.css({ maxHeight: Math.min(520, openAbove ? above : below) + 'px' });
+        var bounds = columnList[0].getBoundingClientRect();
+        columnList.css({
+            left: Math.max(gap, Math.min(anchor.left, viewport.clientWidth - bounds.width - gap)) + 'px',
+            top: Math.max(gap, Math.min(openAbove ? anchor.top - gap - bounds.height : anchor.bottom + gap,
+                viewport.clientHeight - bounds.height - gap)) + 'px'
+        });
+    }
+
+    $(window).on('resize', positionColumnList);
+    document.addEventListener('scroll', function(event) {
+        if (!columnList[0].contains(event.target)) { positionColumnList(); }
+    }, true);
+
     // Toggle column list on button click
     columnBtn.on('click', function(e) {
         e.stopPropagation();
         exportMenu.removeClass('show');
         columnList.toggleClass('show');
         if (columnList.hasClass('show')) {
+            positionColumnList();
             columnSearch.trigger('focus');
         }
     });
