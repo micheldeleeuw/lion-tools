@@ -1,5 +1,11 @@
 <style>
     .qb-overlay {
+        --qb-text: var(--dt-text, #2c3e50);
+        --qb-muted: var(--dt-muted, #657487);
+        --qb-border: var(--dt-border, #dce2e8);
+        --qb-surface: var(--dt-surface, #f6f8fa);
+        --qb-accent: var(--dt-accent, #5f7ea8);
+        --qb-hover: var(--dt-hover, #eef2f9);
         display: none;
         position: fixed;
         inset: 0;
@@ -13,52 +19,59 @@
     .qb-dialog {
         display: flex;
         flex-direction: column;
-        width: min(900px, calc(100vw - 24px));
+        width: min(1040px, calc(100vw - 24px));
+        height: min(660px, calc(100vh - 24px));
         max-height: calc(100vh - 24px);
         background: white;
         border-radius: 8px;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
         font-size: 12px;
-        color: #2c3e50;
+        color: var(--qb-text);
         outline: none;
     }
     .qb-header {
         display: flex;
+        flex: none;
         align-items: center;
+        justify-content: space-between;
         gap: 16px;
-        padding: 10px 14px;
-        border-bottom: 1px solid #e5e7eb;
+        padding: 12px 16px;
     }
     .qb-title { font-size: 14px; font-weight: bold; }
     .qb-stepper {
         display: flex;
-        flex: 1;
-        gap: 6px;
+        flex: none;
+        gap: 4px;
         margin: 0;
-        padding: 0;
+        padding: 0 12px;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--qb-border);
         list-style: none;
     }
     .qb-stepper li {
         display: flex;
+        flex: 1;
+        min-width: max-content;
         align-items: center;
-        gap: 6px;
-        padding: 3px 10px 3px 4px;
-        border-radius: 12px;
-        color: #8a97a8;
+        border-radius: 4px 4px 0 0;
+        color: var(--qb-muted);
     }
     .qb-stepper .qb-step {
         display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 0;
+        gap: 8px;
+        width: 100%;
+        min-height: 44px;
+        padding: 8px 12px;
         border: none;
+        border-bottom: 2px solid transparent;
         background: none;
         color: inherit;
         font: inherit;
         cursor: pointer;
     }
-    .qb-stepper li:hover { background: #eef2f9; }
-    .qb-stepper .qb-step:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.35); border-radius: 12px; }
+    .qb-stepper li:hover { background: var(--qb-hover); }
+    .qb-stepper .qb-step:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
     .qb-stepper .qb-step-num {
         width: 18px;
         height: 18px;
@@ -68,40 +81,51 @@
         background: #e5e9f0;
         font-size: 11px;
     }
-    .qb-stepper li.active { color: #5f7ea8; font-weight: bold; background: #eef2f9; }
+    .qb-stepper li.active { color: var(--qb-accent); font-weight: bold; background: var(--qb-hover); }
+    .qb-stepper li.active .qb-step { border-bottom-color: var(--qb-accent); }
     .qb-stepper li.active .qb-step-num { background: #5f7ea8; color: white; }
     .qb-stepper li.done .qb-step-num { background: #9db4d3; color: white; }
     .qb-close {
+        flex: none;
+        width: 28px;
+        height: 28px;
         border: none;
+        border-radius: 4px;
         background: none;
         font-size: 20px;
         line-height: 1;
         color: #6b7a8f;
         cursor: pointer;
     }
-    .qb-close:hover { color: #2c3e50; }
+    .qb-close:hover { color: var(--qb-text); background: var(--qb-hover); }
     .qb-body {
-        flex: 0 1 430px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        gap: 12px;
         min-height: 0;
         overflow: auto;
-        padding: 12px 14px;
+        padding: 16px;
     }
-    .qb-hint { color: #6b7a8f; margin: 0 0 8px 0; }
-    .qb-list { border: 1px solid #e5e7eb; border-radius: 4px; }
-    .qb-dual { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .qb-pane-head { display: flex; align-items: center; justify-content: space-between; min-height: 24px; margin-bottom: 6px; }
+    .qb-hint { flex: none; color: var(--qb-muted); margin: 0; }
+    .qb-list { border: 1px solid var(--qb-border); border-radius: 4px; }
+    .qb-dual { display: grid; flex: 1; min-height: 240px; grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr); gap: 16px; }
+    .qb-pane { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 0; }
+    .qb-pane-head { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; }
     .qb-pane-head .qb-panel-title { margin: 0; }
-    .qb-pane-head .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
-    .qb-pane-list { height: 300px; overflow: auto; }
+    .qb-pane-actions, .qb-pane-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+    .qb-pane-actions { margin-left: auto; }
+    .qb-pane-head .qb-btn, .qb-pane-tools .qb-btn { height: 28px; padding: 0 8px; font-size: 11px; }
+    .qb-pane-list { flex: 1; min-height: 0; min-width: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
     .qb-search-row {
         position: sticky;
         top: 0;
         z-index: 2;
         box-sizing: border-box;
-        height: 33px;
+        height: 37px;
         padding: 4px 6px;
         background: white;
-        border-bottom: 1px solid #e5e7eb;
+        border-bottom: 1px solid var(--qb-border);
     }
     .qb-overlay input.qb-search { width: 100%; }
     .qb-item {
@@ -129,31 +153,45 @@
     .qb-item-btn:hover { background: #eef2f9; }
     .qb-item-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
     .qb-item .qb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .qb-item .qb-type { margin-left: auto; color: #8a97a8; white-space: nowrap; }
+    .qb-item .qb-type { margin-left: auto; max-width: 40%; overflow: hidden; text-overflow: ellipsis; color: var(--qb-muted); white-space: nowrap; }
     .qb-item .qb-expr-preview { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; }
-    .qb-item input.qb-alias { flex: 0 0 38%; }
-    .qb-pane-selected .qb-item-btn { flex: 1 1 0; }
-    .qb-move { width: 14px; height: 20px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 9px; cursor: pointer; }
-    .qb-move + .qb-move { margin-left: -4px; }
+    .qb-selected-list { --qb-column-tracks: minmax(0, 1.15fr) minmax(0, 1fr) 22px 22px; --qb-up-column: 3; --qb-down-column: 4; }
+    .qb-selected-list.has-computed { --qb-column-tracks: minmax(0, 1.15fr) minmax(0, 1fr) 22px 22px 22px; --qb-up-column: 4; --qb-down-column: 5; }
+    .qb-selected-column, .qb-selected-head { display: grid; grid-template-columns: var(--qb-column-tracks); align-items: center; gap: 6px; padding: 4px 8px; }
+    .qb-selected-column .qb-item-btn { grid-column: 1; padding: 4px 0; }
+    .qb-selected-column input.qb-alias { grid-column: 2; width: 100%; }
+    .qb-selected-column .qb-remove { grid-column: 3; }
+    .qb-selected-column .qb-column-up { grid-column: var(--qb-up-column); }
+    .qb-selected-column .qb-column-down { grid-column: var(--qb-down-column); }
+    .qb-star-column .qb-item-btn { grid-column: 1 / var(--qb-up-column); }
+    .qb-selected-column > * { grid-row: 1; }
+    .qb-selected-head { position: sticky; top: 0; z-index: 1; min-height: 29px; background: var(--qb-surface); color: var(--qb-muted); border-bottom: 1px solid var(--qb-border); font-size: 11px; }
+    .qb-move { width: 22px; height: 24px; padding: 0; border: none; border-radius: 4px; background: none; color: var(--qb-muted); font-size: 9px; cursor: pointer; }
     .qb-move:hover:not(:disabled) { color: #5f7ea8; }
     .qb-move:disabled { opacity: 0.3; cursor: default; }
-    .qb-badges { display: inline-flex; flex: none; gap: 3px; margin-left: auto; }
+    .qb-badges { display: inline-flex; flex: 0 1 auto; min-width: 0; overflow: hidden; gap: 3px; margin-left: auto; }
     .qb-badge { padding: 0 5px; border-radius: 8px; background: #e3eaf5; color: #5f7ea8; font-size: 10px; line-height: 15px; }
     .qb-badges + .qb-type { margin-left: 8px; }
-    .qb-agg-layout { display: grid; grid-template-columns: 1fr 120px 1.2fr; gap: 12px; }
-    .qb-agg-buttons { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-top: 25px; }
-    .qb-agg-buttons .qb-btn { width: calc(100% - 12px); align-self: center; padding: 0 8px; }
-    .qb-overlay .qb-agg-buttons select { width: calc(100% - 12px); align-self: center; height: 28px; background: #f6f8fc; color: #5f7ea8; border-color: #5f7ea8; cursor: pointer; text-align: center; text-align-last: center; }
+    .qb-agg-layout { display: grid; flex: 1; min-height: 334px; grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); gap: 8px 16px; }
+    .qb-agg-columns-head { grid-area: 1 / 1; }
+    .qb-agg-results-head { grid-area: 1 / 3; }
+    .qb-agg-columns-tools { grid-area: 2 / 1; }
+    .qb-agg-results-tools { grid-area: 2 / 3; justify-content: flex-end; }
+    .qb-agg-columns-list { grid-area: 3 / 1; }
+    .qb-agg-results-list { grid-area: 3 / 3; }
+    .qb-agg-buttons { grid-area: 3 / 2; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+    .qb-agg-buttons .qb-btn { flex: none; width: 100%; padding: 0 8px; }
+    .qb-overlay .qb-agg-buttons select { flex: none; width: 100%; height: 28px; background: white; color: var(--qb-text); border-color: var(--qb-border); cursor: pointer; text-align: center; text-align-last: center; }
     .qb-overlay .qb-agg-buttons select:disabled { opacity: 0.45; cursor: not-allowed; }
-    .qb-agg-separator { width: 100%; margin: 2px 0; border: none; border-top: 1px solid #d5dbe5; }
+    .qb-agg-separator { flex: none; width: 100%; margin: 0; border: none; border-top: 1px solid var(--qb-border); }
     .qb-item-btn.active { background: #dfe8f5; }
     .qb-panel-title { font-weight: bold; margin: 0 0 6px 0; }
     .qb-agg-head, .qb-selected-agg {
         display: grid;
-        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 14px 14px 14px;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 22px 22px 22px;
         align-items: center;
-        gap: 8px;
-        padding: 4px 6px 4px 10px;
+        gap: 6px;
+        padding: 4px 8px;
     }
     .qb-agg-head {
         position: sticky;
@@ -161,38 +199,41 @@
         z-index: 1;
         padding-top: 6px;
         padding-bottom: 6px;
-        background: #f6f8fc;
-        border-bottom: 1px solid #e5e7eb;
-        color: #6b7a8f;
+        background: var(--qb-surface);
+        border-bottom: 1px solid var(--qb-border);
+        color: var(--qb-muted);
         font-size: 11px;
         font-weight: bold;
     }
-    .qb-agg-head.qb-col-head { top: 33px; grid-template-columns: minmax(0, 1fr) auto; padding-left: 8px; padding-right: 12px; }
+    .qb-agg-head.qb-col-head { top: 37px; grid-template-columns: minmax(0, 1fr) auto; }
+    .qb-agg-columns-list .qb-col-head { top: 0; }
     .qb-selected-agg { border-bottom: 1px solid #f0f2f5; }
     .qb-selected-agg:last-child { border-bottom: none; }
     .qb-selected-agg:hover { background: #f6f8fc; }
     .qb-selected-agg .qb-expr-custom { cursor: pointer; }
     .qb-selected-agg .qb-expr { color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .qb-remove { width: 14px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 15px; cursor: pointer; }
+    .qb-remove { width: 22px; height: 24px; padding: 0; border: none; border-radius: 4px; background: none; color: var(--qb-muted); font-size: 15px; cursor: pointer; }
+    .qb-move:hover:not(:disabled), .qb-remove:hover { background: var(--qb-hover); }
+    .qb-move:focus-visible, .qb-remove:focus-visible { outline: 2px solid var(--qb-accent); outline-offset: -2px; }
     .qb-remove:hover { color: #c0392b; }
-    .qb-remove-spacer { flex: none; width: 14px; }
-    .qb-empty { padding: 10px; color: #8a97a8; }
-    .qb-refine { display: flex; flex-direction: column; gap: 12px; }
-    .qb-section { border: 1px solid #e5e7eb; border-radius: 4px; padding: 8px 10px; }
-    .qb-section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 24px; margin-bottom: 6px; }
+    .qb-empty { padding: 12px; color: var(--qb-muted); }
+    .qb-refine { display: flex; flex: none; flex-direction: column; gap: 16px; }
+    .qb-section { min-width: 0; border-bottom: 1px solid var(--qb-border); padding-bottom: 16px; }
+    .qb-section:last-child { border-bottom: none; padding-bottom: 0; }
+    .qb-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 28px; margin-bottom: 8px; }
     .qb-section-title { font-weight: bold; }
-    .qb-section-tools { display: inline-flex; align-items: center; gap: 6px; color: #6b7a8f; }
-    .qb-section-tools .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
+    .qb-section-tools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--qb-muted); }
+    .qb-section-tools .qb-btn { height: 28px; padding: 0 8px; font-size: 11px; }
     .qb-cond, .qb-sortrow { display: grid; align-items: center; gap: 8px; padding: 3px 0; }
     .qb-cond { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 1.2fr) 22px; }
     .qb-sortrow { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.6fr) 22px; max-width: 520px; }
-    .qb-section-note { padding: 2px 0 4px 0; color: #8a97a8; }
+    .qb-section-note { padding: 2px 0 8px; color: var(--qb-muted); overflow-wrap: anywhere; }
     .qb-limit-row { display: flex; align-items: center; gap: 8px; }
     .qb-overlay input.qb-limit { width: 110px; }
     .qb-overlay select {
-        height: 24px;
-        padding: 0 4px;
-        border: 1px solid #ccc;
+        height: 28px;
+        padding: 0 6px;
+        border: 1px solid var(--qb-border);
         border-radius: 4px;
         background: white;
         font-size: 12px;
@@ -205,9 +246,9 @@
         box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.25);
     }
     .qb-overlay input[type="text"] {
-        height: 24px;
-        padding: 0 6px;
-        border: 1px solid #ccc;
+        height: 28px;
+        padding: 0 8px;
+        border: 1px solid var(--qb-border);
         border-radius: 4px;
         font-size: 12px;
         min-width: 0;
@@ -221,11 +262,14 @@
     .qb-overlay input[type="text"]:disabled { background: #f4f4f4; color: #aaa; }
     .qb-overlay input.qb-invalid { border-color: #c0392b; }
     .qb-overlay input.qb-default { color: #9aa5b5; }
-    .qb-sql-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 8px; }
-    .qb-sql-head .qb-hint { margin: 0; }
-    .qb-sql-options { display: flex; align-items: center; gap: 14px; flex: none; }
-    .qb-overlay input.qb-source { width: 110px; }
-    .qb-check { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+    .qb-sql-head { display: flex; flex: none; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+    .qb-sql-head .qb-hint { flex: 0 1 auto; }
+    .qb-sql-options { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; flex: none; padding-bottom: 12px; border-bottom: 1px solid var(--qb-border); }
+    .qb-overlay input.qb-source { flex: 1; width: 100%; }
+    .qb-check { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; min-width: 0; }
+    .qb-check input[type="checkbox"] { flex: none; }
+    .qb-source-setting { flex: 1 1 260px; }
+    .qb-source-setting span { flex: none; }
     .qb-seg { display: inline-flex; border: 1px solid #5f7ea8; border-radius: 4px; overflow: hidden; flex: none; }
     .qb-seg-btn { height: 26px; padding: 0 12px; border: none; background: #f6f8fc; color: #5f7ea8; font-size: 12px; cursor: pointer; }
     .qb-seg-btn + .qb-seg-btn { border-left: 1px solid #5f7ea8; }
@@ -233,50 +277,61 @@
     .qb-seg-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7); }
     .qb-notice {
         display: flex;
+        flex: none;
+        flex-wrap: wrap;
         align-items: center;
         gap: 10px;
-        margin-bottom: 8px;
         padding: 6px 10px;
         background: #fff8e6;
         border: 1px solid #f0d9a0;
         border-radius: 4px;
         color: #7a5b00;
     }
-    .qb-notice span { flex: 1; }
+    .qb-notice span { flex: 1 1 220px; overflow-wrap: anywhere; }
     .qb-notice .qb-btn { height: 22px; padding: 0 8px; font-size: 11px; }
     .qb-sql {
+        flex: 1 0 auto;
         width: 100%;
-        min-height: 220px;
+        height: 220px;
+        min-height: 180px;
         box-sizing: border-box;
         padding: 8px;
-        border: 1px solid #ccc;
+        border: 1px solid var(--qb-border);
         border-radius: 4px;
         font-family: Menlo, Consolas, monospace;
         font-size: 12px;
+        line-height: 1.6;
         resize: vertical;
     }
     .qb-footer {
         display: flex;
+        flex: none;
+        flex-wrap: wrap;
         align-items: center;
-        gap: 8px;
-        padding: 10px 14px;
-        border-top: 1px solid #e5e7eb;
+        justify-content: space-between;
+        gap: 8px 16px;
+        padding: 12px 16px;
+        border-top: 1px solid var(--qb-border);
     }
-    .qb-error { flex: 1; color: #c0392b; }
+    .qb-footer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .qb-footer-actions:last-child { margin-left: auto; }
+    .qb-error { flex: none; max-height: 72px; overflow: auto; overflow-wrap: anywhere; padding: 8px 16px; color: #a63327; background: #fff8e6; border-top: 1px solid #f0d9a0; }
+    .qb-error:empty { display: none; }
     .qb-btn {
         height: 28px;
         padding: 0 14px;
-        background: #f6f8fc;
-        color: #5f7ea8;
-        border: 1px solid #5f7ea8;
+        background: white;
+        color: var(--qb-text);
+        border: 1px solid var(--qb-border);
         border-radius: 4px;
         font-size: 12px;
         cursor: pointer;
+        white-space: nowrap;
     }
-    .qb-btn:hover { background: #eef2f9; }
-    .qb-btn.primary { background: #5f7ea8; color: white; }
+    .qb-btn:hover { background: var(--qb-hover); }
+    .qb-btn.primary { background: var(--qb-accent); border-color: var(--qb-accent); color: white; }
     .qb-btn.primary:hover { background: #4f6d95; }
-    .qb-btn.quiet { background: none; border-color: transparent; }
+    .qb-btn.quiet { background: none; border-color: transparent; color: var(--qb-muted); }
     .qb-btn.quiet:hover { background: #eef2f9; }
     .qb-btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .qb-btn:focus-visible, .qb-close:focus-visible {
@@ -284,11 +339,31 @@
         box-shadow: 0 0 0 2px rgba(95, 126, 168, 0.35);
     }
     @media (max-width: 760px) {
+        .qb-body { --qb-pane-height: clamp(120px, 30vh, 220px); }
         .qb-dual, .qb-agg-layout { grid-template-columns: 1fr; }
-        .qb-agg-buttons { flex-direction: row; flex-wrap: wrap; padding-top: 0; }
+        .qb-dual { flex: none; }
+        .qb-pane-list { height: var(--qb-pane-height); flex: none; }
+        .qb-agg-layout { flex: none; grid-template-rows: auto auto var(--qb-pane-height) auto auto auto var(--qb-pane-height); }
+        .qb-agg-columns-head { grid-area: 1 / 1; }
+        .qb-agg-columns-tools { grid-area: 2 / 1; }
+        .qb-agg-columns-list { grid-area: 3 / 1; }
+        .qb-agg-buttons { grid-area: 4 / 1; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
+        .qb-agg-results-head { grid-area: 5 / 1; }
+        .qb-agg-results-tools { grid-area: 6 / 1; }
+        .qb-agg-results-list { grid-area: 7 / 1; }
+        .qb-agg-separator { display: none; }
         .qb-agg-buttons .qb-btn, .qb-overlay .qb-agg-buttons select { width: auto; }
-        .qb-pane-list { height: 220px; }
-        .qb-stepper { flex-wrap: wrap; }
+        .qb-header, .qb-footer { padding: 10px 12px; }
+        .qb-body { padding: 12px; }
+        .qb-stepper { padding: 0 8px; }
+    }
+    @media (max-width: 480px) {
+        .qb-cond { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 22px; }
+        .qb-cond > select:first-child { grid-column: 1; }
+        .qb-cond > select:nth-child(2) { grid-column: 2; }
+        .qb-cond > input, .qb-cond > span { grid-column: 1 / 3; grid-row: 2; }
+        .qb-cond > .qb-remove { grid-column: 3; grid-row: 1; }
+        .qb-selected-head { font-size: 10px; }
     }
 </style>
 <script>
@@ -400,7 +475,7 @@ window.LionQueryBuilder = (function() {
 
         var overlay = $('<div class="qb-overlay"></div>');
         var dialog = $('<div class="qb-dialog" role="dialog" aria-modal="true" aria-labelledby="qbTitle" tabindex="-1"></div>');
-        var stepper = $('<ol class="qb-stepper"></ol>');
+        var stepper = $('<ol class="qb-stepper" aria-label="Query steps"></ol>');
         var closeBtn = $('<button type="button" class="qb-close" aria-label="Close">&times;</button>');
         var body = $('<div class="qb-body"></div>');
         var errorBox = $('<div class="qb-error" role="alert"></div>');
@@ -413,10 +488,13 @@ window.LionQueryBuilder = (function() {
         dialog
             .append($('<div class="qb-header"></div>')
                 .append('<div class="qb-title" id="qbTitle">Query builder</div>')
-                .append(stepper)
                 .append(closeBtn))
+            .append(stepper)
             .append(body)
-            .append($('<div class="qb-footer"></div>').append(cancelBtn).append(skipBtn).append(errorBox).append(backBtn).append(nextBtn).append(doneBtn));
+            .append(errorBox)
+            .append($('<div class="qb-footer"></div>')
+                .append($('<div class="qb-footer-actions"></div>').append(cancelBtn).append(skipBtn))
+                .append($('<div class="qb-footer-actions"></div>').append(backBtn).append(nextBtn).append(doneBtn)));
         overlay.append(dialog);
         $('body').append(overlay);
 
@@ -651,7 +729,7 @@ window.LionQueryBuilder = (function() {
             var availableList = $('<div class="qb-list qb-pane-list"></div>')
                 .append($('<div class="qb-search-row"></div>').append(search))
                 .append(availableRows);
-            var selectedList = $('<div class="qb-list qb-pane-list"></div>');
+            var selectedList = $('<div class="qb-list qb-pane-list qb-selected-list"></div>');
 
             function removeComputed(item) {
                 state.order.splice(state.order.indexOf(item), 1);
@@ -701,7 +779,10 @@ window.LionQueryBuilder = (function() {
                     setSelected(item, !selected);
                     renderLists();
                 });
-                var row = $('<div class="qb-item"></div>').append(btn);
+                var row = $('<div class="qb-item"></div>')
+                    .toggleClass('qb-selected-column', selected)
+                    .toggleClass('qb-star-column', selected && !!item.star)
+                    .append(btn);
                 if (selected && item.computed) {
                     var nameInput = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Name">').val(item.name);
                     nameInput.on('input', function() {
@@ -731,12 +812,10 @@ window.LionQueryBuilder = (function() {
                     if (item.computed) {
                         row.append($('<button type="button" class="qb-remove" aria-label="Remove column" title="Remove">&times;</button>')
                             .on('click', function() { removeComputed(item); renderLists(); }));
-                    } else if (!item.star && state.order.some(function(i) { return i.computed; })) {
-                        row.append('<span class="qb-remove-spacer"></span>');
                     }
-                    row.append($('<button type="button" class="qb-move" aria-label="Move up" title="Move up">\u25B2</button>')
+                    row.append($('<button type="button" class="qb-move qb-column-up" aria-label="Move up" title="Move up">\u25B2</button>')
                         .prop('disabled', pos === 0).on('click', function() { moveItem(item, -1); }));
-                    row.append($('<button type="button" class="qb-move" aria-label="Move down" title="Move down">\u25BC</button>')
+                    row.append($('<button type="button" class="qb-move qb-column-down" aria-label="Move down" title="Move down">\u25BC</button>')
                         .prop('disabled', pos === state.order.length - 1).on('click', function() { moveItem(item, 1); }));
                 }
                 return row;
@@ -753,6 +832,9 @@ window.LionQueryBuilder = (function() {
             function renderLists() {
                 availableRows.empty();
                 selectedList.empty();
+                availableRows.append('<div class="qb-agg-head qb-col-head"><span>Column</span><span>Data type</span></div>');
+                selectedList.toggleClass('has-computed', state.order.some(function(item) { return item.computed; }));
+                selectedList.append('<div class="qb-selected-head"><span>Column / expression</span><span>Alias</span></div>');
                 var available = 0, shown = 0;
                 items.forEach(function(item) {
                     if (!isSelected(item)) {
@@ -782,13 +864,13 @@ window.LionQueryBuilder = (function() {
             });
             newColumn.on('click', function() { editComputed(null); });
 
-            var availablePane = $('<div></div>')
+            var availablePane = $('<div class="qb-pane"></div>')
                 .append($('<div class="qb-pane-head"></div>')
                     .append(availableTitle).append(addAll))
                 .append(availableList);
-            var selectedPane = $('<div class="qb-pane-selected"></div>')
+            var selectedPane = $('<div class="qb-pane qb-pane-selected"></div>')
                 .append($('<div class="qb-pane-head"></div>')
-                    .append(selectedTitle).append($('<span></span>').append(newColumn).append(' ').append(removeAll)))
+                    .append(selectedTitle).append($('<span class="qb-pane-actions"></span>').append(newColumn).append(removeAll)))
                 .append(selectedList);
             body.append($('<div class="qb-dual"></div>').append(availablePane).append(selectedPane));
             renderLists();
@@ -808,16 +890,14 @@ window.LionQueryBuilder = (function() {
             var selectAll = $('<button type="button" class="qb-btn">Select all</button>');
             var clearAll = $('<button type="button" class="qb-btn">Clear</button>');
             var removeAllAggs = $('<button type="button" class="qb-btn">Remove all</button>');
-            var sqlExpression = $('<button type="button" class="qb-btn" title="Add an aggregate typed as a SQL expression, e.g. sum(a * b)">SQL</button>');
-            var sortByColumn = $('<button type="button" class="qb-btn">By column</button>');
-            var sortByAgg = $('<button type="button" class="qb-btn">By aggregate</button>');
+            var sqlExpression = $('<button type="button" class="qb-btn" title="Add an aggregate typed as a SQL expression, e.g. sum(a * b)">SQL Expression</button>');
+            var sortByColumn = $('<button type="button" class="qb-btn">Sort by column</button>');
+            var sortByAgg = $('<button type="button" class="qb-btn">Sort by aggregate</button>');
             var search = searchInput();
             var matches = nameMatcher(search);
             var columnRows = $('<div></div>');
-            var columnList = $('<div class="qb-list qb-pane-list"></div>')
-                .append($('<div class="qb-search-row"></div>').append(search))
-                .append(columnRows);
-            var aggList = $('<div class="qb-list qb-pane-list"></div>');
+            var columnList = $('<div class="qb-list qb-pane-list qb-agg-columns-list"></div>').append(columnRows);
+            var aggList = $('<div class="qb-list qb-pane-list qb-agg-results-list"></div>');
             var buttonsBox = $('<div class="qb-agg-buttons"></div>');
             var aggButtons = [];
             var badgeBoxes = [];
@@ -1024,17 +1104,18 @@ window.LionQueryBuilder = (function() {
             addMenu('Collect');
             updateButtons();
 
-            var columnsPane = $('<div></div>')
-                .append($('<div class="qb-pane-head"></div>').append(columnsTitle).append($('<span></span>').append(selectAll).append(' ').append(clearAll)))
-                .append(columnList);
-            var aggsPane = $('<div></div>')
-                .append($('<div class="qb-pane-head"></div>').append(aggsTitle)
-                    .append($('<span></span>').append(sqlExpression).append(' ').append(sortByColumn).append(' ').append(sortByAgg).append(' ').append(removeAllAggs)))
-                .append(aggList);
+            var columnsHead = $('<div class="qb-pane-head qb-agg-columns-head"></div>')
+                .append(columnsTitle).append($('<span class="qb-pane-actions"></span>').append(selectAll).append(clearAll));
+            var aggsHead = $('<div class="qb-pane-head qb-agg-results-head"></div>')
+                .append(aggsTitle).append($('<span class="qb-pane-actions"></span>').append(sqlExpression).append(removeAllAggs));
             body.append($('<div class="qb-agg-layout"></div>')
-                .append(columnsPane)
+                .append(columnsHead)
+                .append($('<div class="qb-pane-tools qb-agg-columns-tools"></div>').append(search))
+                .append(columnList)
                 .append(buttonsBox)
-                .append(aggsPane));
+                .append(aggsHead)
+                .append($('<div class="qb-pane-tools qb-agg-results-tools"></div>').append(sortByColumn).append(sortByAgg))
+                .append(aggList));
             renderColumnList();
             renderAggs();
         }
@@ -1441,7 +1522,8 @@ window.LionQueryBuilder = (function() {
                 seg.append(btn);
             });
 
-            var box = $('<textarea class="qb-sql" spellcheck="false"></textarea>');
+            var box = $('<textarea class="qb-sql" spellcheck="false"></textarea>')
+                .attr('aria-label', isPyspark ? 'PySpark code' : 'SQL query');
             var noticeText = $('<span></span>');
             var regenerate = $('<button type="button" class="qb-btn"></button>');
             var notice = $('<div class="qb-notice"></div>').append(noticeText).append(regenerate).hide();
@@ -1482,7 +1564,7 @@ window.LionQueryBuilder = (function() {
             });
 
             var options = $('<div class="qb-sql-options"></div>')
-                .append($('<label class="qb-check"></label>').append($('<span></span>').text(isPyspark ? 'DataFrame' : 'Table')).append(sourceInput));
+                .append($('<label class="qb-check qb-source-setting"></label>').append($('<span></span>').text(isPyspark ? 'DataFrame' : 'Table')).append(sourceInput));
             if (isPyspark) {
                 var importCheck = $('<input type="checkbox">').prop('checked', state.includeImport);
                 importCheck.on('change', function() {
@@ -1491,7 +1573,6 @@ window.LionQueryBuilder = (function() {
                 });
                 options.append($('<label class="qb-check"></label>').append(importCheck).append(' Include import F'));
             }
-            options.append(seg);
 
             box.on('input', function() {
                 var generated = build();
@@ -1506,9 +1587,9 @@ window.LionQueryBuilder = (function() {
             });
 
             body.append($('<div class="qb-sql-head"></div>')
-                .append($('<p class="qb-hint"></p>').text((isPyspark ? 'Edit the code' : 'Edit the query') + ' if needed. Copy & close copies it to the clipboard.'))
-                .append(options));
-            body.append(notice).append(box);
+                .append(seg)
+                .append($('<p class="qb-hint"></p>').text((isPyspark ? 'Edit the code' : 'Edit the query') + ' if needed. Copy & close copies it to the clipboard.')));
+            body.append(options).append(notice).append(box);
             sync();
         }
 
