@@ -130,6 +130,7 @@
     .qb-item-btn:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(95, 126, 168, 0.35); }
     .qb-item .qb-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .qb-item .qb-type { margin-left: auto; color: #8a97a8; white-space: nowrap; }
+    .qb-item .qb-expr-preview { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; }
     .qb-item input.qb-alias { flex: 0 0 38%; }
     .qb-pane-selected .qb-item-btn { flex: 1 1 0; }
     .qb-move { width: 14px; height: 20px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 9px; cursor: pointer; }
@@ -173,6 +174,7 @@
     .qb-selected-agg .qb-expr { color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .qb-remove { width: 14px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 15px; cursor: pointer; }
     .qb-remove:hover { color: #c0392b; }
+    .qb-remove-spacer { flex: none; width: 14px; }
     .qb-empty { padding: 10px; color: #8a97a8; }
     .qb-refine { display: flex; flex-direction: column; gap: 12px; }
     .qb-section { border: 1px solid #e5e7eb; border-radius: 4px; padding: 8px 10px; }
@@ -429,6 +431,15 @@ window.LionQueryBuilder = (function() {
             return col.alias.trim() || col.name;
         }
 
+        // a computed column is a user-typed SQL expression; it is not part of state.cols
+        function colSql(col) {
+            return col.computed ? '(' + col.expr + ')' : quoteIdent(col.name);
+        }
+
+        function allCols() {
+            return state.cols.concat(state.order.filter(function(c) { return c.computed; }));
+        }
+
         function findAgg(col, fn) {
             return state.aggs.filter(function(a) { return a.col === col && a.fn === fn; })[0];
         }
@@ -475,6 +486,7 @@ window.LionQueryBuilder = (function() {
 
         // distinct values of the loaded data, as suggestions for filter values
         function distinctValues(col) {
+            if (col.computed) { return []; }
             if (valueCache[col.idx]) { return valueCache[col.idx]; }
             var seen = Object.create(null), values = [];
             var rows = table.rows().indexes().toArray();
@@ -501,7 +513,7 @@ window.LionQueryBuilder = (function() {
         }
 
         function filterableCols() {
-            return state.cols.filter(function(c) { return typeKind(c.type) === 'simple'; });
+            return allCols().filter(function(c) { return typeKind(c.type) === 'simple'; });
         }
 
         function isComplete(cond) {
@@ -620,6 +632,7 @@ window.LionQueryBuilder = (function() {
             var selectedTitle = $('<p class="qb-panel-title"></p>');
             var addAll = $('<button type="button" class="qb-btn">Add all</button>');
             var removeAll = $('<button type="button" class="qb-btn">Remove all</button>');
+            var newColumn = $('<button type="button" class="qb-btn">New column</button>');
             var search = searchInput();
             var matches = nameMatcher(search);
             var availableRows = $('<div></div>');
@@ -628,19 +641,65 @@ window.LionQueryBuilder = (function() {
                 .append(availableRows);
             var selectedList = $('<div class="qb-list qb-pane-list"></div>');
 
+            function removeComputed(item) {
+                state.order.splice(state.order.indexOf(item), 1);
+                state.conds = state.conds.filter(function(cond) { return cond.col !== item; });
+            }
+
+            // item is null for a new column
+            function editComputed(item) {
+                LionExpressionEditor.open({
+                    title: item ? 'Edit column' : 'New column',
+                    columns: state.cols,
+                    name: item ? item.name : '',
+                    expression: item ? item.expr : '',
+                    submitLabel: item ? 'Save' : 'Create',
+                    validateName: function(name) {
+                        var taken = selectedCols().filter(function(c) { return c !== item; }).map(function(c) { return outName(c).toLowerCase(); });
+                        return taken.indexOf(name.toLowerCase()) === -1 ? '' : 'A selected column already has this name.';
+                    },
+                    onSubmit: function(result) {
+                        if (item) {
+                            item.name = result.name;
+                            item.expr = result.expression;
+                        } else {
+                            state.order.push({ computed: true, name: result.name, expr: result.expression, type: 'expression', numeric: false, alias: '' });
+                        }
+                        renderLists();
+                    }
+                });
+            }
+
             function makeItem(item, selected) {
                 var btn = $('<button type="button" class="qb-item-btn"></button>')
-                    .attr('title', selected ? 'Remove ' + item.name : 'Add ' + item.name)
-                    .append($('<span class="qb-name"></span>').text(item.name));
-                if (!selected) {
-                    btn.append($('<span class="qb-type"></span>').text(item.type));
+                    .attr('title', item.computed ? 'Edit ' + item.name + ': ' + item.expr : (selected ? 'Remove ' : 'Add ') + item.name);
+                if (item.computed) {
+                    btn.append($('<span class="qb-expr-preview"></span>').text(item.expr));
+                } else {
+                    btn.append($('<span class="qb-name"></span>').text(item.name));
+                    if (!selected) {
+                        btn.append($('<span class="qb-type"></span>').text(item.type));
+                    }
                 }
                 btn.on('click', function() {
+                    if (item.computed) {
+                        editComputed(item);
+                        return;
+                    }
                     setSelected(item, !selected);
                     renderLists();
                 });
                 var row = $('<div class="qb-item"></div>').append(btn);
-                if (selected && !item.star) {
+                if (selected && item.computed) {
+                    var nameInput = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Name">').val(item.name);
+                    nameInput.on('input', function() {
+                        if ($.trim($(this).val())) { item.name = $.trim($(this).val()); }
+                        refresh();
+                    });
+                    nameInput.on('blur', function() { $(this).val(item.name); });
+                    row.append(nameInput);
+                }
+                if (selected && !item.star && !item.computed) {
                     var alias = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Alias">')
                         .attr('placeholder', item.name).val(item.alias || item.name);
                     var markDefault = function() { alias.toggleClass('qb-default', $.trim(alias.val()) === item.name || !$.trim(alias.val())); };
@@ -657,6 +716,12 @@ window.LionQueryBuilder = (function() {
                 }
                 if (selected) {
                     var pos = state.order.indexOf(item);
+                    if (item.computed) {
+                        row.append($('<button type="button" class="qb-remove" aria-label="Remove column" title="Remove">&times;</button>')
+                            .on('click', function() { removeComputed(item); renderLists(); }));
+                    } else if (!item.star && state.order.some(function(i) { return i.computed; })) {
+                        row.append('<span class="qb-remove-spacer"></span>');
+                    }
                     row.append($('<button type="button" class="qb-move" aria-label="Move up" title="Move up">\u25B2</button>')
                         .prop('disabled', pos === 0).on('click', function() { moveItem(item, -1); }));
                     row.append($('<button type="button" class="qb-move" aria-label="Move down" title="Move down">\u25BC</button>')
@@ -697,7 +762,13 @@ window.LionQueryBuilder = (function() {
 
             search.on('input', renderLists);
             addAll.on('click', function() { state.cols.filter(matches).forEach(function(c) { setSelected(c, true); }); renderLists(); });
-            removeAll.on('click', function() { items.forEach(function(i) { setSelected(i, false); }); renderLists(); });
+            removeAll.on('click', function() {
+                items.forEach(function(i) { setSelected(i, false); });
+                state.order = state.order.filter(function(i) { return !i.computed; });
+                state.conds = state.conds.filter(function(cond) { return !cond.col.computed; });
+                renderLists();
+            });
+            newColumn.on('click', function() { editComputed(null); });
 
             var availablePane = $('<div></div>')
                 .append($('<div class="qb-pane-head"></div>')
@@ -705,7 +776,7 @@ window.LionQueryBuilder = (function() {
                 .append(availableList);
             var selectedPane = $('<div class="qb-pane-selected"></div>')
                 .append($('<div class="qb-pane-head"></div>')
-                    .append(selectedTitle).append(removeAll))
+                    .append(selectedTitle).append($('<span></span>').append(newColumn).append(' ').append(removeAll)))
                 .append(selectedList);
             body.append($('<div class="qb-dual"></div>').append(availablePane).append(selectedPane));
             renderLists();
@@ -952,7 +1023,7 @@ window.LionQueryBuilder = (function() {
                 if (!cols.some(function(x) { return x.name.toLowerCase() === c.name.toLowerCase(); })) { cols.push(c); }
             };
             var fromColumn = function(c, name) {
-                if (typeKind(c.type) === 'simple') { add({ name: name, numeric: c.numeric, type: c.type, sql: quoteIdent(c.name) }); }
+                if (typeKind(c.type) === 'simple') { add({ name: name, numeric: c.numeric, type: c.type, sql: colSql(c) }); }
             };
             if (!state.aggs.length && (state.star || !selectedCols().length)) {
                 state.cols.forEach(function(c) { fromColumn(c, c.name); });
@@ -1101,10 +1172,10 @@ window.LionQueryBuilder = (function() {
                     list: state.conds,
                     combineKey: 'combine',
                     tableFilter: state.tableFilter,
-                    options: function() { return filterableCols().map(function(c) { return { value: String(state.cols.indexOf(c)), label: c.name }; }); },
-                    getValue: function(cond) { return String(state.cols.indexOf(cond.col)); },
-                    setValue: function(cond, v) { cond.col = state.cols[parseInt(v, 10)]; },
-                    create: function(options) { return { col: state.cols[parseInt(options[0].value, 10)], op: 'eq', value: '' }; },
+                    options: function() { return filterableCols().map(function(c) { return { value: String(allCols().indexOf(c)), label: c.name }; }); },
+                    getValue: function(cond) { return String(allCols().indexOf(cond.col)); },
+                    setValue: function(cond, v) { cond.col = allCols()[parseInt(v, 10)]; },
+                    create: function(options) { return { col: allCols()[parseInt(options[0].value, 10)], op: 'eq', value: '' }; },
                     suggest: function(cond) { return distinctValues(cond.col); }
                 });
             }
@@ -1213,7 +1284,7 @@ window.LionQueryBuilder = (function() {
                 parts.push(tableFilterSql(state.tableFilter));
             }
             var conds = state.conds.filter(isComplete).map(function(cond) {
-                return opDef(cond.op).sql(quoteIdent(cond.col.name), cond.value, cond.col);
+                return opDef(cond.op).sql(colSql(cond.col), cond.value, cond.col);
             });
             if (conds.length) {
                 parts.push(groupConds(conds, state.combine));
@@ -1229,8 +1300,8 @@ window.LionQueryBuilder = (function() {
                     return;
                 }
                 var out = outName(col);
-                select.push(quoteIdent(col.name) + (out !== col.name ? ' AS ' + quoteIdent(out) : ''));
-                group.push(quoteIdent(col.name));
+                select.push(colSql(col) + (out !== col.name || col.computed ? ' AS ' + quoteIdent(out) : ''));
+                group.push(colSql(col));
             });
             var aggs = state.aggs;
             aggs.forEach(function(a) {
@@ -1262,8 +1333,13 @@ window.LionQueryBuilder = (function() {
                     cols.push(JSON.stringify('*'));
                     return;
                 }
-                var ref = pyRef(col.name);
                 var out = outName(col);
+                if (col.computed) {
+                    usesF = true;
+                    cols.push('F.expr(' + JSON.stringify(col.expr) + ').alias(' + JSON.stringify(out) + ')');
+                    return;
+                }
+                var ref = pyRef(col.name);
                 if (out !== col.name) {
                     usesF = true;
                     cols.push('F.col(' + ref + ').alias(' + JSON.stringify(out) + ')');
@@ -1436,7 +1512,7 @@ window.LionQueryBuilder = (function() {
         }
 
         function onEscape(e) {
-            if (e.key === 'Escape') {
+            if (e.key === 'Escape' && !LionExpressionEditor.isOpen()) {
                 e.stopPropagation();
                 close();
             }

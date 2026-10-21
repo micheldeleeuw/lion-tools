@@ -588,6 +588,7 @@ class DataFrameDisplay():
 
         # inserted last so that the fragment is not touched by the other replacements
         html_content = html_content.replace('{query_builder_meta}', self.query_builder_meta())
+        html_content = html_content.replace('{expression_editor_assets}', Tools.load_file('expression_editor_template.html'))
         html_content = html_content.replace('{query_builder_assets}', Tools.load_file('query_builder_template.html'))
 
         self.html_content = html_content
