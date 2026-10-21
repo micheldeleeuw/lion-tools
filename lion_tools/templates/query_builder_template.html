@@ -140,12 +140,12 @@
     .qb-badges { display: inline-flex; flex: none; gap: 3px; margin-left: auto; }
     .qb-badge { padding: 0 5px; border-radius: 8px; background: #e3eaf5; color: #5f7ea8; font-size: 10px; line-height: 15px; }
     .qb-badges + .qb-type { margin-left: 8px; }
-    .qb-agg-layout { display: grid; grid-template-columns: 1fr 120px 1.5fr; gap: 12px; }
-    .qb-agg-buttons { display: flex; flex-direction: column; justify-content: center; gap: 6px; padding-top: 45px; }
+    .qb-agg-layout { display: grid; grid-template-columns: 1fr 120px 1.2fr; gap: 12px; }
+    .qb-agg-buttons { display: flex; flex-direction: column; justify-content: center; gap: 4px; padding-top: 25px; }
     .qb-agg-buttons .qb-btn { width: calc(100% - 12px); align-self: center; padding: 0 8px; }
     .qb-overlay .qb-agg-buttons select { width: calc(100% - 12px); align-self: center; height: 28px; background: #f6f8fc; color: #5f7ea8; border-color: #5f7ea8; cursor: pointer; text-align: center; text-align-last: center; }
     .qb-overlay .qb-agg-buttons select:disabled { opacity: 0.45; cursor: not-allowed; }
-    .qb-agg-separator { width: 100%; margin: 4px 0; border: none; border-top: 1px solid #d5dbe5; }
+    .qb-agg-separator { width: 100%; margin: 2px 0; border: none; border-top: 1px solid #d5dbe5; }
     .qb-item-btn.active { background: #dfe8f5; }
     .qb-panel-title { font-weight: bold; margin: 0 0 6px 0; }
     .qb-agg-head, .qb-selected-agg {
@@ -171,6 +171,7 @@
     .qb-selected-agg { border-bottom: 1px solid #f0f2f5; }
     .qb-selected-agg:last-child { border-bottom: none; }
     .qb-selected-agg:hover { background: #f6f8fc; }
+    .qb-selected-agg .qb-expr-custom { cursor: pointer; }
     .qb-selected-agg .qb-expr { color: #2c3e50; font-family: Menlo, Consolas, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .qb-remove { width: 14px; padding: 0; border: none; background: none; color: #8a97a8; font-size: 15px; cursor: pointer; }
     .qb-remove:hover { color: #c0392b; }
@@ -323,6 +324,8 @@ window.LionQueryBuilder = (function() {
         { id: 'collect_set', label: 'collect_set', short: 'set', prefix: 'collect_set', menu: 'Collect', accepts: notMap, sql: function(c) { return 'collect_set(' + c + ')'; }, py: function(c) { return 'F.collect_set(' + c + ')'; } }
     ];
     var STAR_AGG = { id: 'count_star', label: 'count(*)', sql: function() { return 'count(*)'; }, py: function() { return 'F.count("*")'; } };
+    // an aggregate typed as a SQL expression; it has no column and no AGG_FUNCS entry
+    var CUSTOM_AGG_ID = 'custom';
 
     function quoteIdent(name) {
         return '`' + String(name).replace(/`/g, '``') + '`';
@@ -446,12 +449,21 @@ window.LionQueryBuilder = (function() {
 
         function defaultAlias(col, fn) {
             if (fn === STAR_AGG.id) { return 'count'; }
+            if (fn === CUSTOM_AGG_ID) { return 'expression'; }
             var base = col.name.replace(/[^\p{L}\p{N}_]+/gu, '_').replace(/^_+|_+$/g, '') || 'col';
             return aggFunc(fn).prefix + '_' + base;
         }
 
         function aggAlias(a) {
             return a.alias.trim() || defaultAlias(a.col, a.fn);
+        }
+
+        function aggSql(a) {
+            return a.custom ? a.expr : aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name));
+        }
+
+        function aggPy(a) {
+            return a.custom ? 'F.expr(' + JSON.stringify(a.expr) + ')' : aggFunc(a.fn).py(a.col === null ? '' : pyRef(a.col.name));
         }
 
         function selectedCols() {
@@ -796,6 +808,7 @@ window.LionQueryBuilder = (function() {
             var selectAll = $('<button type="button" class="qb-btn">Select all</button>');
             var clearAll = $('<button type="button" class="qb-btn">Clear</button>');
             var removeAllAggs = $('<button type="button" class="qb-btn">Remove all</button>');
+            var sqlExpression = $('<button type="button" class="qb-btn" title="Add an aggregate typed as a SQL expression, e.g. sum(a * b)">SQL</button>');
             var sortByColumn = $('<button type="button" class="qb-btn">By column</button>');
             var sortByAgg = $('<button type="button" class="qb-btn">By aggregate</button>');
             var search = searchInput();
@@ -909,6 +922,32 @@ window.LionQueryBuilder = (function() {
                 updateButtons();
             }
 
+            // a is null for a new aggregate
+            function editCustomAgg(a) {
+                LionExpressionEditor.open({
+                    title: a ? 'Edit aggregate' : 'New aggregate',
+                    columns: state.cols,
+                    name: a ? aggAlias(a) : '',
+                    expression: a ? a.expr : '',
+                    submitLabel: a ? 'Save' : 'Create',
+                    validateName: function(name) {
+                        var taken = selectedCols().map(outName)
+                            .concat(state.aggs.filter(function(x) { return x !== a; }).map(aggAlias))
+                            .map(function(n) { return n.toLowerCase(); });
+                        return taken.indexOf(name.toLowerCase()) === -1 ? '' : 'This name is already used in the result.';
+                    },
+                    onSubmit: function(result) {
+                        if (a) {
+                            a.expr = result.expression;
+                            a.alias = result.name;
+                        } else {
+                            state.aggs.push({ col: null, fn: CUSTOM_AGG_ID, custom: true, expr: result.expression, alias: result.name });
+                        }
+                        renderAggs();
+                    }
+                });
+            }
+
             function moveAgg(from, delta) {
                 state.aggs.splice(from + delta, 0, state.aggs.splice(from, 1)[0]);
                 renderAggs();
@@ -924,8 +963,8 @@ window.LionQueryBuilder = (function() {
                         .append('<span>Aggregate</span>').append('<span>Alias</span>').append('<span></span><span></span><span></span>'));
                 }
                 state.aggs.forEach(function(a, i) {
-                    var expr = aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name));
-                    var shortExpr = aggFunc(a.fn).sql(a.col === null ? '' : a.col.name);
+                    var expr = aggSql(a);
+                    var shortExpr = a.custom ? a.expr : aggFunc(a.fn).sql(a.col === null ? '' : a.col.name);
                     var input = $('<input type="text" class="qb-alias" autocomplete="off" aria-label="Alias">')
                         .attr('placeholder', defaultAlias(a.col, a.fn)).val(a.alias);
                     input.on('input', function() { a.alias = $(this).val(); refresh(); });
@@ -939,7 +978,9 @@ window.LionQueryBuilder = (function() {
                     var down = $('<button type="button" class="qb-move" aria-label="Move down" title="Move down">\u25BC</button>')
                         .prop('disabled', i === state.aggs.length - 1).on('click', function() { moveAgg(i, 1); });
                     aggList.append($('<div class="qb-selected-agg"></div>')
-                        .append($('<div class="qb-expr"></div>').text(shortExpr).attr('title', expr))
+                        .append($('<div class="qb-expr"></div>').text(shortExpr).attr('title', a.custom ? 'Edit ' + expr : expr)
+                            .toggleClass('qb-expr-custom', !!a.custom)
+                            .on('click', function() { if (a.custom) { editCustomAgg(a); } }))
                         .append(input)
                         .append(up)
                         .append(down)
@@ -955,7 +996,7 @@ window.LionQueryBuilder = (function() {
             });
             sortByAgg.on('click', function() {
                 sortAggs(function(a) {
-                    return a.fn === STAR_AGG.id ? -1 : AGG_FUNCS.map(function(f) { return f.id; }).indexOf(a.fn);
+                    return a.fn === STAR_AGG.id ? -1 : a.custom ? AGG_FUNCS.length : AGG_FUNCS.map(function(f) { return f.id; }).indexOf(a.fn);
                 });
             });
             search.on('input', renderColumnList);
@@ -974,6 +1015,7 @@ window.LionQueryBuilder = (function() {
                 renderAggs();
             });
 
+            sqlExpression.on('click', function() { editCustomAgg(null); });
             addButton(STAR_AGG);
             buttonsBox.append('<hr class="qb-agg-separator">');
             AGG_FUNCS.filter(function(f) { return !f.menu; }).forEach(addButton);
@@ -987,7 +1029,7 @@ window.LionQueryBuilder = (function() {
                 .append(columnList);
             var aggsPane = $('<div></div>')
                 .append($('<div class="qb-pane-head"></div>').append(aggsTitle)
-                    .append($('<span></span>').append(sortByColumn).append(' ').append(sortByAgg).append(' ').append(removeAllAggs)))
+                    .append($('<span></span>').append(sqlExpression).append(' ').append(sortByColumn).append(' ').append(sortByAgg).append(' ').append(removeAllAggs)))
                 .append(aggList);
             body.append($('<div class="qb-agg-layout"></div>')
                 .append(columnsPane)
@@ -1030,12 +1072,16 @@ window.LionQueryBuilder = (function() {
             }
             selectedCols().forEach(function(c) { fromColumn(c, outName(c)); });
             state.aggs.forEach(function(a) {
+                if (a.custom) {
+                    add({ name: aggAlias(a), numeric: false, type: 'expression', sql: '(' + a.expr + ')' });
+                    return;
+                }
                 var numeric = a.col === null ? true : aggNumeric(a);
                 add({
                     name: aggAlias(a),
                     numeric: numeric,
                     type: numeric ? 'double' : a.col.type,
-                    sql: aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name))
+                    sql: aggSql(a)
                 });
             });
             return cols;
@@ -1305,7 +1351,7 @@ window.LionQueryBuilder = (function() {
             });
             var aggs = state.aggs;
             aggs.forEach(function(a) {
-                select.push(aggFunc(a.fn).sql(a.col === null ? '' : quoteIdent(a.col.name)) + ' AS ' + quoteIdent(aggAlias(a)));
+                select.push(aggSql(a) + ' AS ' + quoteIdent(aggAlias(a)));
             });
 
             if (!select.length) { select.push('*'); }
@@ -1349,8 +1395,7 @@ window.LionQueryBuilder = (function() {
             });
             var aggs = state.aggs.map(function(a) {
                 usesF = true;
-                var ref = a.col === null ? '' : pyRef(a.col.name);
-                return aggFunc(a.fn).py(ref) + '.alias(' + JSON.stringify(aggAlias(a)) + ')';
+                return aggPy(a) + '.alias(' + JSON.stringify(aggAlias(a)) + ')';
             });
 
             var calls = [];
