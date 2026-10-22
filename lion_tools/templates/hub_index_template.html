@@ -46,7 +46,7 @@
   header a:hover { color: var(--accent); }
   header svg { width: 12px; height: 12px; fill: currentColor; }
 
-  .toolbar { flex: none; width: 260px; }
+  .toolbar { flex: none; width: 420px; }
   .toolbar .ts-wrapper, .toolbar select { width: 100%; }
 
   .ts-control, .ts-dropdown, .ts-control input { font-size: 12px; }
@@ -56,6 +56,19 @@
   .hub-option { display: flex; justify-content: space-between; gap: 16px; align-items: baseline; }
   .hub-option .hub-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .hub-option .hub-when { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+  .hint {
+    position: fixed;
+    z-index: 1000;
+    display: none;
+    max-width: 400px;
+    padding: 3px 7px;
+    background: #333;
+    color: #fff;
+    font-size: 11px;
+    border-radius: 3px;
+    pointer-events: none;
+  }
 
   .tabs {
     display: flex;
@@ -218,14 +231,14 @@ function render() {
     const item = byFile[f];
     const tab = document.createElement('div');
     tab.className = 'tab' + (f === activeFile ? ' active' : '');
-    tab.title = item.name + (item.when ? ' - ' + item.when : '');
+    tab.dataset.hint = item.name + (item.when ? ' - ' + item.when : '');
     tab.innerHTML = '<span class="tab-label">' + escapeHtml(item.name) + '</span>' +
       (item.time ? '<span class="tab-when">' + escapeHtml(item.time) + '</span>' : '');
     tab.addEventListener('click', () => { activeFile = f; render(); });
     const close = document.createElement('button');
     close.className = 'tab-close';
     close.type = 'button';
-    close.title = 'Close';
+    close.dataset.hint = 'Close';
     close.innerHTML = '&times;';
     close.addEventListener('click', e => { e.stopPropagation(); closeTab(f); });
     tab.appendChild(close);
@@ -242,6 +255,34 @@ function render() {
   for (const [f, frame] of Object.entries(frames)) frame.classList.toggle('active', f === activeFile);
   emptyEl.classList.toggle('visible', !activeFile);
 }
+
+// Native title tooltips have a long fixed delay, so hints are shown by this short-delay tooltip.
+const HINT_DELAY_MS = 150;
+const hintEl = document.createElement('div');
+hintEl.className = 'hint';
+document.body.appendChild(hintEl);
+let hintTimer = null;
+
+function hideHint() {
+  clearTimeout(hintTimer);
+  hintEl.style.display = 'none';
+}
+
+document.addEventListener('mouseover', e => {
+  const target = e.target.closest('[data-hint]');
+  hideHint();
+  if (!target) return;
+  hintTimer = setTimeout(() => {
+    const r = target.getBoundingClientRect();
+    hintEl.textContent = target.dataset.hint;
+    hintEl.style.display = 'block';
+    const left = Math.min(r.left, window.innerWidth - hintEl.offsetWidth - 4);
+    hintEl.style.left = Math.max(4, left) + 'px';
+    hintEl.style.top = (r.bottom + 4) + 'px';
+  }, HINT_DELAY_MS);
+});
+document.addEventListener('mousedown', hideHint);
+document.addEventListener('mouseleave', hideHint);
 
 const picker = document.getElementById('picker');
 let ts = null;
