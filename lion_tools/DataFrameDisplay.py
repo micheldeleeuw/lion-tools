@@ -396,9 +396,6 @@ class DataFrameDisplay():
 
         try:
             self.inform_display_hub('busy')
-            import time
-            time.sleep(2)
-            raise Exception("Intentional raise for debugging")  
             self.prepare_data_with_rownum()
             self.gather_column_information()
             self.collect_data_and_stats()
