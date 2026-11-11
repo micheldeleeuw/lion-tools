@@ -232,6 +232,7 @@ class DataFrameDisplay():
             if 'condition' not in rule:
                 rule['condition'] = F.lit(True)
             elif isinstance(rule['condition'], str):
+                assert rule['condition'] != '', "condition string cannot be empty"
                 rule['condition'] = F.expr(rule['condition'])
 
             rule['i'] = i
