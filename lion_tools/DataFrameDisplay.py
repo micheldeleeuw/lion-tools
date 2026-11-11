@@ -127,6 +127,46 @@ class DataFrameDisplay():
 
     @staticmethod
     def set_display_colors(df, *color_rules: dict):
+        """
+        Add display colors and styles to a DataFrame by storing them in the `_color_style` column.
+
+        The rules are evaluated per row; for each column the first rule whose condition holds wins.
+        Colors/styles from earlier calls are kept for cells that no new rule applies to, so calls
+        can be chained.
+
+        Args:
+            df: The DataFrame to color.
+            *color_rules: One or more rule dicts (not a list). Allowed keys:
+                columns (list[str]): Columns the rule applies to. Default: all columns.
+                column (str): Single column the rule applies to.
+                    Cannot be combined with `columns`.
+                color_code (str): Tailwind color as `color`, `color-bg` or `color-bg-font`,
+                    e.g. 'red', 'red-200' or 'red-200-950'. A missing background weight
+                    defaults to 100, a missing font weight is derived from the background weight.
+                    Examples: 'green' (= 'green-100-900'), 'amber-300' (= 'amber-300-950'),
+                    'blue-700-50' (dark blue background, light font).
+                style_code (str): Space separated style(s) from `DataFrameDisplay.style_codes`,
+                    e.g. 'italic underline'.
+                    Examples: 'font-bold', 'italic', 'underline decoration-wavy', 'line-through'.
+                condition (str | Column): Spark SQL expression or Column; the rule only applies
+                    to rows where it is true. Default: true = all rows.
+                At least one of `color_code` or `style_code` is required.
+
+        Returns:
+            DataFrame: The input DataFrame with the `_color_style` column added or updated.
+
+        Example:
+            >>> df = DataFrameDisplay.set_display_colors(
+            ...     df,
+            ...     dict(column='rating', condition='rating >= 8', color_code='green-200', style_code='font-bold'),
+            ...     dict(columns=['title', 'year'], condition='year < 1950', style_code='italic'),
+            ...     dict(condition='rating is null', color_code='slate'),
+            ... )
+
+        Raises:
+            ValueError: If no rules are given or the rules are passed as a list.
+            AssertionError: If a rule has invalid keys, columns, color_code or style_code.
+        """
         if len(color_rules) == 0:
             raise ValueError("At least one color rule must be provided")
         
