@@ -394,18 +394,28 @@ class DataFrameDisplay():
                 dict(condition='_totals_type >= 3', style_code='italic')
             )
 
-        self.prepare_data_with_rownum()
-        self.gather_column_information()
-        self.collect_data_and_stats()
-        self.further_limit_data_by_table_bytes()
-        self.set_columns_popup()
-        self.set_headers()
-        self.set_column_definitions()
-        self.compact_headers()
-        self.set_length_and_width()
-        self.set_other_options()
-        self.data_to_html_table()
-        self.apply_to_template()
+        try:
+            self.inform_display_hub('busy')
+            import time
+            time.sleep(2)
+            raise Exception("Intentional raise for debugging")  
+            self.prepare_data_with_rownum()
+            self.gather_column_information()
+            self.collect_data_and_stats()
+            self.further_limit_data_by_table_bytes()
+            self.set_columns_popup()
+            self.set_headers()
+            self.set_column_definitions()
+            self.compact_headers()
+            self.set_length_and_width()
+            self.set_other_options()
+            self.data_to_html_table()
+            self.apply_to_template()
+        except:
+            self.inform_display_hub('error')
+            raise
+        else:
+            self.inform_display_hub('done') 
 
     def serve_out(self):
         if self.file_path:
@@ -421,6 +431,11 @@ class DataFrameDisplay():
             return self.df
         elif DataFrameTap.tapped and DataFrameTap.tapped['end_on_display']:
             return DataFrameTap._tap_end()
+
+    def inform_display_hub(self, message):
+        # Inform the display hub of the current status, but only when we are hubbing
+        if self.display_hub_path:
+            DisplayHub.set_message(self.display_hub_path, message)
 
     def _display(self):
         self.put_in_iframe()

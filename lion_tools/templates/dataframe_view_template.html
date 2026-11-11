@@ -7,7 +7,7 @@
 <title>{html_title}</title>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css">
 <script src="https://cdn.tailwindcss.com"></script>
-<style>
+<style data-lion-keep>
     :root {
         --dt-text: #2c3e50;
         --dt-muted: #657487;
@@ -446,6 +446,13 @@
 {query_builder_assets}
 <script>
 $(document).ready(function() {
+    // captured before DataTables rewrites the DOM, so the "HTML page" export is the page as generated
+    var pristineHtml = (function() {
+        var clone = document.documentElement.cloneNode(true);
+        // style elements injected at runtime by the Tailwind CDN script are recreated when the exported page loads
+        $(clone).find('head style').not('[data-lion-keep]').remove();
+        return '<!DOCTYPE html>\n' + clone.outerHTML;
+    })();
     var filterEnabled = {column_filter};
     var FILTER_BACK = '__back__';
     var FILTER_MODE_ALL = '__all__';
@@ -513,6 +520,7 @@ $(document).ready(function() {
     var exportBtn = $('<button id="exportBtn">Export</button>');
     var exportMenu = $('<div id="exportMenu"></div>');
     exportMenu.append('<div class="export-item" data-export="excel">Excel</div>');
+    exportMenu.append('<div class="export-item" data-export="html-page">HTML</div>');
     exportMenu.append('<div class="export-item" data-export="markdown">Markdown</div>');
     var exportWrapper = $('<span class="export-wrapper"></span>').append(exportBtn).append(exportMenu);
     var exportToast = $('<div id="exportToast"></div>');
@@ -1022,8 +1030,12 @@ $(document).ready(function() {
         var sheet = XLSX.utils.aoa_to_sheet([data.headers].concat(data.rows));
         var book = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(book, sheet, 'Data');
-        var fileName = (document.title || 'dataframe').replace(/[^\w\- ]+/g, '_').trim() || 'dataframe';
         var base64 = XLSX.write(book, { bookType: 'xlsx', type: 'base64' });
+        downloadFile('xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', base64);
+    }
+
+    function downloadFile(extension, mimeType, base64) {
+        var fileName = (document.title || 'dataframe').replace(/[^\w\- ]+/g, '_').trim() || 'dataframe';
         // a data URI anchor is what the notebook download button uses; blob downloads get no save dialog there
         // start the download from the parent document when same-origin, like the notebook download button does
         var host = document;
@@ -1035,11 +1047,25 @@ $(document).ready(function() {
             host = document;
         }
         var link = host.createElement('a');
-        link.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + base64;
-        link.download = fileName + '.xlsx';
+        link.href = 'data:' + mimeType + ';base64,' + base64;
+        link.download = fileName + '.' + extension;
         host.body.appendChild(link);
         link.click();
         host.body.removeChild(link);
+    }
+
+    function downloadHtml(html) {
+        var bytes = new TextEncoder().encode(html);
+        var binary = '';
+        for (var i = 0; i < bytes.length; i += 0x8000) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        }
+        downloadFile('html', 'text/html;charset=utf-8', btoa(binary));
+    }
+
+    function exportToHtmlPage() {
+        downloadHtml(pristineHtml);
+        showToast('HTML downloaded');
     }
 
     function exportToMarkdown() {
@@ -1076,8 +1102,11 @@ $(document).ready(function() {
     exportMenu.on('click', '.export-item', function(e) {
         e.stopPropagation();
         exportMenu.removeClass('show');
-        if ($(this).data('export') === 'excel') {
+        var target = $(this).data('export');
+        if (target === 'excel') {
             exportToExcel();
+        } else if (target === 'html-page') {
+            exportToHtmlPage();
         } else {
             exportToMarkdown();
         }
