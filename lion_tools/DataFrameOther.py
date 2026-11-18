@@ -366,7 +366,11 @@ class DataFrameOther:
             # note that we have use _df as the name of the parameter to avoid
             # confusion with the actual dataframe name
             for name, value in list(frame.f_locals.items()):
-                if value is _df and not name.startswith("_"):
+                if (
+                    value is _df
+                    and not name.startswith("_")
+                    and name != "self"
+                ):
                     return name
 
         return "unnamed"
