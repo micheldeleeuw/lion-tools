@@ -102,6 +102,7 @@ class DataFrameDisplay():
         title: str | None = None,
         column_filter: bool | None = None,
         display_hub_path: str | None = None,
+        max_table_bytes: int | None = None,
      ):
         
         DataFrameDisplay(
@@ -113,6 +114,7 @@ class DataFrameDisplay():
             paging=paging,
             file_path=file_path,
             sort=sort,
+            max_table_bytes=max_table_bytes,
             color_rules=color_rules,
             pretty_headers=pretty_headers,
             format_totals=format_totals,
@@ -542,6 +544,8 @@ class DataFrameDisplay():
         # if the total (byte) size of the data is large we limited the number of rows to avoid browser performance issues
         if self.df_statistics['__total__']['avg_width'] * self.df_statistics['__total__']['rows'] > self.max_table_bytes and len(self.df_collected) > 1:
             new_n = int(self.max_table_bytes / self.df_statistics['__total__']['avg_width'])
+            new_n = max(new_n, 1)  # ensure at least one row is kept
+            print(f"Limiting data to {new_n} rows due to table byte size. Use parameter 'max_table_bytes' to adjust.")
             self.df_collected = self.df_collected[:new_n]
             self.df_statistics['__total__']['size_limit'] = True
             self.df_statistics['__total__']['rows'] = new_n
