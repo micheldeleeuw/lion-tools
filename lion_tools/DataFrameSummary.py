@@ -32,7 +32,7 @@ class DataFrameSummary():
         assert 0 <= top <= 100, "top must be between 0 and 100"
         assert all(stat in allowable_stats for stat in stats), f"stats must be a list of {allowable_stats}"
 
-        summary = DataFrameGroup(df, *by).agg(*stats)
+        summary = DataFrameGroup(df, *by).agg(*stats, allow_single_aggregation_functions=False)
         df_cols = df.columns
         df_dtypes = dict(df.dtypes)
         summary_cols = summary.columns
