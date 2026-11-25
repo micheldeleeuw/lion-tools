@@ -255,6 +255,7 @@ class DataFrameGroup:
         alias: bool = False,
         normalize_column_names: bool = False,
         round: int | None = None,
+        allow_single_aggregation_functions: bool = True,
     ) -> DataFrame:
 
         self.alias = alias
@@ -282,6 +283,7 @@ class DataFrameGroup:
                 if isinstance(value, str)
                 and value in self.single_aggregation_functions()
             ]) > 1
+            or (len(aggs) == 1 and not allow_single_aggregation_functions)
         ):
             self.alias = True
 
